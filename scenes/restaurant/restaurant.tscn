@@ -1,0 +1,95 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/furniture/stove.png" id="1_stove"]
+[ext_resource type="Texture2D" path="res://assets/furniture/kitchen_counter.png" id="2_counter"]
+[ext_resource type="Texture2D" path="res://assets/furniture/table_round.png" id="3_table"]
+[ext_resource type="Texture2D" path="res://assets/furniture/chair_red.png" id="4_chair"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory_server.png" id="5_dory"]
+
+[node name="Restaurant" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Floor" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.780392, 0.611765, 0.396078, 1)
+
+[node name="KitchenCounter" type="Node2D" parent="."]
+position = Vector2(150, 40)
+
+[node name="StoveSprite" type="Sprite2D" parent="KitchenCounter"]
+position = Vector2(0, 55)
+scale = Vector2(0.65, 0.65)
+texture = ExtResource("1_stove")
+centered = false
+
+[node name="CounterSprite" type="Sprite2D" parent="KitchenCounter"]
+position = Vector2(180, 95)
+scale = Vector2(0.65, 0.65)
+texture = ExtResource("2_counter")
+centered = false
+
+[node name="Table1" type="Node2D" parent="."]
+position = Vector2(90, 380)
+
+[node name="TableSprite" type="Sprite2D" parent="Table1"]
+position = Vector2(45, 15)
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("3_table")
+centered = false
+
+[node name="ChairA" type="Sprite2D" parent="Table1"]
+position = Vector2(0, 40)
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("4_chair")
+centered = false
+
+[node name="ChairB" type="Sprite2D" parent="Table1"]
+position = Vector2(150, 40)
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("4_chair")
+centered = false
+flip_h = true
+
+[node name="Table2" type="Node2D" parent="."]
+position = Vector2(430, 380)
+
+[node name="TableSprite" type="Sprite2D" parent="Table2"]
+position = Vector2(45, 15)
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("3_table")
+centered = false
+
+[node name="ChairA" type="Sprite2D" parent="Table2"]
+position = Vector2(0, 40)
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("4_chair")
+centered = false
+
+[node name="ChairB" type="Sprite2D" parent="Table2"]
+position = Vector2(150, 40)
+scale = Vector2(0.6, 0.6)
+texture = ExtResource("4_chair")
+centered = false
+flip_h = true
+
+[node name="Dory" type="Node2D" parent="."]
+position = Vector2(260, 290)
+
+[node name="DorySprite" type="Sprite2D" parent="Dory"]
+scale = Vector2(0.45, 0.45)
+texture = ExtResource("5_dory")
+centered = false
