@@ -16,8 +16,8 @@ config/features=PackedStringArray("4.3", "Mobile")
 window/size/viewport_width=720
 window/size/viewport_height=1280
 window/stretch/mode="canvas_items"
-window/stretch/aspect="keep"
-window/handheld/orientation="portrait"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
 
 [rendering]
 
