@@ -1,0 +1,20 @@
+[
+  {
+    "id": "carrot_soup",
+    "name": "당근 수프",
+    "cook_time": 4.0,
+    "price": 12
+  },
+  {
+    "id": "sandwich",
+    "name": "샌드위치",
+    "cook_time": 5.0,
+    "price": 18
+  },
+  {
+    "id": "apple_juice",
+    "name": "사과 주스",
+    "cook_time": 3.0,
+    "price": 10
+  }
+]

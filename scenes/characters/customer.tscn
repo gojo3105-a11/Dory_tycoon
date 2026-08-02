@@ -1,6 +1,18 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/characters/customer.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_orderbubble"]
+bg_color = Color(0.988235, 0.964706, 0.898039, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.545098, 0.352941, 0.196078, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="Customer" type="Node2D"]
 z_index = 6
@@ -19,3 +31,22 @@ position = Vector2(-30, -66)
 theme_override_font_sizes/font_size = 14
 text = "SPAWN"
 horizontal_alignment = 1
+
+[node name="OrderBubble" type="Panel" parent="."]
+visible = false
+position = Vector2(-55, -108)
+size = Vector2(110, 32)
+theme_override_styles/panel = SubResource("StyleBoxFlat_orderbubble")
+
+[node name="OrderLabel" type="Label" parent="OrderBubble"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.352941, 0.219608, 0.117647, 1)
+theme_override_font_sizes/font_size = 16
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
