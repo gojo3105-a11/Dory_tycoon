@@ -81,16 +81,16 @@ max_value = 100.0
 value = 0.0
 show_percentage = false
 
-[node name="ReadyPoint" type="Node2D" parent="CenterContainer/DesignArea/World/KitchenCounter"]
+[node name="ReadyIndicator" type="Node2D" parent="CenterContainer/DesignArea/World/KitchenCounter"]
 position = Vector2(150, -25)
 visible = false
 
-[node name="ReadyShape" type="ColorRect" parent="CenterContainer/DesignArea/World/KitchenCounter/ReadyPoint"]
+[node name="ReadyShape" type="ColorRect" parent="CenterContainer/DesignArea/World/KitchenCounter/ReadyIndicator"]
 position = Vector2(-18, -18)
 size = Vector2(36, 36)
 color = Color(0.94902, 0.792157, 0.4, 1)
 
-[node name="ReadyLabel" type="Label" parent="CenterContainer/DesignArea/World/KitchenCounter/ReadyPoint"]
+[node name="ReadyLabel" type="Label" parent="CenterContainer/DesignArea/World/KitchenCounter/ReadyIndicator"]
 position = Vector2(-30, -42)
 theme_override_font_sizes/font_size = 16
 text = "완성"

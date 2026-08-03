@@ -3,7 +3,7 @@ extends Control
 const CUSTOMER_SCENE: PackedScene = preload("res://scenes/characters/customer.tscn")
 const FOODS_PATH: String = "res://data/foods.json"
 
-@export var show_debug_coordinates: bool = false
+@export var show_coordinate_debug: bool = false
 
 @onready var world: Node2D = get_node_or_null("CenterContainer/DesignArea/World") as Node2D
 @onready var spawn_point: Marker2D = get_node_or_null("CenterContainer/DesignArea/World/CustomerSpawnPoint") as Marker2D
@@ -51,7 +51,7 @@ func _spawn_customer() -> void:
 	customer.global_position = spawn_point.global_position
 	customer.set_available_foods(food_list)
 
-	if show_debug_coordinates:
+	if show_coordinate_debug:
 		print("Spawn: ", spawn_point.global_position)
 		if tables.size() > 0 and tables[0] != null:
 			print("Table1 seat: ", tables[0].get_seat_position())

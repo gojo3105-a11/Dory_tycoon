@@ -9,7 +9,7 @@ enum State {
 
 @onready var status_label: Label = get_node_or_null("CookingStatus/StatusLabel") as Label
 @onready var progress_bar: ProgressBar = get_node_or_null("CookingStatus/ProgressBar") as ProgressBar
-@onready var ready_point: Node2D = get_node_or_null("ReadyPoint") as Node2D
+@onready var ready_indicator: Node2D = get_node_or_null("ReadyIndicator") as Node2D
 
 var state: State = State.IDLE
 var current_customer: Customer = null
@@ -103,5 +103,5 @@ func _update_ui() -> void:
 		progress_bar.value = _progress_percent()
 	if status_label != null:
 		status_label.text = _status_text()
-	if ready_point != null:
-		ready_point.visible = state == State.READY
+	if ready_indicator != null:
+		ready_indicator.visible = state == State.READY
