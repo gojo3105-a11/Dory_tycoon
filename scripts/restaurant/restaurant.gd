@@ -12,11 +12,16 @@ const FOODS_PATH: String = "res://data/foods.json"
 	get_node_or_null("CenterContainer/DesignArea/World/Table2") as Table,
 ]
 @onready var cooking_station: CookingStation = get_node_or_null("CenterContainer/DesignArea/World/KitchenCounter") as CookingStation
+@onready var dory: Dory = get_node_or_null("CenterContainer/DesignArea/World/Dory") as Dory
 
 var food_list: Array = []
 
 func _ready() -> void:
 	food_list = _load_food_list()
+
+	if cooking_station != null:
+		if not cooking_station.order_ready.is_connected(_on_cooking_order_ready):
+			cooking_station.order_ready.connect(_on_cooking_order_ready)
 
 	# CenterContainer/DesignArea only resolve their final layout position
 	# after at least one layout pass, so global_position reads taken in the
@@ -74,6 +79,18 @@ func _on_customer_order_created(customer: Customer, order: Dictionary) -> void:
 
 	if not cooking_station.accept_order(customer, order):
 		push_warning("Restaurant: CookingStation is busy.")
+
+func _on_cooking_order_ready(customer: Customer, order: Dictionary) -> void:
+	if dory == null:
+		push_error("Restaurant: Dory not found.")
+		return
+
+	if not is_instance_valid(customer):
+		push_warning("Restaurant: order customer is invalid.")
+		return
+
+	if not dory.start_serving(cooking_station.get_pickup_position(), customer, order):
+		push_warning("Restaurant: Dory is busy.")
 
 func _find_free_table() -> Table:
 	for table in tables:

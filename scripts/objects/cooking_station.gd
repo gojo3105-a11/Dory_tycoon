@@ -7,9 +7,12 @@ enum State {
 	READY,
 }
 
+signal order_ready(customer: Customer, order: Dictionary)
+
 @onready var status_label: Label = get_node_or_null("CookingStatus/StatusLabel") as Label
 @onready var progress_bar: ProgressBar = get_node_or_null("CookingStatus/ProgressBar") as ProgressBar
 @onready var ready_indicator: Node2D = get_node_or_null("ReadyIndicator") as Node2D
+@onready var pickup_point: Marker2D = get_node_or_null("PickupPoint") as Marker2D
 
 var state: State = State.IDLE
 var current_customer: Customer = null
@@ -69,11 +72,38 @@ func _is_valid_order(order: Dictionary) -> bool:
 		return false
 	return true
 
+func get_pickup_position() -> Vector2:
+	if pickup_point == null:
+		return global_position
+	return pickup_point.global_position
+
+func take_ready_order(customer: Customer) -> Dictionary:
+	if state != State.READY:
+		return {}
+	if current_customer != customer:
+		return {}
+	if current_order.is_empty():
+		return {}
+
+	var order_copy: Dictionary = current_order.duplicate(true)
+
+	current_order = {}
+	current_customer = null
+	elapsed_time = 0.0
+	cook_duration = 0.0
+	state = State.IDLE
+	_update_ui()
+
+	return order_copy
+
 func _finish_cooking() -> void:
 	elapsed_time = cook_duration
 	state = State.READY
 	print("Cooking completed: ", current_order.get("food_name", ""))
 	_update_ui()
+
+	if is_instance_valid(current_customer) and not current_order.is_empty():
+		order_ready.emit(current_customer, current_order)
 
 func _progress_percent() -> float:
 	match state:

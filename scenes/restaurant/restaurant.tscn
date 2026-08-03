@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/furniture/stove.png" id="1_stove"]
 [ext_resource type="Texture2D" path="res://assets/furniture/kitchen_counter.png" id="2_counter"]
@@ -8,6 +8,19 @@
 [ext_resource type="Script" path="res://scripts/restaurant/restaurant.gd" id="6_restaurant_script"]
 [ext_resource type="Script" path="res://scripts/objects/table.gd" id="7_table_script"]
 [ext_resource type="Script" path="res://scripts/objects/cooking_station.gd" id="8_cooking_station_script"]
+[ext_resource type="Script" path="res://scripts/characters/dory.gd" id="9_dory_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_carryindicator"]
+bg_color = Color(0.827451, 0.917647, 0.815686, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.345098, 0.545098, 0.32549, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="Restaurant" type="Control"]
 layout_mode = 3
@@ -96,8 +109,12 @@ theme_override_font_sizes/font_size = 16
 text = "완성"
 horizontal_alignment = 1
 
+[node name="PickupPoint" type="Marker2D" parent="CenterContainer/DesignArea/World/KitchenCounter"]
+position = Vector2(213, 230)
+
 [node name="Dory" type="Node2D" parent="CenterContainer/DesignArea/World"]
 position = Vector2(63, 130)
+script = ExtResource("9_dory_script")
 
 [node name="DorySprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory"]
 scale = Vector2(0.427, 0.427)
@@ -105,12 +122,39 @@ texture = ExtResource("5_dory")
 centered = false
 z_index = 5
 
+[node name="CarryIndicator" type="Panel" parent="CenterContainer/DesignArea/World/Dory"]
+visible = false
+position = Vector2(10, -34)
+size = Vector2(116, 28)
+theme_override_styles/panel = SubResource("StyleBoxFlat_carryindicator")
+
+[node name="CarryLabel" type="Label" parent="CenterContainer/DesignArea/World/Dory/CarryIndicator"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.219608, 0.352941, 0.196078, 1)
+theme_override_font_sizes/font_size = 15
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DebugStateLabel" type="Label" parent="CenterContainer/DesignArea/World/Dory"]
+position = Vector2(10, 145)
+theme_override_font_sizes/font_size = 12
+text = "IDLE"
+
 [node name="Table1" type="Node2D" parent="CenterContainer/DesignArea/World"]
 position = Vector2(38, 520)
 script = ExtResource("7_table_script")
 
 [node name="SeatPoint" type="Marker2D" parent="CenterContainer/DesignArea/World/Table1"]
 position = Vector2(48, 145)
+
+[node name="ServePoint" type="Marker2D" parent="CenterContainer/DesignArea/World/Table1"]
+position = Vector2(95, 165)
 
 [node name="ChairA" type="Sprite2D" parent="CenterContainer/DesignArea/World/Table1"]
 position = Vector2(0, 45)
@@ -140,6 +184,9 @@ script = ExtResource("7_table_script")
 
 [node name="SeatPoint" type="Marker2D" parent="CenterContainer/DesignArea/World/Table2"]
 position = Vector2(48, 145)
+
+[node name="ServePoint" type="Marker2D" parent="CenterContainer/DesignArea/World/Table2"]
+position = Vector2(95, 165)
 
 [node name="ChairA" type="Sprite2D" parent="CenterContainer/DesignArea/World/Table2"]
 position = Vector2(0, 45)

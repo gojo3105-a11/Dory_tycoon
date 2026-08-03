@@ -7,6 +7,7 @@ enum State {
 	SEATED,
 	ORDER,
 	WAIT,
+	SERVED,
 	LEAVE,
 }
 
@@ -61,6 +62,22 @@ func leave_towards(exit_global_position: Vector2) -> void:
 	assigned_table = null
 	target_position = exit_global_position
 	_set_state(State.LEAVE)
+
+func get_serve_position() -> Vector2:
+	if assigned_table is Table and is_instance_valid(assigned_table):
+		return (assigned_table as Table).get_serve_position()
+	return global_position
+
+func receive_order(order: Dictionary) -> bool:
+	if state != State.WAIT:
+		return false
+	if order.is_empty():
+		return false
+	if str(order.get("food_id", "")) != ordered_food_id:
+		return false
+
+	_set_state(State.SERVED)
+	return true
 
 func _move_toward_target(delta: float) -> void:
 	global_position = global_position.move_toward(target_position, move_speed * delta)
@@ -132,6 +149,8 @@ func _update_debug_label() -> void:
 			status_label.text = "ORDERING"
 		State.WAIT:
 			status_label.text = "WAITING"
+		State.SERVED:
+			status_label.text = "SERVED"
 		State.LEAVE:
 			status_label.text = "LEAVING"
 
