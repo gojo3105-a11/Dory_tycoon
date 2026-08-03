@@ -14,6 +14,18 @@ var food_list: Array = []
 
 func _ready() -> void:
 	food_list = _load_food_list()
+
+	# CenterContainer/DesignArea only resolve their final layout position
+	# after at least one layout pass, so global_position reads taken in the
+	# same frame as _ready() can still reflect the pre-centering position.
+	# Waiting two process frames lets that settle on mobile before we read
+	# CustomerSpawnPoint/SeatPoint global_position and spawn the customer.
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	if not is_inside_tree():
+		return
+
 	_spawn_customer()
 
 func _spawn_customer() -> void:
@@ -32,6 +44,12 @@ func _spawn_customer() -> void:
 	world.add_child(customer)
 	customer.global_position = spawn_point.global_position
 	customer.set_available_foods(food_list)
+
+	print("Spawn: ", spawn_point.global_position)
+	if tables.size() > 0 and tables[0] != null:
+		print("Table1 seat: ", tables[0].get_seat_position())
+	if tables.size() > 1 and tables[1] != null:
+		print("Table2 seat: ", tables[1].get_seat_position())
 
 	var table: Table = _find_free_table()
 	if table == null:

@@ -78,7 +78,7 @@ position = Vector2(38, 520)
 script = ExtResource("7_table_script")
 
 [node name="SeatPoint" type="Marker2D" parent="CenterContainer/DesignArea/World/Table1"]
-position = Vector2(30, 145)
+position = Vector2(48, 145)
 
 [node name="ChairA" type="Sprite2D" parent="CenterContainer/DesignArea/World/Table1"]
 position = Vector2(0, 45)
@@ -107,7 +107,7 @@ position = Vector2(385, 520)
 script = ExtResource("7_table_script")
 
 [node name="SeatPoint" type="Marker2D" parent="CenterContainer/DesignArea/World/Table2"]
-position = Vector2(30, 145)
+position = Vector2(48, 145)
 
 [node name="ChairA" type="Sprite2D" parent="CenterContainer/DesignArea/World/Table2"]
 position = Vector2(0, 45)
