@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/furniture/stove.png" id="1_stove"]
 [ext_resource type="Texture2D" path="res://assets/furniture/kitchen_counter.png" id="2_counter"]
@@ -8,54 +8,29 @@
 [ext_resource type="Script" path="res://scripts/objects/table.gd" id="7_table_script"]
 [ext_resource type="Script" path="res://scripts/objects/cooking_station.gd" id="8_cooking_station_script"]
 [ext_resource type="Script" path="res://scripts/characters/dory.gd" id="9_dory_script"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/dory_walk_sheet.png" id="10_dory_walk_sheet"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_walk0"]
-atlas = ExtResource("10_dory_walk_sheet")
-region = Rect2(0, 0, 384, 512)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_walk1"]
-atlas = ExtResource("10_dory_walk_sheet")
-region = Rect2(384, 0, 384, 512)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_walk2"]
-atlas = ExtResource("10_dory_walk_sheet")
-region = Rect2(768, 0, 384, 512)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_walk3"]
-atlas = ExtResource("10_dory_walk_sheet")
-region = Rect2(1152, 0, 384, 512)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_carry0"]
-atlas = ExtResource("10_dory_walk_sheet")
-region = Rect2(0, 512, 384, 512)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_carry1"]
-atlas = ExtResource("10_dory_walk_sheet")
-region = Rect2(384, 512, 384, 512)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_carry2"]
-atlas = ExtResource("10_dory_walk_sheet")
-region = Rect2(768, 512, 384, 512)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_carry3"]
-atlas = ExtResource("10_dory_walk_sheet")
-region = Rect2(1152, 512, 384, 512)
+[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_00.png" id="10_walk0"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_01.png" id="11_walk1"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_02.png" id="12_walk2"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_03.png" id="13_walk3"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_carry_00.png" id="14_carry0"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_carry_01.png" id="15_carry1"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_carry_02.png" id="16_carry2"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_carry_03.png" id="17_carry3"]
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_dory"]
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_walk0")
+"texture": ExtResource("10_walk0")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_walk1")
+"texture": ExtResource("11_walk1")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_walk2")
+"texture": ExtResource("12_walk2")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_walk3")
+"texture": ExtResource("13_walk3")
 }],
 "loop": true,
 "name": &"walk",
@@ -63,16 +38,16 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_carry0")
+"texture": ExtResource("14_carry0")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_carry1")
+"texture": ExtResource("15_carry1")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_carry2")
+"texture": ExtResource("16_carry2")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_carry3")
+"texture": ExtResource("17_carry3")
 }],
 "loop": true,
 "name": &"walk_carry",
@@ -80,7 +55,7 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_walk0")
+"texture": ExtResource("10_walk0")
 }],
 "loop": true,
 "name": &"idle",
@@ -88,7 +63,7 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_carry0")
+"texture": ExtResource("15_carry1")
 }],
 "loop": false,
 "name": &"pickup",
@@ -96,7 +71,7 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_carry0")
+"texture": ExtResource("15_carry1")
 }],
 "loop": false,
 "name": &"serve",
@@ -211,7 +186,7 @@ z_index = 5
 script = ExtResource("9_dory_script")
 
 [node name="DoryAnimatedSprite" type="AnimatedSprite2D" parent="CenterContainer/DesignArea/World/Dory"]
-position = Vector2(-49.8, -45.4)
+position = Vector2(17.8, -14.7)
 scale = Vector2(0.52, 0.52)
 sprite_frames = SubResource("SpriteFrames_dory")
 animation = &"idle"
