@@ -3,12 +3,15 @@ extends Control
 const CUSTOMER_SCENE: PackedScene = preload("res://scenes/characters/customer.tscn")
 const FOODS_PATH: String = "res://data/foods.json"
 
+@export var show_debug_coordinates: bool = false
+
 @onready var world: Node2D = get_node_or_null("CenterContainer/DesignArea/World") as Node2D
 @onready var spawn_point: Marker2D = get_node_or_null("CenterContainer/DesignArea/World/CustomerSpawnPoint") as Marker2D
 @onready var tables: Array[Table] = [
 	get_node_or_null("CenterContainer/DesignArea/World/Table1") as Table,
 	get_node_or_null("CenterContainer/DesignArea/World/Table2") as Table,
 ]
+@onready var cooking_station: CookingStation = get_node_or_null("CenterContainer/DesignArea/World/KitchenCounter") as CookingStation
 
 var food_list: Array = []
 
@@ -41,15 +44,19 @@ func _spawn_customer() -> void:
 		push_error("Restaurant: failed to instantiate customer scene.")
 		return
 
+	if not customer.order_created.is_connected(_on_customer_order_created):
+		customer.order_created.connect(_on_customer_order_created)
+
 	world.add_child(customer)
 	customer.global_position = spawn_point.global_position
 	customer.set_available_foods(food_list)
 
-	print("Spawn: ", spawn_point.global_position)
-	if tables.size() > 0 and tables[0] != null:
-		print("Table1 seat: ", tables[0].get_seat_position())
-	if tables.size() > 1 and tables[1] != null:
-		print("Table2 seat: ", tables[1].get_seat_position())
+	if show_debug_coordinates:
+		print("Spawn: ", spawn_point.global_position)
+		if tables.size() > 0 and tables[0] != null:
+			print("Table1 seat: ", tables[0].get_seat_position())
+		if tables.size() > 1 and tables[1] != null:
+			print("Table2 seat: ", tables[1].get_seat_position())
 
 	var table: Table = _find_free_table()
 	if table == null:
@@ -59,6 +66,14 @@ func _spawn_customer() -> void:
 
 	table.assign_customer()
 	customer.move_to_table(table, table.get_seat_position())
+
+func _on_customer_order_created(customer: Customer, order: Dictionary) -> void:
+	if cooking_station == null:
+		push_error("Restaurant: CookingStation not found.")
+		return
+
+	if not cooking_station.accept_order(customer, order):
+		push_warning("Restaurant: CookingStation is busy.")
 
 func _find_free_table() -> Table:
 	for table in tables:

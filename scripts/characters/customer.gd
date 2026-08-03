@@ -10,6 +10,8 @@ enum State {
 	LEAVE,
 }
 
+signal order_created(customer: Customer, order: Dictionary)
+
 const SEATED_Z_INDEX: int = 3
 const MOVING_Z_INDEX: int = 6
 
@@ -80,6 +82,13 @@ func _on_seated() -> void:
 
 	_set_state(State.ORDER)
 	if _create_random_order():
+		var order: Dictionary = {
+			"food_id": ordered_food_id,
+			"food_name": ordered_food_name,
+			"cook_time": ordered_cook_time,
+			"price": ordered_price,
+		}
+		order_created.emit(self, order)
 		_set_state(State.WAIT)
 
 func _create_random_order() -> bool:

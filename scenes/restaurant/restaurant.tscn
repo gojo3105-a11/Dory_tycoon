@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/furniture/stove.png" id="1_stove"]
 [ext_resource type="Texture2D" path="res://assets/furniture/kitchen_counter.png" id="2_counter"]
@@ -7,6 +7,7 @@
 [ext_resource type="Texture2D" path="res://assets/characters/dory_server.png" id="5_dory"]
 [ext_resource type="Script" path="res://scripts/restaurant/restaurant.gd" id="6_restaurant_script"]
 [ext_resource type="Script" path="res://scripts/objects/table.gd" id="7_table_script"]
+[ext_resource type="Script" path="res://scripts/objects/cooking_station.gd" id="8_cooking_station_script"]
 
 [node name="Restaurant" type="Control"]
 layout_mode = 3
@@ -49,6 +50,7 @@ position = Vector2(340, 800)
 
 [node name="KitchenCounter" type="Node2D" parent="CenterContainer/DesignArea/World"]
 position = Vector2(207, 100)
+script = ExtResource("8_cooking_station_script")
 
 [node name="StoveSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/KitchenCounter"]
 position = Vector2(0, 0)
@@ -63,6 +65,36 @@ scale = Vector2(0.621, 0.621)
 texture = ExtResource("2_counter")
 centered = false
 z_index = 1
+
+[node name="CookingStatus" type="Node2D" parent="CenterContainer/DesignArea/World/KitchenCounter"]
+position = Vector2(0, 195)
+
+[node name="StatusLabel" type="Label" parent="CenterContainer/DesignArea/World/KitchenCounter/CookingStatus"]
+theme_override_font_sizes/font_size = 16
+text = "대기 중"
+
+[node name="ProgressBar" type="ProgressBar" parent="CenterContainer/DesignArea/World/KitchenCounter/CookingStatus"]
+position = Vector2(0, 24)
+size = Vector2(180, 18)
+min_value = 0.0
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="ReadyPoint" type="Node2D" parent="CenterContainer/DesignArea/World/KitchenCounter"]
+position = Vector2(150, -25)
+visible = false
+
+[node name="ReadyShape" type="ColorRect" parent="CenterContainer/DesignArea/World/KitchenCounter/ReadyPoint"]
+position = Vector2(-18, -18)
+size = Vector2(36, 36)
+color = Color(0.94902, 0.792157, 0.4, 1)
+
+[node name="ReadyLabel" type="Label" parent="CenterContainer/DesignArea/World/KitchenCounter/ReadyPoint"]
+position = Vector2(-30, -42)
+theme_override_font_sizes/font_size = 16
+text = "완성"
+horizontal_alignment = 1
 
 [node name="Dory" type="Node2D" parent="CenterContainer/DesignArea/World"]
 position = Vector2(63, 130)
