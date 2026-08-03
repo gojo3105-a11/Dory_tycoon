@@ -17,6 +17,7 @@ const MOVING_Z_INDEX: int = 6
 @export var show_debug_state: bool = true
 
 @onready var cooking_station: CookingStation = get_node_or_null("../KitchenCounter") as CookingStation
+@onready var animated_sprite: AnimatedSprite2D = get_node_or_null("DoryAnimatedSprite") as AnimatedSprite2D
 @onready var carry_indicator: Panel = get_node_or_null("CarryIndicator") as Panel
 @onready var carry_label: Label = get_node_or_null("CarryIndicator/CarryLabel") as Label
 @onready var debug_state_label: Label = get_node_or_null("DebugStateLabel") as Label
@@ -37,6 +38,7 @@ func _ready() -> void:
 	if debug_state_label != null:
 		debug_state_label.visible = show_debug_state
 
+	_update_animation()
 	_update_debug_label()
 
 func _process(delta: float) -> void:
@@ -58,6 +60,10 @@ func start_serving(pickup_position: Vector2, customer: Customer, order: Dictiona
 	return true
 
 func _move_toward_target(delta: float) -> void:
+	var direction: Vector2 = target_position - global_position
+	if animated_sprite != null and abs(direction.x) > 1.0:
+		animated_sprite.flip_h = direction.x < 0.0
+
 	global_position = global_position.move_toward(target_position, move_speed * delta)
 	if global_position.distance_to(target_position) <= arrival_distance:
 		global_position = target_position
@@ -73,6 +79,8 @@ func _on_target_reached() -> void:
 			_do_serve()
 		State.RETURN_HOME:
 			target_customer = null
+			carried_order = {}
+			_show_carry_indicator(false)
 			z_index = home_z_index
 			_set_state(State.IDLE)
 
@@ -106,9 +114,13 @@ func _do_serve() -> void:
 
 	if not served:
 		push_warning("Dory: failed to deliver order to customer.")
+	else:
+		# Only clear the carried order on a successful hand-off, so a failed
+		# delivery still walks home with the walk_carry animation instead of
+		# looking like the food vanished mid-air.
+		carried_order = {}
+		_show_carry_indicator(false)
 
-	_show_carry_indicator(false)
-	carried_order = {}
 	target_customer = null
 	target_position = home_position
 	_set_state(State.RETURN_HOME)
@@ -128,10 +140,37 @@ func _show_carry_indicator(shown: bool) -> void:
 		carry_label.text = str(carried_order.get("food_name", ""))
 
 func _set_state(new_state: State) -> void:
+	if state == new_state:
+		return
+
 	state = new_state
 	if new_state == State.MOVE_TO_KITCHEN or new_state == State.MOVE_TO_CUSTOMER or new_state == State.RETURN_HOME:
 		z_index = MOVING_Z_INDEX
+	_update_animation()
 	_update_debug_label()
+
+func _update_animation() -> void:
+	if animated_sprite == null:
+		return
+
+	var animation_name: String = "idle"
+
+	match state:
+		State.IDLE:
+			animation_name = "idle"
+		State.MOVE_TO_KITCHEN:
+			animation_name = "walk"
+		State.PICKUP:
+			animation_name = "pickup"
+		State.MOVE_TO_CUSTOMER:
+			animation_name = "walk_carry"
+		State.SERVE:
+			animation_name = "serve"
+		State.RETURN_HOME:
+			animation_name = "walk" if carried_order.is_empty() else "walk_carry"
+
+	if animated_sprite.animation != animation_name or not animated_sprite.is_playing():
+		animated_sprite.play(animation_name)
 
 func _update_debug_label() -> void:
 	if debug_state_label == null:
