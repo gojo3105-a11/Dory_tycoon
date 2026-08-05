@@ -18,13 +18,14 @@ const MOVING_Z_INDEX: int = 6
 
 @export var move_speed: float = 120.0
 @export var arrival_distance: float = 4.0
-@export var show_debug_label: bool = true
+@export var show_debug_state: bool = false
 @export var min_order_delay: float = 0.5
 @export var max_order_delay: float = 1.0
 
 @onready var status_label: Label = $StatusLabel
 @onready var order_bubble: Panel = $OrderBubble
 @onready var order_label: Label = $OrderBubble/OrderLabel
+@onready var animated_sprite: AnimatedSprite2D = get_node_or_null("CustomerAnimatedSprite") as AnimatedSprite2D
 
 var state: State = State.SPAWN
 var target_position: Vector2 = Vector2.ZERO
@@ -39,9 +40,10 @@ var ordered_price: int = 0
 func _ready() -> void:
 	z_index = MOVING_Z_INDEX
 	if status_label != null:
-		status_label.visible = show_debug_label
+		status_label.visible = show_debug_state
 	_update_debug_label()
 	_update_order_bubble()
+	_update_animation()
 
 func _process(delta: float) -> void:
 	if state == State.MOVE_TO_TABLE and not is_instance_valid(assigned_table):
@@ -80,6 +82,7 @@ func receive_order(order: Dictionary) -> bool:
 	return true
 
 func _move_toward_target(delta: float) -> void:
+	_update_facing(target_position - global_position)
 	global_position = global_position.move_toward(target_position, move_speed * delta)
 	if global_position.distance_to(target_position) < arrival_distance:
 		global_position = target_position
@@ -134,6 +137,38 @@ func _set_state(new_state: State) -> void:
 		_on_seated()
 	_update_debug_label()
 	_update_order_bubble()
+	_update_animation()
+
+func _update_animation() -> void:
+	if animated_sprite == null:
+		return
+
+	var animation_name: StringName = &"idle"
+
+	match state:
+		State.SPAWN:
+			animation_name = &"idle"
+		State.MOVE_TO_TABLE:
+			animation_name = &"walk"
+		State.SEATED, State.ORDER, State.WAIT:
+			animation_name = &"seated"
+		State.SERVED:
+			animation_name = &"served"
+		State.LEAVE:
+			animation_name = &"walk"
+
+	if not animated_sprite.sprite_frames.has_animation(animation_name):
+		animation_name = &"idle"
+
+	if animated_sprite.animation != animation_name or not animated_sprite.is_playing():
+		animated_sprite.play(animation_name)
+
+func _update_facing(direction: Vector2) -> void:
+	if animated_sprite == null:
+		return
+	if abs(direction.x) <= 1.0:
+		return
+	animated_sprite.flip_h = direction.x < 0.0
 
 func _update_debug_label() -> void:
 	if status_label == null:

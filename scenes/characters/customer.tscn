@@ -1,6 +1,11 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/characters/customer.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/characters/customer_yellow/frames/walk_00.png" id="2_walk0"]
+[ext_resource type="Texture2D" path="res://assets/characters/customer_yellow/frames/walk_01.png" id="3_walk1"]
+[ext_resource type="Texture2D" path="res://assets/characters/customer_yellow/frames/walk_02.png" id="4_walk2"]
+[ext_resource type="Texture2D" path="res://assets/characters/customer_yellow/frames/walk_03.png" id="5_walk3"]
+[ext_resource type="Texture2D" path="res://assets/characters/customer_yellow/frames/idle_00.png" id="6_idle0"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_orderbubble"]
 bg_color = Color(0.988235, 0.964706, 0.898039, 1)
@@ -14,17 +19,60 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
+[sub_resource type="SpriteFrames" id="SpriteFrames_customer"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("2_walk0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_walk1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_walk2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_walk3")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 8.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_idle0")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_idle0")
+}],
+"loop": true,
+"name": &"seated",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_idle0")
+}],
+"loop": true,
+"name": &"served",
+"speed": 1.0
+}]
+
 [node name="Customer" type="Node2D"]
 z_index = 6
 script = ExtResource("1_script")
 
-[node name="Body" type="Polygon2D" parent="."]
-color = Color(0.607843, 0.443137, 0.294118, 1)
-polygon = PackedVector2Array(24.0, -24.0, 22.17, -14.82, 16.97, -7.03, 9.18, -1.83, 0.0, 0.0, -9.18, -1.83, -16.97, -7.03, -22.17, -14.82, -24.0, -24.0, -22.17, -33.18, -16.97, -40.97, -9.18, -46.17, 0.0, -48.0, 9.18, -46.17, 16.97, -40.97, 22.17, -33.18)
-
-[node name="Face" type="Polygon2D" parent="."]
-color = Color(0.94902, 0.898039, 0.792157, 1)
-polygon = PackedVector2Array(11.0, -34.0, 9.53, -28.5, 5.5, -24.47, 0.0, -23.0, -5.5, -24.47, -9.53, -28.5, -11.0, -34.0, -9.53, -39.5, -5.5, -43.53, 0.0, -45.0, 5.5, -43.53, 9.53, -39.5)
+[node name="CustomerAnimatedSprite" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -70)
+scale = Vector2(0.5, 0.5)
+sprite_frames = SubResource("SpriteFrames_customer")
+animation = &"idle"
+centered = true
 
 [node name="StatusLabel" type="Label" parent="."]
 position = Vector2(-30, -66)
@@ -34,8 +82,8 @@ horizontal_alignment = 1
 
 [node name="OrderBubble" type="Panel" parent="."]
 visible = false
-position = Vector2(-55, -108)
-size = Vector2(110, 32)
+position = Vector2(-80, -193)
+size = Vector2(160, 38)
 theme_override_styles/panel = SubResource("StyleBoxFlat_orderbubble")
 
 [node name="OrderLabel" type="Label" parent="OrderBubble"]
