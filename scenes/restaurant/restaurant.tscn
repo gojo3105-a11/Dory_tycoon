@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Texture2D" path="res://assets/furniture/stove.png" id="1_stove"]
 [ext_resource type="Texture2D" path="res://assets/furniture/kitchen_counter.png" id="2_counter"]
@@ -8,75 +8,270 @@
 [ext_resource type="Script" path="res://scripts/objects/table.gd" id="7_table_script"]
 [ext_resource type="Script" path="res://scripts/objects/cooking_station.gd" id="8_cooking_station_script"]
 [ext_resource type="Script" path="res://scripts/characters/dory.gd" id="9_dory_script"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_00.png" id="10_walk0"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_01.png" id="11_walk1"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_02.png" id="12_walk2"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_03.png" id="13_walk3"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_carry_00.png" id="14_carry0"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_carry_01.png" id="15_carry1"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_carry_02.png" id="16_carry2"]
-[ext_resource type="Texture2D" path="res://assets/characters/dory/frames/walk_carry_03.png" id="17_carry3"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/parts/torso.png" id="10_torso"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/parts/arm_right.png" id="11_arm_right"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/parts/arm_left_scaled.png" id="12_arm_left"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/parts/foot_left.png" id="13_foot_left"]
+[ext_resource type="Texture2D" path="res://assets/characters/dory/parts/foot_right.png" id="14_foot_right"]
 
-[sub_resource type="SpriteFrames" id="SpriteFrames_dory"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": ExtResource("10_walk0")
+[sub_resource type="Animation" id="Animation_idle"]
+resource_name = "idle"
+length = 1.0
+loop_mode = 1
+tracks = [{
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_LeftLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
 }, {
-"duration": 1.0,
-"texture": ExtResource("11_walk1")
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_RightLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
 }, {
-"duration": 1.0,
-"texture": ExtResource("12_walk2")
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_LeftArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
 }, {
-"duration": 1.0,
-"texture": ExtResource("13_walk3")
-}],
-"loop": true,
-"name": &"walk",
-"speed": 8.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": ExtResource("14_carry0")
-}, {
-"duration": 1.0,
-"texture": ExtResource("15_carry1")
-}, {
-"duration": 1.0,
-"texture": ExtResource("16_carry2")
-}, {
-"duration": 1.0,
-"texture": ExtResource("17_carry3")
-}],
-"loop": true,
-"name": &"walk_carry",
-"speed": 8.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": ExtResource("10_walk0")
-}],
-"loop": true,
-"name": &"idle",
-"speed": 1.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": ExtResource("15_carry1")
-}],
-"loop": false,
-"name": &"pickup",
-"speed": 1.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": ExtResource("15_carry1")
-}],
-"loop": false,
-"name": &"serve",
-"speed": 1.0
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_RightArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
 }]
+
+[sub_resource type="Animation" id="Animation_walk"]
+resource_name = "walk"
+length = 0.6
+loop_mode = 1
+tracks = [{
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_LeftLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0, 0.15, 0.3, 0.45, 0.6),
+"transitions": PackedFloat32Array(1.0, 1.0, 1.0, 1.0, 1.0),
+"update": 0,
+"values": [0.26, 0.0, -0.26, 0.0, 0.26]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_RightLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0, 0.15, 0.3, 0.45, 0.6),
+"transitions": PackedFloat32Array(1.0, 1.0, 1.0, 1.0, 1.0),
+"update": 0,
+"values": [-0.26, 0.0, 0.26, 0.0, -0.26]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_LeftArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0, 0.15, 0.3, 0.45, 0.6),
+"transitions": PackedFloat32Array(1.0, 1.0, 1.0, 1.0, 1.0),
+"update": 0,
+"values": [-0.26, 0.0, 0.26, 0.0, -0.26]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_RightArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0, 0.15, 0.3, 0.45, 0.6),
+"transitions": PackedFloat32Array(1.0, 1.0, 1.0, 1.0, 1.0),
+"update": 0,
+"values": [0.26, 0.0, -0.26, 0.0, 0.26]
+}
+}]
+
+[sub_resource type="Animation" id="Animation_walk_carry"]
+resource_name = "walk_carry"
+length = 0.6
+loop_mode = 1
+tracks = [{
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_LeftLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0, 0.15, 0.3, 0.45, 0.6),
+"transitions": PackedFloat32Array(1.0, 1.0, 1.0, 1.0, 1.0),
+"update": 0,
+"values": [0.26, 0.0, -0.26, 0.0, 0.26]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_RightLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0, 0.15, 0.3, 0.45, 0.6),
+"transitions": PackedFloat32Array(1.0, 1.0, 1.0, 1.0, 1.0),
+"update": 0,
+"values": [-0.26, 0.0, 0.26, 0.0, -0.26]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_LeftArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0, 0.15, 0.3, 0.45, 0.6),
+"transitions": PackedFloat32Array(1.0, 1.0, 1.0, 1.0, 1.0),
+"update": 0,
+"values": [-0.08, 0.0, 0.08, 0.0, -0.08]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_RightArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0, 0.15, 0.3, 0.45, 0.6),
+"transitions": PackedFloat32Array(1.0, 1.0, 1.0, 1.0, 1.0),
+"update": 0,
+"values": [0.08, 0.0, -0.08, 0.0, 0.08]
+}
+}]
+
+[sub_resource type="Animation" id="Animation_pickup"]
+resource_name = "pickup"
+length = 0.1
+loop_mode = 0
+tracks = [{
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_LeftLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_RightLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_LeftArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_RightArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
+}]
+
+[sub_resource type="Animation" id="Animation_serve"]
+resource_name = "serve"
+length = 0.1
+loop_mode = 0
+tracks = [{
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_LeftLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_RightLeg:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_LeftArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
+}, {
+"type": "value",
+"path": NodePath("Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_RightArm:rotation"),
+"interp": 1,
+"loop_wrap": true,
+"keys": {
+"times": PackedFloat32Array(0.0),
+"transitions": PackedFloat32Array(1.0),
+"update": 0,
+"values": [0.0]
+}
+}]
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_dory"]
+_data = {
+"idle": SubResource("Animation_idle"),
+"pickup": SubResource("Animation_pickup"),
+"serve": SubResource("Animation_serve"),
+"walk": SubResource("Animation_walk"),
+"walk_carry": SubResource("Animation_walk_carry")
+}
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_carryindicator"]
 bg_color = Color(0.827451, 0.917647, 0.815686, 1)
@@ -185,12 +380,64 @@ position = Vector2(63, 130)
 z_index = 5
 script = ExtResource("9_dory_script")
 
-[node name="DoryAnimatedSprite" type="AnimatedSprite2D" parent="CenterContainer/DesignArea/World/Dory"]
-position = Vector2(17.8, -14.7)
-scale = Vector2(0.52, 0.52)
-sprite_frames = SubResource("SpriteFrames_dory")
-animation = &"idle"
-centered = false
+[node name="Skeleton2D" type="Skeleton2D" parent="CenterContainer/DesignArea/World/Dory"]
+position = Vector2(107.4, 132.26)
+
+[node name="Bone2D_Hip" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D"]
+
+[node name="Bone2D_LeftLeg" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip"]
+position = Vector2(-8.6, 0)
+
+[node name="FootLeftSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_LeftLeg"]
+scale = Vector2(0.083, 0.083)
+texture = ExtResource("13_foot_left")
+centered = true
+offset = Vector2(-6.5, 70.5)
+z_index = 0
+
+[node name="Bone2D_RightLeg" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip"]
+position = Vector2(8.6, 0)
+
+[node name="FootRightSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_RightLeg"]
+scale = Vector2(0.083, 0.083)
+texture = ExtResource("14_foot_right")
+centered = true
+offset = Vector2(-1.0, 69.5)
+z_index = 4
+
+[node name="Bone2D_Torso" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip"]
+
+[node name="TorsoSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso"]
+scale = Vector2(0.083, 0.083)
+texture = ExtResource("10_torso")
+centered = true
+offset = Vector2(146.0, -747.0)
+z_index = 2
+
+[node name="Bone2D_LeftArm" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso"]
+position = Vector2(3.15, -37.52)
+
+[node name="ArmLeftSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_LeftArm"]
+scale = Vector2(0.083, 0.083)
+texture = ExtResource("12_arm_left")
+centered = true
+offset = Vector2(-73.0, 68.0)
+z_index = 1
+
+[node name="Bone2D_RightArm" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso"]
+position = Vector2(21.41, -37.52)
+
+[node name="ArmRightSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_RightArm"]
+scale = Vector2(0.083, 0.083)
+texture = ExtResource("11_arm_right")
+centered = true
+offset = Vector2(60.5, 80.0)
+z_index = 3
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="CenterContainer/DesignArea/World/Dory"]
+libraries = {
+"": SubResource("AnimationLibrary_dory")
+}
 
 [node name="CarryIndicator" type="Panel" parent="CenterContainer/DesignArea/World/Dory"]
 visible = false

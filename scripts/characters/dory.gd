@@ -14,10 +14,11 @@ const MOVING_Z_INDEX: int = 6
 
 @export var move_speed: float = 130.0
 @export var arrival_distance: float = 4.0
-@export var show_debug_state: bool = true
+@export var show_debug_state: bool = false
 
 @onready var cooking_station: CookingStation = get_node_or_null("../KitchenCounter") as CookingStation
-@onready var animated_sprite: AnimatedSprite2D = get_node_or_null("DoryAnimatedSprite") as AnimatedSprite2D
+@onready var skeleton: Skeleton2D = get_node_or_null("Skeleton2D") as Skeleton2D
+@onready var animation_player: AnimationPlayer = get_node_or_null("AnimationPlayer") as AnimationPlayer
 @onready var carry_indicator: Panel = get_node_or_null("CarryIndicator") as Panel
 @onready var carry_label: Label = get_node_or_null("CarryIndicator/CarryLabel") as Label
 @onready var debug_state_label: Label = get_node_or_null("DebugStateLabel") as Label
@@ -61,8 +62,8 @@ func start_serving(pickup_position: Vector2, customer: Customer, order: Dictiona
 
 func _move_toward_target(delta: float) -> void:
 	var direction: Vector2 = target_position - global_position
-	if animated_sprite != null and abs(direction.x) > 1.0:
-		animated_sprite.flip_h = direction.x < 0.0
+	if skeleton != null and abs(direction.x) > 1.0:
+		skeleton.scale.x = -1.0 if direction.x < 0.0 else 1.0
 
 	global_position = global_position.move_toward(target_position, move_speed * delta)
 	if global_position.distance_to(target_position) <= arrival_distance:
@@ -150,7 +151,7 @@ func _set_state(new_state: State) -> void:
 	_update_debug_label()
 
 func _update_animation() -> void:
-	if animated_sprite == null:
+	if animation_player == null:
 		return
 
 	var animation_name: String = "idle"
@@ -169,8 +170,8 @@ func _update_animation() -> void:
 		State.RETURN_HOME:
 			animation_name = "walk" if carried_order.is_empty() else "walk_carry"
 
-	if animated_sprite.animation != animation_name or not animated_sprite.is_playing():
-		animated_sprite.play(animation_name)
+	if animation_player.current_animation != animation_name or not animation_player.is_playing():
+		animation_player.play(animation_name)
 
 func _update_debug_label() -> void:
 	if debug_state_label == null:
