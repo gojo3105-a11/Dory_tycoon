@@ -387,6 +387,8 @@ position = Vector2(107.4, 132.26)
 
 [node name="Bone2D_LeftLeg" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip"]
 position = Vector2(-8.6, 0)
+autocalculate_length_and_angle = false
+length = 20.0
 
 [node name="FootLeftSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_LeftLeg"]
 scale = Vector2(0.21, 0.21)
@@ -397,6 +399,8 @@ z_index = 0
 
 [node name="Bone2D_RightLeg" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip"]
 position = Vector2(8.6, 0)
+autocalculate_length_and_angle = false
+length = 20.0
 
 [node name="FootRightSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_RightLeg"]
 scale = Vector2(0.21, 0.21)
@@ -416,6 +420,8 @@ z_index = 2
 
 [node name="Bone2D_LeftArm" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso"]
 position = Vector2(3.15, -37.52)
+autocalculate_length_and_angle = false
+length = 15.0
 
 [node name="ArmLeftSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_LeftArm"]
 scale = Vector2(0.21, 0.21)
@@ -426,6 +432,8 @@ z_index = 1
 
 [node name="Bone2D_RightArm" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso"]
 position = Vector2(21.41, -37.52)
+autocalculate_length_and_angle = false
+length = 15.0
 
 [node name="ArmRightSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso/Bone2D_RightArm"]
 scale = Vector2(0.21, 0.21)

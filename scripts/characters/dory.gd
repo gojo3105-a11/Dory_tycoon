@@ -63,7 +63,7 @@ func start_serving(pickup_position: Vector2, customer: Customer, order: Dictiona
 func _move_toward_target(delta: float) -> void:
 	var direction: Vector2 = target_position - global_position
 	if skeleton != null and abs(direction.x) > 1.0:
-		skeleton.scale.x = -1.0 if direction.x < 0.0 else 1.0
+		skeleton.scale.x = 1.0 if direction.x < 0.0 else -1.0
 
 	global_position = global_position.move_toward(target_position, move_speed * delta)
 	if global_position.distance_to(target_position) <= arrival_distance:
