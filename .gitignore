@@ -1,8 +1,67 @@
-.godot/
-.android/
-build/
-exports/
+# ===== Unity generated =====
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/*
+!/[Bb]uilds/.gitkeep
+/[Ll]ogs/*
+!/[Ll]ogs/.gitkeep
+/[Uu]serSettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Never ignore Assets/GameFactory/Build (our C# build automation folder)
+!/Assets/GameFactory/Build/
+
+# Visual Studio / Rider / VS Code cache
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity3D generated meta files that should not exist
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity3D generated crash reports
+sysinfo.txt
+crashlytics-build.properties
+
+# Builds
 *.apk
 *.aab
-*.log
-*.tmp
+*.unitypackage
+*.app
+
+# Android / Gradle
+*.androidlib/
+ExportedObj/
+.gradle/
+gradle-app.setting
+local.properties
+
+# Crashlytics generated file
+crashlytics-build.properties
+
+# Secrets / signing (never commit)
+*.keystore
+*.jks
+keystore.properties
+android-signing.env
+.env
+Secrets/

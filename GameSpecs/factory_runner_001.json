@@ -1,0 +1,37 @@
+{
+  "game": {
+    "id": "factory_runner_001",
+    "title": "Factory Runner",
+    "genre": "Runner"
+  },
+  "player": {
+    "moveSpeed": 6,
+    "jumpPower": 10
+  },
+  "mechanics": {
+    "jump": true,
+    "doubleJump": false,
+    "dash": false,
+    "wallJump": false,
+    "gravitySwitch": true,
+    "teleport": false,
+    "timeSlow": false
+  },
+  "level": {
+    "levelCount": 1,
+    "difficulty": "Medium",
+    "procedural": true,
+    "length": 120
+  },
+  "enemy": {
+    "enabled": false,
+    "types": 0
+  },
+  "special": {
+    "mechanic": "GravitySwitch"
+  },
+  "theme": {
+    "environment": "Factory",
+    "character": "Slime"
+  }
+}
