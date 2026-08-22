@@ -127,20 +127,14 @@ namespace GameFactory.Editor
 
         private static void WriteGeneratedGameManifest(GameSpec spec, string scenePath, string[] prefabPaths)
         {
-            var manifest = new GeneratedGameManifest
-            {
-                gameId = spec.game.id,
-                title = spec.game.title,
-                genre = spec.game.genre,
-                generatedAtUtc = DateTime.UtcNow.ToString("o"),
-                scenePath = scenePath,
-                prefabPaths = prefabPaths
-            };
-
-            string json = JsonUtility.ToJson(manifest, true);
-            string absolutePath = Path.Combine(EditorPaths.ProjectRoot, "GeneratedGames", $"{spec.game.id}.json");
-            Directory.CreateDirectory(Path.GetDirectoryName(absolutePath));
-            File.WriteAllText(absolutePath, json);
+            GeneratedGameManifest manifest = GeneratedGameManifest.Load(spec.game.id) ?? new GeneratedGameManifest();
+            manifest.gameId = spec.game.id;
+            manifest.title = spec.game.title;
+            manifest.genre = spec.game.genre;
+            manifest.generatedAtUtc = DateTime.UtcNow.ToString("o");
+            manifest.scenePath = scenePath;
+            manifest.prefabPaths = prefabPaths;
+            manifest.Save(spec.game.id);
         }
 
         private static string GetCommandLineArg(string name)
@@ -152,17 +146,6 @@ namespace GameFactory.Editor
             }
 
             return null;
-        }
-
-        [Serializable]
-        private class GeneratedGameManifest
-        {
-            public string gameId;
-            public string title;
-            public string genre;
-            public string generatedAtUtc;
-            public string scenePath;
-            public string[] prefabPaths;
         }
     }
 }

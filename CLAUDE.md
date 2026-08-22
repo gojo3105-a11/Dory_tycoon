@@ -162,7 +162,7 @@ PASS / FAIL / 실행 불가 (사유)
 - [x] Phase 4: Factory Runner MVP 코어 스크립트 (Core/Modules/Gameplay/UI)
 - [x] Phase 5: Unity Editor 자동 생성기 (GameFactoryGenerator/SceneGenerator/PrefabGenerator/LevelGenerator)
 - [x] Phase 6: Validation/Test 시스템 (GameValidator, Unity Test Framework EditMode/PlayMode)
-- [ ] Phase 7: Android 커맨드라인 빌드 자동화 (BuildAndroid.cs)
+- [x] Phase 7: Android 커맨드라인 빌드 자동화 (BuildAndroid.cs)
 - [ ] Phase 8: GitHub Actions 연결 (validate.yml/test.yml/build-android.yml/game-factory.yml)
 
 이 목록이 실제 코드 상태와 항상 일치하도록, 각 Phase를 완료할 때마다 이 파일을 갱신한다.
