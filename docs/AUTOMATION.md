@@ -52,15 +52,27 @@ Windows self-hosted runner가 최소 1대 등록되어 있어야 동작한다.
 
 ### Self-hosted runner 준비
 
-1. Windows PC에 GitHub Actions self-hosted runner를 등록한다 (저장소 Settings → Actions →
-   Runners → New self-hosted runner). 라벨은 기본값(`self-hosted`) + `Windows`로 충분하다.
-2. Unity Hub로 `ProjectSettings/ProjectVersion.txt`에 명시된 버전을 설치하고, Android Build
-   Support(OpenJDK + Android SDK/NDK 포함) 모듈을 함께 설치한다.
-3. runner를 실행하는 계정(서비스 계정)의 환경 변수에 `UNITY_PATH`를 설정한다. 예:
-   `C:\Program Files\Unity\Hub\Editor\6000.0.36f1\Editor\Unity.exe`
-   (버전은 실제 설치 버전과 반드시 일치해야 한다.)
-4. Play Store 서명이 필요하면 `docs/BUILD.md`의 시크릿 설정을 진행한다. 설정하지 않아도 파이프라인
-   자체는 Unity 기본 디버그 서명으로 끝까지 통과한다.
+`scripts/windows-runner/`에 이 과정을 자동화하는 PowerShell 스크립트가 있다 (해당 Windows PC에서
+관리자 권한으로 실행 - 이 저장소를 다루는 Claude Code 원격 컨테이너는 조직 네트워크 정책상 Unity
+다운로드 서버에 접근할 수 없어서 여기서는 대신 실행할 수 없다). 순서와 각 단계 설명은
+`scripts/windows-runner/README.md` 참고:
+
+1. `01-install-unity-hub.ps1` - Unity Hub 설치
+2. Unity Hub를 한 번 실행해서 Unity ID로 로그인하고 라이선스를 활성화한다 (수동, GUI, 이 머신에서
+   최초 1회만).
+3. `02-install-unity-editor.ps1 -Version <ProjectSettings/ProjectVersion.txt의 버전>` - Unity
+   Editor + Android Build Support(OpenJDK/SDK/NDK 포함) 설치
+4. `03-set-unity-path-env.ps1` - 워크플로우가 참조하는 `UNITY_PATH` 환경 변수를 자동으로 설정
+5. `04-register-github-runner.ps1 -RepoUrl <저장소 URL> -Token <등록 토큰>` - GitHub Actions
+   self-hosted runner를 다운로드/설정하고 Windows 서비스로 등록 (토큰은 저장소 Settings →
+   Actions → Runners → New self-hosted runner에서 발급, 1시간 내 사용해야 함)
+
+Play Store 서명이 필요하면 `docs/BUILD.md`의 시크릿 설정을 진행한다. 설정하지 않아도 파이프라인
+자체는 Unity 기본 디버그 서명으로 끝까지 통과한다.
+
+이 스크립트들은 실제 Windows 환경에서 검증된 적이 없다 - 각 파일 상단의 `.NOTES`에 Unity Hub
+CLI 모듈명, GitHub runner 서비스 등록 명령 등 Hub/runner 버전에 따라 달라질 수 있는 부분과
+대안을 적어두었다.
 
 ### 각 워크플로우가 실패하면
 
