@@ -1,0 +1,66 @@
+name: Unity Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Assets/GameFactory/**'
+      - 'GameSpecs/**'
+  pull_request:
+    paths:
+      - 'Assets/GameFactory/**'
+      - 'GameSpecs/**'
+  workflow_dispatch:
+    inputs:
+      game_id:
+        description: 'GameSpec id used to (re)generate the scene PlayMode tests run against'
+        required: false
+        default: 'factory_runner_001'
+
+jobs:
+  test:
+    runs-on: [self-hosted, Windows]
+    env:
+      GAME_ID: ${{ github.event.inputs.game_id || 'factory_runner_001' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # PlayMode tests exercise the generated scene, so it must exist before
+      # they run. Regenerating here also means this job never depends on
+      # whether Assets/GeneratedGames/ happens to already be committed.
+      - name: Regenerate test scene
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
+            -gameSpec "GameSpecs/$env:GAME_ID.json" `
+            -logFile "${{ github.workspace }}\Logs\unity-generate.log" -quit
+          exit $LASTEXITCODE
+
+      - name: Run EditMode tests
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -runTests -testPlatform EditMode `
+            -testResults "${{ github.workspace }}\Logs\unity-test-editmode.xml" `
+            -logFile "${{ github.workspace }}\Logs\unity-test-editmode.log"
+          exit $LASTEXITCODE
+
+      - name: Run PlayMode tests
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -runTests -testPlatform PlayMode `
+            -testResults "${{ github.workspace }}\Logs\unity-test-playmode.xml" `
+            -logFile "${{ github.workspace }}\Logs\unity-test-playmode.log"
+          exit $LASTEXITCODE
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-test-results
+          path: |
+            Logs/unity-test-*.xml
+            Logs/unity-test-*.log
+          if-no-files-found: ignore

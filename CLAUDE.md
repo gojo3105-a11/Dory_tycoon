@@ -163,6 +163,18 @@ PASS / FAIL / 실행 불가 (사유)
 - [x] Phase 5: Unity Editor 자동 생성기 (GameFactoryGenerator/SceneGenerator/PrefabGenerator/LevelGenerator)
 - [x] Phase 6: Validation/Test 시스템 (GameValidator, Unity Test Framework EditMode/PlayMode)
 - [x] Phase 7: Android 커맨드라인 빌드 자동화 (BuildAndroid.cs)
-- [ ] Phase 8: GitHub Actions 연결 (validate.yml/test.yml/build-android.yml/game-factory.yml)
+- [x] Phase 8: GitHub Actions 연결 (validate.yml/test.yml/build-android.yml/game-factory.yml)
+- [x] 문서화: README.md, docs/ARCHITECTURE.md, docs/GAME_SPEC.md, docs/AUTOMATION.md, docs/BUILD.md
 
 이 목록이 실제 코드 상태와 항상 일치하도록, 각 Phase를 완료할 때마다 이 파일을 갱신한다.
+
+## 다음으로 할 만한 작업 (미구현/알려진 한계)
+
+- Puzzle/Physics 등 다른 장르의 Scene/PrefabGenerator가 없다 (Runner만 구현됨).
+- GravitySwitch 외 Modules(DoubleJump, Dash, MovingPlatform 등)는 폴더만 있고 비어 있다.
+- 이 원격 컨테이너에서는 위 모든 C# 코드가 Unity로 컴파일/실행/빌드된 적이 없다 - Windows/Unity
+  환경에서의 최초 검증이 반드시 필요하다 (특히 TagManager.asset 직접 조작, `PlayerSettings.Android`
+  서명 API, `PrefabUtility.InstantiatePrefab(Object, Scene)` 오버로드 등 이 환경에서 확인 불가능했던
+  API 사용부는 우선적으로 확인할 것).
+- self-hosted Windows runner가 아직 등록되어 있지 않다면 GitHub Actions 워크플로우 4개는 실행되지
+  않는다 (`docs/AUTOMATION.md`의 runner 준비 절차 참고).

@@ -1,0 +1,41 @@
+name: Validate GameSpecs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'GameSpecs/**'
+      - 'Assets/GameFactory/Core/GameSpec/**'
+      - 'Assets/GameFactory/Editor/GameValidator.cs'
+      - 'Assets/GameFactory/Editor/BundleIdUtility.cs'
+  pull_request:
+    paths:
+      - 'GameSpecs/**'
+      - 'Assets/GameFactory/Core/GameSpec/**'
+      - 'Assets/GameFactory/Editor/GameValidator.cs'
+      - 'Assets/GameFactory/Editor/BundleIdUtility.cs'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: [self-hosted, Windows]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run GameValidator
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -executeMethod GameFactory.Editor.GameValidator.ValidateFromCommandLine `
+            -logFile "${{ github.workspace }}\Logs\unity-validate.log" -quit
+          exit $LASTEXITCODE
+
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validate-logs
+          path: |
+            Logs/validation.log
+            Logs/unity-validate.log
+          if-no-files-found: ignore

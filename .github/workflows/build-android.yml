@@ -1,0 +1,59 @@
+name: Build Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      game_id:
+        description: 'GameSpec id to build'
+        required: true
+        default: 'factory_runner_001'
+      build_type:
+        description: 'apk or aab'
+        required: false
+        default: 'apk'
+
+jobs:
+  build:
+    runs-on: [self-hosted, Windows]
+    env:
+      GAME_ID: ${{ github.event.inputs.game_id }}
+      BUILD_TYPE: ${{ github.event.inputs.build_type }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate scene
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
+            -gameSpec "GameSpecs/$env:GAME_ID.json" `
+            -logFile "${{ github.workspace }}\Logs\unity-generate.log" -quit
+          exit $LASTEXITCODE
+
+      # ANDROID_KEYSTORE_PATH must point to a keystore file already present
+      # on this runner - see docs/BUILD.md for how to provision one. Without
+      # it, BuildAndroid falls back to Unity's debug signing (fine for
+      # testing, not for a Play Store release).
+      - name: Build Android package
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -executeMethod GameFactory.Editor.BuildAndroid.BuildFromCommandLine `
+            -gameId "$env:GAME_ID" -buildType "$env:BUILD_TYPE" `
+            -logFile "${{ github.workspace }}\Logs\unity-build.log" -quit
+          exit $LASTEXITCODE
+
+      - name: Upload build artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.GAME_ID }}-${{ env.BUILD_TYPE }}
+          path: |
+            Builds/${{ env.GAME_ID }}/**
+            Logs/unity-build.log
+          if-no-files-found: warn

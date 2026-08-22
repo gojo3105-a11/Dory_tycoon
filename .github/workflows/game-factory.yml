@@ -1,0 +1,84 @@
+name: Game Factory Pipeline
+
+# End-to-end pipeline for one GameSpec: generate -> validate -> test -> build.
+# Triggers on any GameSpecs/ change; each step's Unity invocation exits
+# non-zero on failure, which stops the job before the next step runs.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'GameSpecs/**'
+  workflow_dispatch:
+    inputs:
+      game_id:
+        description: 'GameSpec id to run through the full pipeline'
+        required: true
+        default: 'factory_runner_001'
+
+jobs:
+  pipeline:
+    runs-on: [self-hosted, Windows]
+    env:
+      GAME_ID: ${{ github.event.inputs.game_id || 'factory_runner_001' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
+            -gameSpec "GameSpecs/$env:GAME_ID.json" `
+            -logFile "${{ github.workspace }}\Logs\unity-generate.log" -quit
+          exit $LASTEXITCODE
+
+      - name: Validate
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -executeMethod GameFactory.Editor.GameValidator.ValidateFromCommandLine `
+            -logFile "${{ github.workspace }}\Logs\unity-validate.log" -quit
+          exit $LASTEXITCODE
+
+      - name: Test (EditMode)
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -runTests -testPlatform EditMode `
+            -testResults "${{ github.workspace }}\Logs\unity-test-editmode.xml" `
+            -logFile "${{ github.workspace }}\Logs\unity-test-editmode.log"
+          exit $LASTEXITCODE
+
+      - name: Test (PlayMode)
+        shell: pwsh
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -runTests -testPlatform PlayMode `
+            -testResults "${{ github.workspace }}\Logs\unity-test-playmode.xml" `
+            -logFile "${{ github.workspace }}\Logs\unity-test-playmode.log"
+          exit $LASTEXITCODE
+
+      - name: Build (APK)
+        shell: pwsh
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+        run: |
+          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
+            -executeMethod GameFactory.Editor.BuildAndroid.BuildFromCommandLine `
+            -gameId "$env:GAME_ID" -buildType apk `
+            -logFile "${{ github.workspace }}\Logs\unity-build.log" -quit
+          exit $LASTEXITCODE
+
+      - name: Upload pipeline artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-factory-${{ env.GAME_ID }}
+          path: |
+            Logs/**
+            Builds/${{ env.GAME_ID }}/**
+          if-no-files-found: warn
