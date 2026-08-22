@@ -4,7 +4,7 @@
   Installs a specific Unity Editor version + Android Build Support via the
   Unity Hub CLI (headless mode).
 .PARAMETER Version
-  Must match ProjectSettings/ProjectVersion.txt exactly, e.g. 6000.0.36f1.
+  Must match ProjectSettings/ProjectVersion.txt exactly, e.g. 6000.5.9f1.
 .NOTES
   Unverified against a real Windows machine. Unity Hub's CLI module names
   have changed across Hub versions (some need "android" only, older/newer

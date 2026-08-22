@@ -20,7 +20,7 @@ PowerShell로 실행한다** (이 저장소를 다루는 Claude Code 원격 컨�
 #    이 머신에서 한 번만 하면 되고, 이후에는 배치 모드 빌드에 별도 로그인이 필요 없다.
 
 # 3. Unity Editor 설치 (ProjectSettings/ProjectVersion.txt에 적힌 버전 + Android Build Support)
-.\02-install-unity-editor.ps1 -Version 6000.0.36f1
+.\02-install-unity-editor.ps1 -Version 6000.5.9f1
 
 # 4. UNITY_PATH 환경 변수를 자동으로 찾아서 설정
 .\03-set-unity-path-env.ps1
