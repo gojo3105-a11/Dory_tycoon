@@ -35,25 +35,32 @@ namespace GameFactory.Editor
             }
         }
 
-        /// <summary>CLI entry point driven by -executeMethod. Exits with a non-zero code on failure.</summary>
+        /// <summary>
+        /// CLI entry point driven by -executeMethod. Always exits Unity itself
+        /// (success or failure) via CommandLineExit so the CI wrapper script
+        /// polling for Logs/generate.exitcode can tell the run is truly done -
+        /// see scripts/ci/wait-for-unity.ps1 for why this can't just rely on
+        /// -quit/the calling process's own exit code.
+        /// </summary>
         public static void GenerateFromCommandLine()
         {
             string path = GetCommandLineArg("-gameSpec");
             if (string.IsNullOrEmpty(path))
             {
                 Debug.LogError("[GameFactoryGenerator] Missing -gameSpec <path> command line argument.");
-                EditorApplication.Exit(1);
+                CommandLineExit.Exit(1, "generate");
                 return;
             }
 
             try
             {
                 Generate(path);
+                CommandLineExit.Exit(0, "generate");
             }
             catch (Exception e)
             {
                 Debug.LogError($"[GameFactoryGenerator] Generation failed: {e}");
-                EditorApplication.Exit(1);
+                CommandLineExit.Exit(1, "generate");
             }
         }
 

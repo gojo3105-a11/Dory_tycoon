@@ -3,6 +3,12 @@ name: Game Factory Pipeline
 # End-to-end pipeline for one GameSpec: generate -> validate -> test -> build.
 # Triggers on any GameSpecs/ change; each step's Unity invocation exits
 # non-zero on failure, which stops the job before the next step runs.
+#
+# Unity invocations go through scripts/ci/wait-for-unity.ps1 rather than
+# calling Unity.exe directly - see that script's header comment for why
+# (Unity can relaunch itself as a separate process on Windows, so trusting
+# the launched process's own exit code makes every step falsely "succeed"
+# in seconds while the real work is later killed as an orphan process).
 
 on:
   push:
@@ -27,36 +33,44 @@ jobs:
       - name: Generate
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
-            -gameSpec "GameSpecs/$env:GAME_ID.json" `
-            -logFile "${{ github.workspace }}\Logs\unity-generate.log" -quit
+          .\scripts\ci\wait-for-unity.ps1 -SentinelName generate -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-executeMethod', 'GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine',
+            '-gameSpec', "GameSpecs/$env:GAME_ID.json",
+            '-logFile', '${{ github.workspace }}\Logs\unity-generate.log'
+          )
           exit $LASTEXITCODE
 
       - name: Validate
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -executeMethod GameFactory.Editor.GameValidator.ValidateFromCommandLine `
-            -logFile "${{ github.workspace }}\Logs\unity-validate.log" -quit
+          .\scripts\ci\wait-for-unity.ps1 -SentinelName validate -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-executeMethod', 'GameFactory.Editor.GameValidator.ValidateFromCommandLine',
+            '-logFile', '${{ github.workspace }}\Logs\unity-validate.log'
+          )
           exit $LASTEXITCODE
 
       - name: Test (EditMode)
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -runTests -testPlatform EditMode `
-            -testResults "${{ github.workspace }}\Logs\unity-test-editmode.xml" `
-            -logFile "${{ github.workspace }}\Logs\unity-test-editmode.log"
+          .\scripts\ci\wait-for-unity.ps1 -TestResultsPath 'Logs\unity-test-editmode.xml' -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-runTests', '-testPlatform', 'EditMode',
+            '-testResults', '${{ github.workspace }}\Logs\unity-test-editmode.xml',
+            '-logFile', '${{ github.workspace }}\Logs\unity-test-editmode.log'
+          )
           exit $LASTEXITCODE
 
       - name: Test (PlayMode)
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -runTests -testPlatform PlayMode `
-            -testResults "${{ github.workspace }}\Logs\unity-test-playmode.xml" `
-            -logFile "${{ github.workspace }}\Logs\unity-test-playmode.log"
+          .\scripts\ci\wait-for-unity.ps1 -TestResultsPath 'Logs\unity-test-playmode.xml' -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-runTests', '-testPlatform', 'PlayMode',
+            '-testResults', '${{ github.workspace }}\Logs\unity-test-playmode.xml',
+            '-logFile', '${{ github.workspace }}\Logs\unity-test-playmode.log'
+          )
           exit $LASTEXITCODE
 
       - name: Build (APK)
@@ -67,10 +81,12 @@ jobs:
           ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -executeMethod GameFactory.Editor.BuildAndroid.BuildFromCommandLine `
-            -gameId "$env:GAME_ID" -buildType apk `
-            -logFile "${{ github.workspace }}\Logs\unity-build.log" -quit
+          .\scripts\ci\wait-for-unity.ps1 -SentinelName build -TimeoutMinutes 60 -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-executeMethod', 'GameFactory.Editor.BuildAndroid.BuildFromCommandLine',
+            '-gameId', "$env:GAME_ID", '-buildType', 'apk',
+            '-logFile', '${{ github.workspace }}\Logs\unity-build.log'
+          )
           exit $LASTEXITCODE
 
       - name: Upload pipeline artifacts

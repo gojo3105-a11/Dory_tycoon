@@ -31,28 +31,34 @@ jobs:
       - name: Regenerate test scene
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
-            -gameSpec "GameSpecs/$env:GAME_ID.json" `
-            -logFile "${{ github.workspace }}\Logs\unity-generate.log" -quit
+          .\scripts\ci\wait-for-unity.ps1 -SentinelName generate -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-executeMethod', 'GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine',
+            '-gameSpec', "GameSpecs/$env:GAME_ID.json",
+            '-logFile', '${{ github.workspace }}\Logs\unity-generate.log'
+          )
           exit $LASTEXITCODE
 
       - name: Run EditMode tests
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -runTests -testPlatform EditMode `
-            -testResults "${{ github.workspace }}\Logs\unity-test-editmode.xml" `
-            -logFile "${{ github.workspace }}\Logs\unity-test-editmode.log"
+          .\scripts\ci\wait-for-unity.ps1 -TestResultsPath 'Logs\unity-test-editmode.xml' -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-runTests', '-testPlatform', 'EditMode',
+            '-testResults', '${{ github.workspace }}\Logs\unity-test-editmode.xml',
+            '-logFile', '${{ github.workspace }}\Logs\unity-test-editmode.log'
+          )
           exit $LASTEXITCODE
 
       - name: Run PlayMode tests
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -runTests -testPlatform PlayMode `
-            -testResults "${{ github.workspace }}\Logs\unity-test-playmode.xml" `
-            -logFile "${{ github.workspace }}\Logs\unity-test-playmode.log"
+          .\scripts\ci\wait-for-unity.ps1 -TestResultsPath 'Logs\unity-test-playmode.xml' -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-runTests', '-testPlatform', 'PlayMode',
+            '-testResults', '${{ github.workspace }}\Logs\unity-test-playmode.xml',
+            '-logFile', '${{ github.workspace }}\Logs\unity-test-playmode.log'
+          )
           exit $LASTEXITCODE
 
       - name: Upload test results

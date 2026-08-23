@@ -1,0 +1,105 @@
+#Requires -Version 5.1
+<#
+.SYNOPSIS
+  Launches Unity in batch mode and waits for it to ACTUALLY finish, then
+  reports a real success/failure exit code.
+.DESCRIPTION
+  On this Windows self-hosted runner, launching Unity.exe directly via
+  PowerShell's call operator and trusting its own process exit code is not
+  reliable: Unity can relaunch itself as a separate process, so the process
+  PowerShell was watching exits (near-instantly) long before the real work
+  is done. That made every CI step "succeed" in ~5 seconds while Unity kept
+  running detached in the background until the runner killed it as an
+  orphan process at the end of the job - producing no scene/log/APK.
+
+  This script instead waits until NO process named "Unity" is running
+  anywhere on the machine, then determines the real outcome:
+    - SentinelName: for -executeMethod entry points that write
+      Logs/<name>.exitcode via CommandLineExit (GameFactoryGenerator,
+      GameValidator, BuildAndroid). Missing sentinel = treated as failure.
+    - TestResultsPath: for -runTests, which Unity controls internally and
+      doesn't go through our sentinel. Checks the NUnit XML result file's
+      root "result" attribute instead.
+.PARAMETER UnityArgs
+  Full argument list to pass to Unity.exe (batchmode/nographics/projectPath/etc).
+.PARAMETER SentinelName
+  Name (without extension) of the Logs/<name>.exitcode file to read.
+.PARAMETER TestResultsPath
+  Path to the -testResults XML file to check instead of a sentinel.
+.PARAMETER TimeoutMinutes
+  Safety cap - if Unity is still running after this long, kill it and fail.
+#>
+
+param(
+    [Parameter(Mandatory = $true)]
+    [string[]]$UnityArgs,
+
+    [string]$SentinelName,
+
+    [string]$TestResultsPath,
+
+    [int]$TimeoutMinutes = 30
+)
+
+$ErrorActionPreference = "Stop"
+
+if (-not $SentinelName -and -not $TestResultsPath) {
+    Write-Error "wait-for-unity.ps1: pass either -SentinelName or -TestResultsPath."
+    exit 1
+}
+
+New-Item -ItemType Directory -Path "Logs" -Force | Out-Null
+
+if ($SentinelName) {
+    $sentinelPath = Join-Path "Logs" "$SentinelName.exitcode"
+    if (Test-Path $sentinelPath) { Remove-Item $sentinelPath -Force }
+}
+
+if ($TestResultsPath -and (Test-Path $TestResultsPath)) {
+    Remove-Item $TestResultsPath -Force
+}
+
+Write-Host "Launching: $env:UNITY_PATH $($UnityArgs -join ' ')"
+Start-Process -FilePath $env:UNITY_PATH -ArgumentList $UnityArgs | Out-Null
+
+$deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+while ($true) {
+    Start-Sleep -Seconds 5
+    $running = Get-Process -Name Unity -ErrorAction SilentlyContinue
+    if (-not $running) { break }
+
+    if ((Get-Date) -gt $deadline) {
+        Write-Error "Timed out after $TimeoutMinutes minute(s) waiting for Unity to finish. Killing remaining Unity process(es)."
+        $running | Stop-Process -Force
+        exit 1
+    }
+}
+
+Write-Host "No Unity process remains running."
+
+if ($SentinelName) {
+    if (-not (Test-Path $sentinelPath)) {
+        Write-Error "Unity exited without writing $sentinelPath - it likely crashed or was killed before finishing. Check the -logFile output."
+        exit 1
+    }
+
+    $code = (Get-Content $sentinelPath -Raw).Trim()
+    Write-Host "Sentinel $sentinelPath reports exit code $code"
+    exit ([int]$code)
+}
+
+if (-not (Test-Path $TestResultsPath)) {
+    Write-Error "Unity exited without writing test results at $TestResultsPath - tests likely never completed. Check the -logFile output."
+    exit 1
+}
+
+[xml]$results = Get-Content $TestResultsPath -Raw
+$result = $results.'test-run'.result
+$failed = $results.'test-run'.failed
+Write-Host "Test results: result=$result failed=$failed"
+
+if ($result -eq "Passed" -or $failed -eq "0") {
+    exit 0
+}
+
+exit 1

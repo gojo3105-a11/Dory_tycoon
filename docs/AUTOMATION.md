@@ -2,14 +2,28 @@
 
 ## Editor 자동화 명령 (`-executeMethod`)
 
-모든 명령은 Unity를 배치 모드로 실행해서 스크립트 하나를 호출하는 형태다. Windows PowerShell
-기준 예시 (self-hosted runner에서 그대로 쓰는 형태와 동일):
+모든 명령은 Unity를 배치 모드로 실행해서 스크립트 하나를 호출하는 형태다.
+
+**CI/CD에서는 Unity.exe를 직접 호출하지 않고, 반드시 `scripts/ci/wait-for-unity.ps1`을 통해서
+실행한다.** Windows에서 Unity는 스스로 새 프로세스로 재실행하고 원래 프로세스는 먼저 종료되는
+경우가 있어서, PowerShell이 그 원래 프로세스만 보고 "완료"로 착각하면 실제 작업(Scene 생성,
+빌드 등)이 끝나기 전에 다음 단계로 넘어가 버린다 (실제로 self-hosted runner에서 겪은 문제 -
+모든 단계가 몇 초 만에 "성공"으로 끝나는데 아무 산출물도 없었다). `wait-for-unity.ps1`은 이름이
+"Unity"인 프로세스가 시스템에 하나도 남지 않을 때까지 기다린 다음, 실제 성공/실패를 판정한다:
+
+- `-executeMethod` 기반 진입점(Generate/Validate/Build)은 `CommandLineExit.Exit(code, name)`을
+  통해 `Logs/<name>.exitcode` 파일에 실제 종료 코드를 남긴다 - 스크립트가 그 파일을 읽는다.
+- `-runTests` 기반(EditMode/PlayMode)은 Unity가 직접 제어하므로, `-testResults` XML의
+  `result`/`failed` 속성을 대신 확인한다.
 
 ```powershell
-& "$env:UNITY_PATH" -batchmode -nographics -projectPath . `
-  -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
-  -gameSpec GameSpecs/factory_runner_001.json `
-  -logFile Logs/unity-generate.log -quit
+.\scripts\ci\wait-for-unity.ps1 -SentinelName generate -UnityArgs @(
+  '-batchmode', '-nographics', '-projectPath', '.',
+  '-executeMethod', 'GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine',
+  '-gameSpec', 'GameSpecs/factory_runner_001.json',
+  '-logFile', 'Logs/unity-generate.log'
+)
+exit $LASTEXITCODE
 ```
 
 | 목적 | `-executeMethod` 대상 | 추가 인자 |
@@ -18,24 +32,25 @@
 | 전체 GameSpec/Scene 검증 | `GameFactory.Editor.GameValidator.ValidateFromCommandLine` | 없음 |
 | Android 빌드 | `GameFactory.Editor.BuildAndroid.BuildFromCommandLine` | `-gameId <id>`, `-buildType apk\|aab` |
 
-세 메서드 모두 실패 시 `EditorApplication.Exit(1)`을 호출하므로, 호출하는 셸에서 `exit $LASTEXITCODE`
-(PowerShell) 또는 `$?`(bash)로 그대로 CI 실패로 이어진다.
-
-Unity Test Framework는 별도 커맨드라인 플래그를 쓴다 (`-executeMethod`가 아님):
+Unity Test Framework는 별도 커맨드라인 플래그를 쓴다 (`-executeMethod`가 아님), 이때는
+`-SentinelName` 대신 `-TestResultsPath`를 넘긴다:
 
 ```powershell
-& "$env:UNITY_PATH" -batchmode -nographics -projectPath . `
-  -runTests -testPlatform EditMode `
-  -testResults Logs/unity-test-editmode.xml `
-  -logFile Logs/unity-test-editmode.log
+.\scripts\ci\wait-for-unity.ps1 -TestResultsPath 'Logs\unity-test-editmode.xml' -UnityArgs @(
+  '-batchmode', '-nographics', '-projectPath', '.',
+  '-runTests', '-testPlatform', 'EditMode',
+  '-testResults', 'Logs/unity-test-editmode.xml',
+  '-logFile', 'Logs/unity-test-editmode.log'
+)
+exit $LASTEXITCODE
 ```
 
 `-testPlatform`을 `PlayMode`로 바꾸면 PlayMode 테스트가 실행된다. **PlayMode 테스트는 생성된
 Scene(`Assets/GeneratedGames/<id>/Scenes/<id>.unity`)이 있어야 통과하므로, 항상 생성 단계
 이후에 실행한다.**
 
-Unity Editor 안에서 직접 실행하려면 `Game Factory` 메뉴를 쓴다: `Generate > Factory Runner Sample`,
-`Validate > All GameSpecs`, `Build > Factory Runner (APK)`.
+Unity Editor 안에서 직접(대화형으로) 실행하려면 이 래퍼가 필요 없다 - `Game Factory` 메뉴를 쓴다:
+`Generate > Factory Runner Sample`, `Validate > All GameSpecs`, `Build > Factory Runner (APK)`.
 
 ## GitHub Actions 워크플로우
 

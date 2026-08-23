@@ -24,10 +24,12 @@ jobs:
       - name: Generate scene
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
-            -gameSpec "GameSpecs/$env:GAME_ID.json" `
-            -logFile "${{ github.workspace }}\Logs\unity-generate.log" -quit
+          .\scripts\ci\wait-for-unity.ps1 -SentinelName generate -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-executeMethod', 'GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine',
+            '-gameSpec', "GameSpecs/$env:GAME_ID.json",
+            '-logFile', '${{ github.workspace }}\Logs\unity-generate.log'
+          )
           exit $LASTEXITCODE
 
       # ANDROID_KEYSTORE_PATH must point to a keystore file already present
@@ -42,10 +44,12 @@ jobs:
           ANDROID_KEYALIAS_NAME: ${{ secrets.ANDROID_KEYALIAS_NAME }}
           ANDROID_KEYALIAS_PASS: ${{ secrets.ANDROID_KEYALIAS_PASS }}
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -executeMethod GameFactory.Editor.BuildAndroid.BuildFromCommandLine `
-            -gameId "$env:GAME_ID" -buildType "$env:BUILD_TYPE" `
-            -logFile "${{ github.workspace }}\Logs\unity-build.log" -quit
+          .\scripts\ci\wait-for-unity.ps1 -SentinelName build -TimeoutMinutes 60 -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-executeMethod', 'GameFactory.Editor.BuildAndroid.BuildFromCommandLine',
+            '-gameId', "$env:GAME_ID", '-buildType', "$env:BUILD_TYPE",
+            '-logFile', '${{ github.workspace }}\Logs\unity-build.log'
+          )
           exit $LASTEXITCODE
 
       - name: Upload build artifact

@@ -25,9 +25,11 @@ jobs:
       - name: Run GameValidator
         shell: powershell
         run: |
-          & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
-            -executeMethod GameFactory.Editor.GameValidator.ValidateFromCommandLine `
-            -logFile "${{ github.workspace }}\Logs\unity-validate.log" -quit
+          .\scripts\ci\wait-for-unity.ps1 -SentinelName validate -UnityArgs @(
+            '-batchmode', '-nographics', '-projectPath', '${{ github.workspace }}',
+            '-executeMethod', 'GameFactory.Editor.GameValidator.ValidateFromCommandLine',
+            '-logFile', '${{ github.workspace }}\Logs\unity-validate.log'
+          )
           exit $LASTEXITCODE
 
       - name: Upload validation logs

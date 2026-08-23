@@ -39,7 +39,11 @@ namespace GameFactory.Editor
             EditorUtility.DisplayDialog("Game Factory Validation", message, "OK");
         }
 
-        /// <summary>CLI entry point driven by -executeMethod. Exits with a non-zero code if any error is found.</summary>
+        /// <summary>
+        /// CLI entry point driven by -executeMethod. Always exits Unity itself
+        /// via CommandLineExit so the CI wrapper polling Logs/validate.exitcode
+        /// can tell the run is truly done - see scripts/ci/wait-for-unity.ps1.
+        /// </summary>
         public static void ValidateFromCommandLine()
         {
             List<ValidationIssue> issues = ValidateAll();
@@ -49,11 +53,12 @@ namespace GameFactory.Editor
             if (errorCount > 0)
             {
                 Debug.LogError($"[GameValidator] {errorCount} validation error(s). See Logs/validation.log");
-                EditorApplication.Exit(1);
+                CommandLineExit.Exit(1, "validate");
                 return;
             }
 
             Debug.Log($"[GameValidator] Validation passed ({issues.Count} warning(s)).");
+            CommandLineExit.Exit(0, "validate");
         }
 
         public static List<ValidationIssue> ValidateAll()

@@ -34,7 +34,11 @@ namespace GameFactory.Editor
             EditorUtility.DisplayDialog("Game Factory Build", success ? "Build succeeded. See Builds/." : "Build failed. See Logs/unity-build.log.", "OK");
         }
 
-        /// <summary>CLI entry point. Exits non-zero on validation or build failure.</summary>
+        /// <summary>
+        /// CLI entry point. Always exits Unity itself via CommandLineExit so
+        /// the CI wrapper polling Logs/build.exitcode can tell the run is
+        /// truly done - see scripts/ci/wait-for-unity.ps1.
+        /// </summary>
         public static void BuildFromCommandLine()
         {
             string gameId = GetCommandLineArg("-gameId");
@@ -43,19 +47,19 @@ namespace GameFactory.Editor
             if (string.IsNullOrEmpty(gameId))
             {
                 Debug.LogError("[BuildAndroid] Missing -gameId <id> command line argument.");
-                EditorApplication.Exit(1);
+                CommandLineExit.Exit(1, "build");
                 return;
             }
 
             if (!Enum.TryParse(buildTypeArg, true, out AndroidBuildType buildType))
             {
                 Debug.LogError($"[BuildAndroid] Unknown -buildType '{buildTypeArg}' (expected apk or aab).");
-                EditorApplication.Exit(1);
+                CommandLineExit.Exit(1, "build");
                 return;
             }
 
             bool success = BuildAndReport(gameId, buildType);
-            EditorApplication.Exit(success ? 0 : 1);
+            CommandLineExit.Exit(success ? 0 : 1, "build");
         }
 
         public static bool BuildAndReport(string gameId, AndroidBuildType buildType)
