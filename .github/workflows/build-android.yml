@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Generate scene
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
@@ -35,7 +35,7 @@ jobs:
       # it, BuildAndroid falls back to Unity's debug signing (fine for
       # testing, not for a Play Store release).
       - name: Build Android package
-        shell: pwsh
+        shell: powershell
         env:
           ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}

@@ -29,7 +29,7 @@ jobs:
       # they run. Regenerating here also means this job never depends on
       # whether Assets/GeneratedGames/ happens to already be committed.
       - name: Regenerate test scene
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
@@ -38,7 +38,7 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Run EditMode tests
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -runTests -testPlatform EditMode `
@@ -47,7 +47,7 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Run PlayMode tests
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -runTests -testPlatform PlayMode `

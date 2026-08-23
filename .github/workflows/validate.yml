@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run GameValidator
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -executeMethod GameFactory.Editor.GameValidator.ValidateFromCommandLine `

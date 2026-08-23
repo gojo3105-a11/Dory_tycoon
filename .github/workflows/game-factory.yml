@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Generate
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -executeMethod GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine `
@@ -34,7 +34,7 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Validate
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -executeMethod GameFactory.Editor.GameValidator.ValidateFromCommandLine `
@@ -42,7 +42,7 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Test (EditMode)
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -runTests -testPlatform EditMode `
@@ -51,7 +51,7 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Test (PlayMode)
-        shell: pwsh
+        shell: powershell
         run: |
           & "$env:UNITY_PATH" -batchmode -nographics -projectPath "${{ github.workspace }}" `
             -runTests -testPlatform PlayMode `
@@ -60,7 +60,7 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Build (APK)
-        shell: pwsh
+        shell: powershell
         env:
           ANDROID_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
