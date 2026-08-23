@@ -2,7 +2,6 @@ name: Validate GameSpecs
 
 on:
   push:
-    branches: [main]
     paths:
       - 'GameSpecs/**'
       - 'Assets/GameFactory/Core/GameSpec/**'
