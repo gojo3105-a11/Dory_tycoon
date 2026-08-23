@@ -39,8 +39,9 @@ Assets/
 │  ├─ Gameplay/Runner/   Runner 장르 전용 게임플레이 (Player, 스포너들, UI 초기화)
 │  ├─ Modules/GravitySwitch/   재사용 가능한 기믹 모듈 (다른 장르에서도 조합 가능)
 │  ├─ UI/            GameUIController - GameManager 이벤트만 구독, 게임 상태를 직접 들고 있지 않음
-│  ├─ Editor/         자동 생성/검증/빌드 도구 (Assembly-CSharp-Editor에만 컴파일됨)
-│  ├─ Tests/          EditMode(순수 C#) / PlayMode(생성된 Scene 실행) 테스트
+│  ├─ Editor/         자동 생성/검증/빌드 도구 (GameFactory.Editor.asmdef, Editor 전용)
+│  ├─ Tests/          EditMode(GameFactory.Tests.EditMode.asmdef) / PlayMode
+│  │                  (GameFactory.Tests.PlayMode.asmdef, 생성된 Scene 실행) 테스트
 │  └─ Build/          (예약) 빌드 자동화 관련 런타임 보조 코드
 ├─ GeneratedGames/<id>/{Scenes,Prefabs}/   생성기 산출물 (Unity 에셋 - git에 포함)
 └─ Resources/GameSpecs/<id>.json           런타임에서 Resources.Load로 읽는 스펙 사본
@@ -49,8 +50,10 @@ GameSpecs/<id>.json     게임별 원본 스펙 (사람이 작성/수정)
 GeneratedGames/<id>.json   생성기/빌드가 기록하는 메타데이터 (bundleId 등, Unity 에셋 아님)
 ```
 
-Editor/ 밑의 스크립트는 Unity 컴파일 규칙상 자동으로 Editor 전용 어셈블리로 분리되므로,
-런타임 코드(Core/Gameplay/Modules/UI)가 Editor 코드를 참조하는 일은 절대 없어야 한다 (반대는 가능).
+`Assets/GameFactory/GameFactory.Runtime.asmdef`가 Core/Gameplay/Modules/UI를,
+`Editor/`·`Tests/EditMode/`·`Tests/PlayMode/`가 각자의 asmdef로 그 범위를 분리해서 가져간다.
+런타임 코드가 Editor 코드를 참조하는 일은 절대 없어야 한다 (반대는 가능 - Editor/Tests asmdef가
+Runtime asmdef를 참조).
 
 ## 설계 원칙
 
