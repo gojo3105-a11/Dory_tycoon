@@ -12,8 +12,11 @@
   running detached in the background until the runner killed it as an
   orphan process at the end of the job - producing no scene/log/APK.
 
-  This script instead waits until NO process named "Unity" is running
-  anywhere on the machine, then determines the real outcome:
+  This script waits until no process named "Unity" that started at/after
+  THIS launch is still running (older Unity processes - e.g. someone's own
+  interactive Editor session on the same machine - are ignored, since a
+  system-wide "any Unity process" check would otherwise wait forever while
+  an unrelated session stays open). It then determines the real outcome:
     - SentinelName: for -executeMethod entry points that write
       Logs/<name>.exitcode via CommandLineExit (GameFactoryGenerator,
       GameValidator, BuildAndroid). Missing sentinel = treated as failure.
@@ -59,14 +62,21 @@ if ($TestResultsPath -and (Test-Path $TestResultsPath)) {
     Remove-Item $TestResultsPath -Force
 }
 
+$launchTime = (Get-Date).AddSeconds(-2)  # small buffer for clock/measurement skew
 Write-Host "Launching: $env:UNITY_PATH $($UnityArgs -join ' ')"
 Start-Process -FilePath $env:UNITY_PATH -ArgumentList $UnityArgs | Out-Null
 
 $deadline = (Get-Date).AddMinutes($TimeoutMinutes)
+$lastHeartbeat = Get-Date
 while ($true) {
     Start-Sleep -Seconds 5
-    $running = Get-Process -Name Unity -ErrorAction SilentlyContinue
+    $running = Get-Process -Name Unity -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -ge $launchTime }
     if (-not $running) { break }
+
+    if (((Get-Date) - $lastHeartbeat).TotalSeconds -ge 60) {
+        $lastHeartbeat = Get-Date
+        Write-Host "Still waiting on Unity (PID(s): $($running.Id -join ', '))..."
+    }
 
     if ((Get-Date) -gt $deadline) {
         Write-Error "Timed out after $TimeoutMinutes minute(s) waiting for Unity to finish. Killing remaining Unity process(es)."
@@ -75,7 +85,7 @@ while ($true) {
     }
 }
 
-Write-Host "No Unity process remains running."
+Write-Host "No Unity process from this launch remains running."
 
 if ($SentinelName) {
     if (-not (Test-Path $sentinelPath)) {
