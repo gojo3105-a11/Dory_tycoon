@@ -12,7 +12,6 @@ name: Game Factory Pipeline
 
 on:
   push:
-    branches: [main]
     paths:
       - 'GameSpecs/**'
   workflow_dispatch:
