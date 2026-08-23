@@ -1,7 +1,9 @@
 {
     "name": "GameFactory.Runtime",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "UnityEngine.UI"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
