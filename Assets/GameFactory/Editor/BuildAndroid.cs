@@ -31,7 +31,7 @@ namespace GameFactory.Editor
         private static void BuildFactoryRunnerApkMenuItem()
         {
             bool success = BuildAndReport("factory_runner_001", AndroidBuildType.Apk);
-            EditorUtility.DisplayDialog("Game Factory Build", success ? "Build succeeded. See Builds/." : "Build failed. See Logs/unity-build.log.", "OK");
+            EditorUtility.DisplayDialog("Game Factory Build", success ? "Build succeeded. See Builds/." : "Build failed. See Logs/unity-build-report.log.", "OK");
         }
 
         /// <summary>
@@ -122,7 +122,7 @@ namespace GameFactory.Editor
             if (report.summary.result != BuildResult.Succeeded)
             {
                 throw new InvalidOperationException(
-                    $"Unity build did not succeed (result: {report.summary.result}, {report.summary.totalErrors} error(s)). See Logs/unity-build.log.");
+                    $"Unity build did not succeed (result: {report.summary.result}, {report.summary.totalErrors} error(s)). See Logs/unity-build-report.log.");
             }
 
             return outputPath;
@@ -199,9 +199,14 @@ namespace GameFactory.Editor
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Writes to unity-build-report.log, NOT unity-build.log - that path is
+        /// Unity's own -logFile for this same process, and opening it again
+        /// here throws IOException: Sharing violation on Windows.
+        /// </summary>
         private static void WriteBuildLog(string gameId, string content)
         {
-            string logPath = Path.Combine(EditorPaths.ProjectRoot, "Logs", "unity-build.log");
+            string logPath = Path.Combine(EditorPaths.ProjectRoot, "Logs", "unity-build-report.log");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath));
             File.WriteAllText(logPath, $"[{gameId}]\n{content}");
         }

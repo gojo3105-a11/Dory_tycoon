@@ -60,4 +60,5 @@ jobs:
           path: |
             Builds/${{ env.GAME_ID }}/**
             Logs/unity-build.log
+            Logs/unity-build-report.log
           if-no-files-found: warn
