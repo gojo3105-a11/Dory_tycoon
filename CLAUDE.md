@@ -42,6 +42,7 @@ Assets/
 │  └─ Build/            # 빌드 자동화 관련 런타임/에디터 보조 코드
 ├─ Resources/           # GameSpec JSON이 런타임 참조용으로 복사되는 위치 (Resources/GameSpecs/<id>.json 등)
 GameSpecs/               # 게임별 GameSpec 원본 JSON (예: game01.json)
+                         # + .ci-trigger (JSON 아님, GameValidator가 무시함 - CI 트리거 전용, 아래 참고)
 GeneratedGames/          # 생성기가 만들어낸 게임별 산출물 메타데이터
 ProjectSettings/, Packages/   # Unity 표준 프로젝트 설정
 Builds/                  # Android 빌드 산출물 (git에는 포함하지 않음, 폴더만 유지)
@@ -120,17 +121,25 @@ GameSpec의 mechanics/level/enemy/special 조합이 실제로 달라져야 한�
 **`Reports/errors/latest.txt`**에 커밋한다 (자동 동기화가 15분마다 실행). 이 파일에는 컴파일
 에러, CS0618 obsolete 경고, 런타임 예외가 들어 있다.
 
-이 저장소(`gojo3105-a11/Dory_tycoon`)에는 그 파일이 사용자가 병합할 때까지 안 들어올 수 있으므로,
-최신 상태는 **사용자 포크에서 직접 읽는다**:
+**빌드(APK/AAB)가 실제로 만들어졌는지도 같은 방식으로 확인한다.** self-hosted runner는 PC의
+`C:\Dory_tycoon` 클론을 그대로 작업 디렉터리로 쓰므로, `Builds/<gameId>/`에 생긴 실제 파일을
+`scripts/dev/report-build-status.ps1`이 스캔해서 **`Reports/build-status/latest.txt`**에
+커밋한다(같은 자동 동기화 주기). GitHub Actions API 접근이 없어도 이 파일 하나로 "APK가 실제로
+디스크에 있는지"를 확인할 수 있다 - CLAUDE.md 최상단 원칙("APK가 생성되지 않았는데 성공했다고
+보고하지 않는다")을 지키려면 이 파일을 반드시 먼저 확인한다.
+
+이 저장소(`gojo3105-a11/Dory_tycoon`)에는 그 파일들이 사용자가 병합할 때까지 안 들어올 수
+있으므로, 최신 상태는 **사용자 포크에서 직접 읽는다**:
 
 ```bash
 git fetch https://github.com/gojo3105/dory_tycoon claude/delete-current-content-mgn4xm:fork-check
 git show fork-check:Reports/errors/latest.txt
+git show fork-check:Reports/build-status/latest.txt
 git branch -D fork-check
 ```
 
-파일이 없거나 오래되었으면(생성 시각 확인) 그때 사용자에게 요청한다. **"에러 있으면 붙여주세요"를
-먼저 말하지 말고, 위 방법으로 먼저 확인한다.**
+파일이 없거나 오래되었으면(생성 시각 확인) 그때 사용자에게 요청한다. **"에러 있으면 붙여주세요"나
+"APK 확인해주세요"를 먼저 말하지 말고, 위 방법으로 먼저 확인한다.**
 
 ## PowerShell 스크립트 규칙
 

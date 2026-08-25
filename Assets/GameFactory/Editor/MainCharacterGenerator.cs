@@ -106,7 +106,10 @@ namespace GameFactory.Editor
             Material existing = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
             if (existing != null) return existing;
 
-            Material material = new Material(Shader.Find("Standard")) { color = color };
+            // Unlit, not Standard: the generated scene has no Light (the
+            // existing sprite-based content never needed one), so a lit
+            // shader here would render the whole placeholder solid black.
+            Material material = new Material(Shader.Find("Unlit/Color")) { color = color };
             AssetDatabase.CreateAsset(material, assetPath);
             return material;
         }

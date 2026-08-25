@@ -1,0 +1,5 @@
+This file is not a GameSpec (GameValidator only reads *.json here) - it
+exists solely so scripts/desktop/{sync-and-run,run-game-factory}.ps1 can
+start the Game Factory Pipeline by pushing a change under GameSpecs/**
+(the workflow's push trigger) when the GitHub CLI is unavailable. See the
+.DESCRIPTION comment in either script.

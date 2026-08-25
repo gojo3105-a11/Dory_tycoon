@@ -13,9 +13,14 @@
 .DESCRIPTION
   After pushing, the Game Factory Pipeline needs to actually start. A push
   only auto-triggers it when GameSpecs/** changed (see game-factory.yml),
-  so when the incoming commits only touched C#/docs this script triggers
-  the workflow explicitly via `gh` instead - either way exactly one run
-  starts, and never a pointless one when nothing changed.
+  so when the incoming commits only touched C#/docs this script needs
+  another way to start it. It prefers `gh workflow run` when the GitHub
+  CLI is installed and logged in, but that is optional, not required: when
+  it is missing (or fails), this instead commits a one-line bump to
+  GameSpecs/.ci-trigger and pushes it, which reaches the exact same
+  `on: push: paths: GameSpecs/**` trigger game-factory.yml already reacts
+  to - no CLI, no token, no extra setup on this machine, ever. Either way,
+  exactly one run starts, and never a pointless one when nothing changed.
 
 .PARAMETER Silent
   No popups: write to Logs/auto-sync.log and exit with a status code.
@@ -28,7 +33,8 @@
   Don't collect/commit Unity's compile errors (scripts/dev/collect-errors.ps1).
 
 .NOTES
-  Requires the GitHub CLI (`gh`) installed and logged in once beforehand:
+  The GitHub CLI (`gh`) is optional - see .DESCRIPTION. If you do want it
+  for the nicer no-extra-commit path:
     winget install --id GitHub.cli
     gh auth login
   Aborts (without touching anything) if the working tree has uncommitted
@@ -111,19 +117,28 @@ try {
         }
     }
 
-    # Collect Unity's errors into a committed report BEFORE the dirty check
-    # below - writing the report is itself a tracked-file change, so it has
-    # to be committed here rather than left to trip that check. This is the
-    # whole point of the loop: Claude Code has no Unity and no access to this
-    # PC, so the errors have to reach it through the repo.
+    # Collect Unity's errors and check Builds/ for real output into
+    # committed reports BEFORE the dirty check below - writing them is
+    # itself a tracked-file change, so it has to be committed here rather
+    # than left to trip that check. This is the whole point of the loop:
+    # Claude Code has no Unity, no GitHub Actions API access, and no other
+    # way to see this PC, so both have to reach it through the repo.
     if (-not $SkipErrorReport) {
+        $devDir = Join-Path (Split-Path $PSScriptRoot -Parent) "dev"
+
         try {
-            $collectScript = Join-Path (Split-Path $PSScriptRoot -Parent) "dev\collect-errors.ps1"
-            & $collectScript -RepoPath $RepoPath -Branch $Branch -OriginRemote $OriginRemote -Commit -NoPush
+            & (Join-Path $devDir "collect-errors.ps1") -RepoPath $RepoPath -Branch $Branch -OriginRemote $OriginRemote -Commit -NoPush
         }
         catch {
             # Never let error reporting be the reason a sync fails.
             Write-Log "Error report step failed (continuing with the sync): $_"
+        }
+
+        try {
+            & (Join-Path $devDir "report-build-status.ps1") -RepoPath $RepoPath -Branch $Branch -OriginRemote $OriginRemote -Commit -NoPush
+        }
+        catch {
+            Write-Log "Build status report step failed (continuing with the sync): $_"
         }
     }
 
@@ -133,9 +148,37 @@ try {
     # around, and treating that as "dirty" would block every scheduled sync
     # from then on. A merge that would actually overwrite an untracked file
     # fails on its own, and the handler below restores the original state.
+    #
+    # One specific tracked file gets the same tolerance: merely opening the
+    # Unity Editor can touch ProjectSettings/ProjectVersion.txt (it can
+    # append a revision-hash line) even when the actual Unity version is
+    # unchanged. Left as a hard stop, this silently blocked every single
+    # scheduled sync overnight - the very first thing that happens after
+    # a local Editor session is a sync run, and it kept hitting this wall.
+    # Auto-commit it, but only when m_EditorVersion itself is unchanged;
+    # if that line actually differs, still stop and ask a human, since
+    # CLAUDE.md is explicit that the tracked Unity version must never
+    # change without an explicit request.
     $dirty = Invoke-Git @("status", "--porcelain", "--untracked-files=no")
     if ($dirty) {
-        throw "Uncommitted changes to tracked files - stopping. Commit or stash them first:`n`n$dirty"
+        $dirtyLines = $dirty -split "\r?\n" | Where-Object { $_ }
+        $onlyProjectVersion = ($dirtyLines.Count -eq 1) -and ($dirtyLines[0] -match '^\s*M\s+ProjectSettings/ProjectVersion\.txt\s*$')
+
+        if (-not $onlyProjectVersion) {
+            throw "Uncommitted changes to tracked files - stopping. Commit or stash them first:`n`n$dirty"
+        }
+
+        $projectVersionPath = Join-Path $RepoPath "ProjectSettings\ProjectVersion.txt"
+        $oldVersionLine = (Invoke-Git @("show", "HEAD:ProjectSettings/ProjectVersion.txt")) -split "\r?\n" | Where-Object { $_ -like "m_EditorVersion:*" } | Select-Object -First 1
+        $newVersionLine = (Get-Content $projectVersionPath) | Where-Object { $_ -like "m_EditorVersion:*" } | Select-Object -First 1
+
+        if ($oldVersionLine -ne $newVersionLine) {
+            throw "ProjectSettings/ProjectVersion.txt's m_EditorVersion changed ('$oldVersionLine' -> '$newVersionLine') - stopping. This needs a human decision, not an automated commit."
+        }
+
+        Write-Log "ProjectVersion.txt changed but m_EditorVersion is still '$newVersionLine' - Editor housekeeping, not a real version change. Committing it."
+        Invoke-Git @("add", "ProjectSettings/ProjectVersion.txt") | Out-Null
+        Invoke-Git @("commit", "-m", "chore: Unity Editor touched ProjectVersion.txt (version unchanged)") | Out-Null
     }
 
     $currentBranch = Invoke-Git @("rev-parse", "--abbrev-ref", "HEAD")
@@ -214,23 +257,39 @@ try {
         exit 0
     }
 
-    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        Show-Result "$summary`n`nBut the GitHub CLI (gh) is missing, so the pipeline could not be started. Install it and run 'gh auth login':`n`nwinget install --id GitHub.cli" "Warning"
-        exit 1
+    if (Get-Command gh -ErrorAction SilentlyContinue) {
+        Write-Log "Triggering $Workflow for '$GameId' via gh"
+        $ErrorActionPreference = "Continue"
+        $ghOutput = & gh workflow run $Workflow --repo $RepoSlug --ref $Branch -f "game_id=$GameId" 2>&1
+        $ghExit = $LASTEXITCODE
+        $ErrorActionPreference = "Stop"
+
+        if ($ghExit -eq 0) {
+            Show-Result "$summary`n`nRequested a pipeline run for '$GameId'.`n`nProgress: https://github.com/$RepoSlug/actions" "Information"
+            exit 0
+        }
+
+        Write-Log "gh workflow run failed (exit $ghExit): $(($ghOutput | Out-String).Trim()) - falling back to a trigger-file push."
+    }
+    else {
+        Write-Log "GitHub CLI not found - using the trigger-file push instead."
     }
 
-    Write-Log "Triggering $Workflow for '$GameId'"
-    $ErrorActionPreference = "Continue"
-    $ghOutput = & gh workflow run $Workflow --repo $RepoSlug --ref $Branch -f "game_id=$GameId" 2>&1
-    $ghExit = $LASTEXITCODE
-    $ErrorActionPreference = "Stop"
+    # No CLI, no token: bumping a file under GameSpecs/ and pushing it hits
+    # the same push-triggered path a real GameSpec edit would, which is how
+    # game-factory.yml is already wired to start on its own (see the .yml's
+    # `on: push: paths: GameSpecs/**`). Currently always targets game01,
+    # since that push trigger only ever runs with the workflow's default
+    # game_id input - fine for now since it is the only game that exists.
+    $triggerPath = Join-Path $RepoPath "GameSpecs\.ci-trigger"
+    $triggerContent = "Bumped $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') to start the Game Factory Pipeline for '$GameId' without the GitHub CLI. Not a GameSpec - GameValidator only reads *.json here."
+    Set-Content -Path $triggerPath -Value $triggerContent -Encoding UTF8
 
-    if ($ghExit -ne 0) {
-        Show-Result "$summary`n`nBut the pipeline run request failed (exit $ghExit):`n$(($ghOutput | Out-String).Trim())`n`nCheck your 'gh auth login' state." "Error"
-        exit 1
-    }
+    Invoke-Git @("add", "GameSpecs/.ci-trigger") | Out-Null
+    Invoke-Git @("commit", "-m", "chore: trigger Game Factory Pipeline for $GameId") | Out-Null
+    Invoke-Git @("push", $OriginRemote, $Branch) -Retries 4 | Out-Null
 
-    Show-Result "$summary`n`nRequested a pipeline run for '$GameId'.`n`nProgress: https://github.com/$RepoSlug/actions" "Information"
+    Show-Result "$summary`n`nPushed a trigger-file bump to start the pipeline for '$GameId' (no GitHub CLI needed).`n`nProgress: https://github.com/$RepoSlug/actions" "Information"
     exit 0
 }
 catch {
