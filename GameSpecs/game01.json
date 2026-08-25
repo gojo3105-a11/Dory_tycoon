@@ -1,6 +1,6 @@
 {
   "game": {
-    "id": "factory_runner_001",
+    "id": "game01",
     "title": "Factory Runner",
     "genre": "Runner"
   },
@@ -32,6 +32,6 @@
   },
   "theme": {
     "environment": "Factory",
-    "character": "Slime"
+    "character": "Dori_Default"
   }
 }

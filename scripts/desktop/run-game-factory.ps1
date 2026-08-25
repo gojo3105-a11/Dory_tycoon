@@ -37,7 +37,7 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
 $gameId = [Microsoft.VisualBasic.Interaction]::InputBox(
     "실행할 GameSpec id를 입력하세요 (GameSpecs/<id>.json)",
     "Game Factory 실행",
-    "factory_runner_001"
+    "game01"
 )
 
 if ([string]::IsNullOrWhiteSpace($gameId)) {

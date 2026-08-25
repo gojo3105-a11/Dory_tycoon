@@ -67,7 +67,7 @@ namespace GameFactory.Core.Spec
 
             if (string.IsNullOrWhiteSpace(game.id) || !IdPattern.IsMatch(game.id))
             {
-                errors.Add($"game.id '{game.id}' must be lowercase snake_case, e.g. 'factory_runner_001'.");
+                errors.Add($"game.id '{game.id}' must be lowercase snake_case, e.g. 'game01'.");
             }
 
             if (string.IsNullOrWhiteSpace(game.title))

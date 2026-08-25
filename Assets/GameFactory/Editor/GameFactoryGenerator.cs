@@ -16,7 +16,7 @@ namespace GameFactory.Editor
     /// CLI usage (see docs/AUTOMATION.md):
     ///   Unity -batchmode -projectPath . -executeMethod
     ///     GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine
-    ///     -gameSpec GameSpecs/factory_runner_001.json -quit
+    ///     -gameSpec GameSpecs/game01.json -quit
     /// </summary>
     public static class GameFactoryGenerator
     {
@@ -25,7 +25,7 @@ namespace GameFactory.Editor
         {
             try
             {
-                string scenePath = Generate("GameSpecs/factory_runner_001.json");
+                string scenePath = Generate("GameSpecs/game01.json");
                 EditorUtility.DisplayDialog("Game Factory", $"Generated:\n{scenePath}", "OK");
             }
             catch (Exception e)

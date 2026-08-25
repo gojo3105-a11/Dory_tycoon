@@ -18,7 +18,7 @@ Editor에서 직접 실행할 때는:
 ```powershell
 & "$env:UNITY_PATH" -batchmode -nographics -projectPath . `
   -executeMethod GameFactory.Editor.BuildAndroid.BuildFromCommandLine `
-  -gameId factory_runner_001 -buildType apk `
+  -gameId game01 -buildType apk `
   -logFile Logs/unity-build.log -quit
 ```
 

@@ -14,13 +14,13 @@ on:
       game_id:
         description: 'GameSpec id used to (re)generate the scene PlayMode tests run against'
         required: false
-        default: 'factory_runner_001'
+        default: 'game01'
 
 jobs:
   test:
     runs-on: [self-hosted, Windows]
     env:
-      GAME_ID: ${{ github.event.inputs.game_id || 'factory_runner_001' }}
+      GAME_ID: ${{ github.event.inputs.game_id || 'game01' }}
     steps:
       - uses: actions/checkout@v4
 

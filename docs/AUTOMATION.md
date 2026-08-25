@@ -20,7 +20,7 @@
 .\scripts\ci\wait-for-unity.ps1 -SentinelName generate -UnityArgs @(
   '-batchmode', '-nographics', '-projectPath', '.',
   '-executeMethod', 'GameFactory.Editor.GameFactoryGenerator.GenerateFromCommandLine',
-  '-gameSpec', 'GameSpecs/factory_runner_001.json',
+  '-gameSpec', 'GameSpecs/game01.json',
   '-logFile', 'Logs/unity-generate.log'
 )
 exit $LASTEXITCODE

@@ -10,7 +10,7 @@ GameSpec(JSON) → Unity Editor 자동 생성기 → Scene/Prefab/Level/UI 생�
 
 게임마다 코드를 새로 짜지 않습니다. 재사용 가능한 `Core`/`Modules`/`Gameplay` 코드와 `GameSpecs/*.json`
 설정을 조합해서 게임을 "생성"합니다. 지금은 Runner 장르의 첫 샘플인 **Factory Runner**
-(`GameSpecs/factory_runner_001.json`)까지 구현되어 있습니다.
+(`GameSpecs/game01.json`)까지 구현되어 있습니다.
 
 ## 문서
 
@@ -25,10 +25,10 @@ GameSpec(JSON) → Unity Editor 자동 생성기 → Scene/Prefab/Level/UI 생�
 1. `ProjectSettings/ProjectVersion.txt`에 명시된 Unity 버전으로 프로젝트를 엽니다
    (설치된 버전이 다르면 이 파일의 버전 문자열만 실제 버전으로 맞추면 됩니다).
 2. Unity 메뉴 `Game Factory > Generate > Factory Runner Sample` 실행
-   → `Assets/GeneratedGames/factory_runner_001/`에 Scene/Prefab이 생성됩니다.
+   → `Assets/GeneratedGames/game01/`에 Scene/Prefab이 생성됩니다.
 3. 생성된 Scene을 열고 Play - 자동 이동/점프/중력반전/코인/장애물/게임오버/재시작이 동작해야 합니다.
 4. `Game Factory > Validate > All GameSpecs`로 GameSpec/Scene 무결성을 확인합니다.
-5. `Game Factory > Build > Factory Runner (APK)`로 APK를 빌드합니다 (`Builds/factory_runner_001/APK/`).
+5. `Game Factory > Build > Factory Runner (APK)`로 APK를 빌드합니다 (`Builds/game01/APK/`).
 
 CLI/CI로 동일한 작업을 수행하는 방법은 [docs/AUTOMATION.md](docs/AUTOMATION.md)를 참고하세요.
 

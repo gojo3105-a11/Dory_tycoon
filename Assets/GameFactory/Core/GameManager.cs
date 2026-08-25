@@ -15,7 +15,7 @@ namespace GameFactory.Core
 
         public static GameManager Instance { get; private set; }
 
-        [SerializeField] private string gameId = "factory_runner_001";
+        [SerializeField] private string gameId = "game01";
 
         public GameState CurrentState { get; private set; } = GameState.Ready;
         public int Score { get; private set; }

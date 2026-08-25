@@ -10,13 +10,13 @@ namespace GameFactory.Tests.PlayMode
     /// <summary>
     /// Exercises the actual generated Factory Runner scene. Requires
     /// GameFactoryGenerator to have already produced
-    /// Assets/GeneratedGames/factory_runner_001/Scenes/factory_runner_001.unity
+    /// Assets/GeneratedGames/game01/Scenes/game01.unity
     /// (and registered it in Build Settings) - run the generator before
     /// running this suite, exactly as the CI pipeline does.
     /// </summary>
     public class FactoryRunnerPlayModeTests
     {
-        private const string SceneName = "factory_runner_001";
+        private const string SceneName = "game01";
 
         [UnitySetUp]
         public IEnumerator SetUp()

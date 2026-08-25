@@ -55,13 +55,8 @@ namespace GameFactory.Editor
 
         private static GameObject CreatePlayerPrefab(GameSpec spec, string assetFolder, int groundLayer)
         {
-            string spritePath = CreateSolidSprite(assetFolder, "player_sprite.png", VividColorFromSeed(spec.game.id));
-
             GameObject go = new GameObject("Player");
             go.tag = "Player";
-
-            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
 
             Rigidbody2D rb = go.AddComponent<Rigidbody2D>();
             rb.freezeRotation = true;
@@ -73,10 +68,25 @@ namespace GameFactory.Editor
             groundCheck.SetParent(go.transform);
             groundCheck.localPosition = new Vector3(0f, -0.5f, 0f);
 
+            InstantiateMainCharacterVisual(go.transform);
+
             RunnerPlayerController controller = go.AddComponent<RunnerPlayerController>();
             controller.SetGroundCheck(groundCheck, 1 << groundLayer);
 
             return SaveAsPrefab(go, assetFolder, "Player.prefab");
+        }
+
+        /// <summary>
+        /// Attaches the shared MainCharacter(도리) prefab as a purely visual
+        /// child - the 2D Rigidbody2D/Collider2D on the Player root above
+        /// still drives all movement/collision, per Game01_IMPLEMENTATION_PLAN.md §1.
+        /// </summary>
+        private static void InstantiateMainCharacterVisual(Transform parent)
+        {
+            GameObject mainCharacterPrefab = MainCharacterGenerator.EnsureMainCharacterPrefab();
+            GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(mainCharacterPrefab, parent);
+            instance.transform.SetParent(parent, false);
+            instance.transform.localPosition = Vector3.zero;
         }
 
         private static GameObject CreateGroundTilePrefab(GameSpec spec, string assetFolder, float tileWidth, int groundLayer)
@@ -151,12 +161,6 @@ namespace GameFactory.Editor
             go.AddComponent<GravitySwitchZone>();
 
             return SaveAsPrefab(go, assetFolder, "GravityZone.prefab");
-        }
-
-        private static Color VividColorFromSeed(string seed)
-        {
-            float hue = Mathf.Abs(SeedHash(seed)) % 360 / 360f;
-            return Color.HSVToRGB(hue, 0.65f, 0.95f);
         }
 
         private static Color MutedColorFromSeed(string seed)

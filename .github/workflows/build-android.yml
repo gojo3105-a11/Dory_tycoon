@@ -6,7 +6,7 @@ on:
       game_id:
         description: 'GameSpec id to build'
         required: true
-        default: 'factory_runner_001'
+        default: 'game01'
       build_type:
         description: 'apk or aab'
         required: false

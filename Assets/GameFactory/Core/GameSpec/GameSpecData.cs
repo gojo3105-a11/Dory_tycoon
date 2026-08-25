@@ -22,7 +22,7 @@ namespace GameFactory.Core.Spec
     [Serializable]
     public class GameInfo
     {
-        /// <summary>Lowercase, underscore-separated unique id, e.g. "factory_runner_001".</summary>
+        /// <summary>Lowercase, underscore-separated unique id, e.g. "game01".</summary>
         public string id = string.Empty;
         public string title = string.Empty;
         /// <summary>Must match a name in GameGenre.</summary>

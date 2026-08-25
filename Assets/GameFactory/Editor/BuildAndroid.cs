@@ -23,14 +23,14 @@ namespace GameFactory.Editor
     /// CLI usage (see docs/BUILD.md):
     ///   Unity -batchmode -projectPath . -executeMethod
     ///     GameFactory.Editor.BuildAndroid.BuildFromCommandLine
-    ///     -gameId factory_runner_001 -buildType apk -quit
+    ///     -gameId game01 -buildType apk -quit
     /// </summary>
     public static class BuildAndroid
     {
         [MenuItem("Game Factory/Build/Factory Runner (APK)")]
         private static void BuildFactoryRunnerApkMenuItem()
         {
-            bool success = BuildAndReport("factory_runner_001", AndroidBuildType.Apk);
+            bool success = BuildAndReport("game01", AndroidBuildType.Apk);
             EditorUtility.DisplayDialog("Game Factory Build", success ? "Build succeeded. See Builds/." : "Build failed. See Logs/unity-build-report.log.", "OK");
         }
 

@@ -10,7 +10,7 @@
 
 ```json
 {
-  "game": { "id": "factory_runner_001", "title": "Factory Runner", "genre": "Runner" },
+  "game": { "id": "game01", "title": "Factory Runner", "genre": "Runner" },
   "player": { "moveSpeed": 6, "jumpPower": 10 },
   "mechanics": {
     "jump": true, "doubleJump": false, "dash": false, "wallJump": false,
@@ -82,7 +82,7 @@
 | 필드 | 타입 | 설명 |
 |---|---|---|
 | `environment` | string | 배경 테마 (자유 텍스트). 현재는 지형 스프라이트 색상 시드로만 쓰인다. |
-| `character` | string | 캐릭터 테마 (자유 텍스트). 현재는 플레이어 스프라이트 색상 시드로만 쓰인다. |
+| `character` | string | 캐릭터 테마 (자유 텍스트). 플레이어는 이제 GameSpec별 색상 스프라이트가 아니라 10개 게임이 공유하는 `MainCharacter` 프리팹을 쓰므로, 현재 이 필드는 생성 로직에서 읽히지 않는다(향후 게임별 의상/액세서리 배리에이션 선택에 쓸 수 있도록 스키마에는 남겨둔다). |
 
 ## 게임 다양성 규칙
 

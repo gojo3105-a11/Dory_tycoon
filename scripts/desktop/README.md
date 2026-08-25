@@ -28,7 +28,7 @@
 ## 사용법
 
 1. 바탕화면의 **"Game Factory"** 아이콘 더블클릭
-2. 실행할 GameSpec id를 묻는 입력창이 뜬다 (기본값 `factory_runner_001`) → 확인
+2. 실행할 GameSpec id를 묻는 입력창이 뜬다 (기본값 `game01`) → 확인
 3. "실행을 요청했습니다" 창이 뜨면 완료 - GitHub Actions에서 self-hosted runner(이 PC의
    `run.cmd` 또는 서비스)가 이어받아 처리한다
 4. "지금 진행 상황 페이지를 여시겠습니까?"에서 예를 누르면 브라우저로 Actions 페이지가 열린다

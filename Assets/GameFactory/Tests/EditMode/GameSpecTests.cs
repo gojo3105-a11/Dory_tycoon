@@ -7,7 +7,7 @@ namespace GameFactory.Tests.EditMode
     public class GameSpecTests
     {
         private const string SampleJson = @"{
-            ""game"": { ""id"": ""factory_runner_001"", ""title"": ""Factory Runner"", ""genre"": ""Runner"" },
+            ""game"": { ""id"": ""game01"", ""title"": ""Factory Runner"", ""genre"": ""Runner"" },
             ""player"": { ""moveSpeed"": 6, ""jumpPower"": 10 },
             ""mechanics"": { ""jump"": true, ""doubleJump"": false, ""dash"": false, ""wallJump"": false, ""gravitySwitch"": true, ""teleport"": false, ""timeSlow"": false },
             ""level"": { ""levelCount"": 1, ""difficulty"": ""Medium"", ""procedural"": true, ""length"": 120 },
@@ -21,7 +21,7 @@ namespace GameFactory.Tests.EditMode
         {
             GameSpec spec = GameSpecParser.LoadFromJson(SampleJson, "test");
 
-            Assert.AreEqual("factory_runner_001", spec.game.id);
+            Assert.AreEqual("game01", spec.game.id);
             Assert.AreEqual("Runner", spec.game.genre);
             Assert.AreEqual(6f, spec.player.moveSpeed);
             Assert.AreEqual(10f, spec.player.jumpPower);

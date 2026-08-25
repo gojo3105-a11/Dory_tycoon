@@ -20,7 +20,7 @@ Game01은 평면 이동이 자연스러운 러너 장르이므로 **2D 물리/�
   가능하다. Game07(탐험)/Game08(운전)/Game09(서바이벌)처럼 자유 이동이 핵심인 게임은 별도로 3D
   물리·카메라를 도입할 예정(각 게임의 구현 계획에서 다시 다룸 - 지금 결정하지 않는다).
 
-## 2. GameSpec / 게임 ID 정합성
+## 2. GameSpec / 게임 ID 정합성 (완료)
 
 기존 GameSpec은 `game.id = "factory_runner_001"`이고, 이미 이 id로 실제 APK 빌드·설치·동작까지
 검증됐다(`PROJECT_ANALYSIS.md` §5). 신규 지침은 패키지 ID를 `com.gamefactory.game01`~`game10`으로
@@ -55,7 +55,13 @@ bundle id는 안 바꾼다"는 규칙은 실제 배포 이후를 가리키므로
 | 상점(Shop) UI/데이터 | **신규** - 코인 자석, 스킨 1종 (시나리오 §6) |
 | 환경/장애물 임시 프롭 | **신규(임시)** - §5 |
 
-## 4. MainCharacter 통합 계획
+## 4. MainCharacter 통합 계획 (임시 프리팹 생성 완료)
+
+`Assets/GameFactory/Editor/MainCharacterGenerator.cs`가 아래 캡슐 placeholder를 코드로 생성해
+`Assets/Common/Character/Prefabs/MainCharacter.prefab`로 저장한다(최초 Generate 실행 시 자동
+생성, `Game Factory > Generate > Main Character Placeholder (Dori)` 메뉴로 수동 재생성도 가능).
+`PrefabGenerator.CreatePlayerPrefab`이 이 프리팹을 Player 루트의 자식으로 인스턴스화하도록
+연결했다(§1의 결정대로 Player 루트의 Rigidbody2D/Collider2D는 그대로 유지).
 
 - 저장 위치: `Assets/Common/Character/Prefabs/MainCharacter.prefab` (신규 지침이 지정한 경로,
   10개 게임 공용).

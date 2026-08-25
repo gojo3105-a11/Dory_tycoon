@@ -68,7 +68,11 @@ Runtime asmdef를 참조).
 - **Singleton 최소화**: `GameManager`, `AudioManager`만 싱글턴이다. 둘 다 씬 하나에 인스턴스가
   하나뿐이어야 하는 전역 상태(점수/게임오버 상태, 공유 SFX 소스)를 가진다.
 - **플레이스홀더 아트**: `PrefabGenerator`가 게임 id를 시드로 한 단색 스프라이트를 절차적으로
-  생성한다 (실제 아트가 준비되면 같은 경로의 파일만 교체하면 됨 - 생성 코드는 손댈 필요 없음).
+  생성한다 (Ground/Obstacle/Coin/GravityZone). 실제 아트가 준비되면 같은 경로의 파일만 교체하면
+  됨 - 생성 코드는 손댈 필요 없음. Player만 예외로, 10개 게임이 공유하는
+  `Assets/Common/Character/Prefabs/MainCharacter.prefab`(현재는 `MainCharacterGenerator`가
+  만드는 캡슐 placeholder, 실제 3D 모델 아님)을 시각적 자식으로 붙인다 - 이동/충돌은 여전히 Player
+  루트의 `Rigidbody2D`/`Collider2D`가 담당한다(`Game01_IMPLEMENTATION_PLAN.md` §1).
 - **하나의 Unity 프로젝트, 여러 게임**: 여러 게임의 GeneratedGames/가 같은 프로젝트에 누적될 수
   있지만, `BuildAndroid`는 항상 지정된 게임 **하나의 Scene만** 포함해서 빌드한다 (전체 게임이
   한 APK에 합쳐지지 않는다).
