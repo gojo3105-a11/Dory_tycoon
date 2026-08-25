@@ -114,6 +114,24 @@ GameSpec의 mechanics/level/enemy/special 조합이 실제로 달라져야 한�
 - 실제 컴파일/실행/빌드 검증은 Unity가 설치된 Windows 환경(또는 self-hosted GitHub Actions runner)에서
   수행되어야 한다. 명령 형태는 `docs/BUILD.md`, `docs/AUTOMATION.md` 참고.
 
+### 컴파일 에러를 직접 확인하는 방법 (사용자에게 물어보기 전에 먼저 여기를 본다)
+
+사용자 PC가 `scripts/dev/collect-errors.ps1`로 Unity 로그에서 에러를 뽑아
+**`Reports/errors/latest.txt`**에 커밋한다 (자동 동기화가 15분마다 실행). 이 파일에는 컴파일
+에러, CS0618 obsolete 경고, 런타임 예외가 들어 있다.
+
+이 저장소(`gojo3105-a11/Dory_tycoon`)에는 그 파일이 사용자가 병합할 때까지 안 들어올 수 있으므로,
+최신 상태는 **사용자 포크에서 직접 읽는다**:
+
+```bash
+git fetch https://github.com/gojo3105/dory_tycoon claude/delete-current-content-mgn4xm:fork-check
+git show fork-check:Reports/errors/latest.txt
+git branch -D fork-check
+```
+
+파일이 없거나 오래되었으면(생성 시각 확인) 그때 사용자에게 요청한다. **"에러 있으면 붙여주세요"를
+먼저 말하지 말고, 위 방법으로 먼저 확인한다.**
+
 ## Git 규칙
 
 - 작업 단위를 작게 나누어 커밋한다 (`feat: add game spec system`, `feat: add runner module` 등).

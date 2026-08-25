@@ -24,6 +24,9 @@
 .PARAMETER NoTrigger
   Sync only - never start a pipeline run.
 
+.PARAMETER SkipErrorReport
+  Don't collect/commit Unity's compile errors (scripts/dev/collect-errors.ps1).
+
 .NOTES
   Requires the GitHub CLI (`gh`) installed and logged in once beforehand:
     winget install --id GitHub.cli
@@ -42,7 +45,8 @@ param(
     [string]$Workflow = "game-factory.yml",
     [string]$RepoSlug = "gojo3105/Dory_tycoon",
     [switch]$Silent,
-    [switch]$NoTrigger
+    [switch]$NoTrigger,
+    [switch]$SkipErrorReport
 )
 
 $ErrorActionPreference = "Stop"
@@ -107,6 +111,22 @@ try {
         }
     }
 
+    # Collect Unity's errors into a committed report BEFORE the dirty check
+    # below - writing the report is itself a tracked-file change, so it has
+    # to be committed here rather than left to trip that check. This is the
+    # whole point of the loop: Claude Code has no Unity and no access to this
+    # PC, so the errors have to reach it through the repo.
+    if (-not $SkipErrorReport) {
+        try {
+            $collectScript = Join-Path (Split-Path $PSScriptRoot -Parent) "dev\collect-errors.ps1"
+            & $collectScript -RepoPath $RepoPath -Branch $Branch -OriginRemote $OriginRemote -Commit -NoPush
+        }
+        catch {
+            # Never let error reporting be the reason a sync fails.
+            Write-Log "Error report step failed (continuing with the sync): $_"
+        }
+    }
+
     # Refuse to merge over uncommitted edits to tracked files rather than
     # risk losing them. Untracked files are deliberately tolerated: running
     # the generator locally leaves Assets/GeneratedGames and friends lying
@@ -163,7 +183,19 @@ try {
     if ($forkHead) {
         $commitCount = Invoke-Git @("rev-list", "--count", "$forkHead..$after")
         $summary = "새 커밋 $commitCount개를 포크에 push했습니다."
-        $specChanges = Invoke-Git @("diff", "--name-only", $forkHead, $after, "--", "GameSpecs")
+
+        $changedPaths = (Invoke-Git @("diff", "--name-only", $forkHead, $after)) -split "\r?\n" | Where-Object { $_ }
+        $specChanges = $changedPaths | Where-Object { $_ -like "GameSpecs/*" }
+
+        # An error-report-only push must not start a build: the report is a
+        # diagnostic written by this very script, so triggering on it would
+        # queue a pointless pipeline run on every scheduled sync that picks
+        # up new Unity errors.
+        $buildRelevant = $changedPaths | Where-Object { $_ -notlike "Reports/*" }
+        if (-not $buildRelevant) {
+            Show-Result "$summary`n`n오류 리포트만 갱신되어 파이프라인은 실행하지 않았습니다." "Information"
+            exit 0
+        }
     }
     else {
         $summary = "브랜치를 포크에 처음 push했습니다."
