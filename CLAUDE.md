@@ -42,6 +42,7 @@ Assets/
 │  └─ Build/            # 빌드 자동화 관련 런타임/에디터 보조 코드
 ├─ Resources/           # GameSpec JSON이 런타임 참조용으로 복사되는 위치 (Resources/GameSpecs/<id>.json 등)
 GameSpecs/               # 게임별 GameSpec 원본 JSON (예: game01.json)
+                         # + .ci-trigger (JSON 아님, GameValidator가 무시함 - CI 트리거 전용, 아래 참고)
 GeneratedGames/          # 생성기가 만들어낸 게임별 산출물 메타데이터
 ProjectSettings/, Packages/   # Unity 표준 프로젝트 설정
 Builds/                  # Android 빌드 산출물 (git에는 포함하지 않음, 폴더만 유지)

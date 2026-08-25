@@ -13,9 +13,14 @@
 .DESCRIPTION
   After pushing, the Game Factory Pipeline needs to actually start. A push
   only auto-triggers it when GameSpecs/** changed (see game-factory.yml),
-  so when the incoming commits only touched C#/docs this script triggers
-  the workflow explicitly via `gh` instead - either way exactly one run
-  starts, and never a pointless one when nothing changed.
+  so when the incoming commits only touched C#/docs this script needs
+  another way to start it. It prefers `gh workflow run` when the GitHub
+  CLI is installed and logged in, but that is optional, not required: when
+  it is missing (or fails), this instead commits a one-line bump to
+  GameSpecs/.ci-trigger and pushes it, which reaches the exact same
+  `on: push: paths: GameSpecs/**` trigger game-factory.yml already reacts
+  to - no CLI, no token, no extra setup on this machine, ever. Either way,
+  exactly one run starts, and never a pointless one when nothing changed.
 
 .PARAMETER Silent
   No popups: write to Logs/auto-sync.log and exit with a status code.
@@ -28,7 +33,8 @@
   Don't collect/commit Unity's compile errors (scripts/dev/collect-errors.ps1).
 
 .NOTES
-  Requires the GitHub CLI (`gh`) installed and logged in once beforehand:
+  The GitHub CLI (`gh`) is optional - see .DESCRIPTION. If you do want it
+  for the nicer no-extra-commit path:
     winget install --id GitHub.cli
     gh auth login
   Aborts (without touching anything) if the working tree has uncommitted
@@ -214,23 +220,39 @@ try {
         exit 0
     }
 
-    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        Show-Result "$summary`n`nBut the GitHub CLI (gh) is missing, so the pipeline could not be started. Install it and run 'gh auth login':`n`nwinget install --id GitHub.cli" "Warning"
-        exit 1
+    if (Get-Command gh -ErrorAction SilentlyContinue) {
+        Write-Log "Triggering $Workflow for '$GameId' via gh"
+        $ErrorActionPreference = "Continue"
+        $ghOutput = & gh workflow run $Workflow --repo $RepoSlug --ref $Branch -f "game_id=$GameId" 2>&1
+        $ghExit = $LASTEXITCODE
+        $ErrorActionPreference = "Stop"
+
+        if ($ghExit -eq 0) {
+            Show-Result "$summary`n`nRequested a pipeline run for '$GameId'.`n`nProgress: https://github.com/$RepoSlug/actions" "Information"
+            exit 0
+        }
+
+        Write-Log "gh workflow run failed (exit $ghExit): $(($ghOutput | Out-String).Trim()) - falling back to a trigger-file push."
+    }
+    else {
+        Write-Log "GitHub CLI not found - using the trigger-file push instead."
     }
 
-    Write-Log "Triggering $Workflow for '$GameId'"
-    $ErrorActionPreference = "Continue"
-    $ghOutput = & gh workflow run $Workflow --repo $RepoSlug --ref $Branch -f "game_id=$GameId" 2>&1
-    $ghExit = $LASTEXITCODE
-    $ErrorActionPreference = "Stop"
+    # No CLI, no token: bumping a file under GameSpecs/ and pushing it hits
+    # the same push-triggered path a real GameSpec edit would, which is how
+    # game-factory.yml is already wired to start on its own (see the .yml's
+    # `on: push: paths: GameSpecs/**`). Currently always targets game01,
+    # since that push trigger only ever runs with the workflow's default
+    # game_id input - fine for now since it is the only game that exists.
+    $triggerPath = Join-Path $RepoPath "GameSpecs\.ci-trigger"
+    $triggerContent = "Bumped $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') to start the Game Factory Pipeline for '$GameId' without the GitHub CLI. Not a GameSpec - GameValidator only reads *.json here."
+    Set-Content -Path $triggerPath -Value $triggerContent -Encoding UTF8
 
-    if ($ghExit -ne 0) {
-        Show-Result "$summary`n`nBut the pipeline run request failed (exit $ghExit):`n$(($ghOutput | Out-String).Trim())`n`nCheck your 'gh auth login' state." "Error"
-        exit 1
-    }
+    Invoke-Git @("add", "GameSpecs/.ci-trigger") | Out-Null
+    Invoke-Git @("commit", "-m", "chore: trigger Game Factory Pipeline for $GameId") | Out-Null
+    Invoke-Git @("push", $OriginRemote, $Branch) -Retries 4 | Out-Null
 
-    Show-Result "$summary`n`nRequested a pipeline run for '$GameId'.`n`nProgress: https://github.com/$RepoSlug/actions" "Information"
+    Show-Result "$summary`n`nPushed a trigger-file bump to start the pipeline for '$GameId' (no GitHub CLI needed).`n`nProgress: https://github.com/$RepoSlug/actions" "Information"
     exit 0
 }
 catch {
