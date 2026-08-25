@@ -71,7 +71,7 @@ namespace GameFactory.Editor
             LevelGenerator.ConfigureRunnerLevel(spec, playerInstance.transform, prefabs.GravityZone);
 
             BuildUI();
-            EnsureEventSystem();
+            EnsureEventSystem(scene);
 
             Directory.CreateDirectory(EditorPaths.ToAbsolutePath(sceneFolder));
             string sceneAssetPath = $"{sceneFolder}/{spec.game.id}.unity";
@@ -255,9 +255,18 @@ namespace GameFactory.Editor
             return cachedFont;
         }
 
-        private static void EnsureEventSystem()
+        /// <summary>
+        /// Searches the generated scene's own hierarchy rather than calling
+        /// Object.FindFirstObjectByType (obsolete in Unity 6.5, and it would
+        /// also miss an EventSystem sitting inside the UI panels this
+        /// generator deliberately saves disabled).
+        /// </summary>
+        private static void EnsureEventSystem(Scene scene)
         {
-            if (Object.FindFirstObjectByType<EventSystem>() != null) return;
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                if (root.GetComponentInChildren<EventSystem>(true) != null) return;
+            }
 
             GameObject eventSystemGO = new GameObject("EventSystem");
             eventSystemGO.AddComponent<EventSystem>();

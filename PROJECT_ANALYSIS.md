@@ -153,6 +153,13 @@ scripts/
 ## 14. 다음에 확인이 필요한 항목
 
 - Android Minimum/Target API Level 실제 값 (Player Settings에서 확인)
+- **Dynamic Batching 끄기** - Unity 6.5가 "Dynamic Batching is deprecated... Use GPU Instancing
+  instead"라고 경고한다. Project Settings > Player > Other Settings에서 체크 해제하면 되고,
+  모바일 성능상으로도 GPU Instancing 쪽이 맞는 방향이다. 코드로 바꾸려면 정확한 `PlayerSettings`
+  API를 확인해야 해서(이 환경에서 검증 불가) 지금은 GUI에서 처리한다.
+- Input Manager 경고 - Unity가 레거시 Input Manager를 deprecation 예정이라고 알린다. 지금은
+  의도적으로 레거시를 쓰고 있으므로(§7) 조치하지 않는다. 신규 Input System으로 옮기는 것은 10개
+  게임 전체에 영향을 주는 변경이라 별도 결정이 필요하다.
 - 3D 캐릭터/환경 에셋을 도입할 경우 필요한 추가 패키지(예: 애니메이션 리타게팅, glTF 임포터 등)와
   Image-to-3D 변환에 실제로 쓸 수 있는 도구가 이 환경(원격 컨테이너 + PC)에 있는지 - **아직
   조사 전, Phase 4에서 확인한다.**
