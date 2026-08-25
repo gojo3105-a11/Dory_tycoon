@@ -6,9 +6,14 @@
    `GameFactoryGenerator.Generate("GameSpecs/<id>.json")`)로 Scene을 먼저 생성한다.
 2. `Game Factory > Build > Factory Runner (APK)`를 실행한다.
 3. 결과물은 `Builds/<game_id>/APK/<game_id>.apk` (또는 AAB 빌드 시 `Builds/<game_id>/AAB/`)에
-   생성된다. 빌드 로그는 `Logs/unity-build.log`.
+   생성된다. Unity 콘솔 원본 로그는 `Logs/unity-build.log`, BuildAndroid가 정리한 단계별
+   요약은 `Logs/unity-build-report.log` (일부러 다른 파일 - 같은 파일에 쓰면 Unity의
+   `-logFile`이 이미 그 경로를 열고 있어서 Windows에서 `IOException: Sharing violation`이 난다).
 
 ## CLI로 빌드하기
+
+CI에서는 `scripts/ci/wait-for-unity.ps1`을 통해 실행한다 (`docs/AUTOMATION.md` 참고). Unity
+Editor에서 직접 실행할 때는:
 
 ```powershell
 & "$env:UNITY_PATH" -batchmode -nographics -projectPath . `

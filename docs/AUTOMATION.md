@@ -95,8 +95,8 @@ CLI 모듈명, GitHub runner 서비스 등록 명령 등 Hub/runner 버전에 �
   충돌, (Scene이 이미 생성되어 있다면) 필수 오브젝트/스크립트 누락 중 하나다.
 - **test.yml 실패**: EditMode 실패는 순수 GameSpec 파싱/검증 로직 버그, PlayMode 실패는 생성된
   Scene의 실제 게임 동작(점수/게임오버/재시작) 문제일 가능성이 높다.
-- **build-android.yml / game-factory.yml 빌드 단계 실패**: `Logs/unity-build.log`에 실패한
-  BuildStep과 메시지가 남는다.
+- **build-android.yml / game-factory.yml 빌드 단계 실패**: `Logs/unity-build-report.log`에
+  실패한 BuildStep과 메시지가 정리되어 남는다 (`Logs/unity-build.log`는 Unity 콘솔 원본).
 
 ## 아직 자동화하지 않은 것
 
