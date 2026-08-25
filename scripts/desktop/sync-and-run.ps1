@@ -117,19 +117,28 @@ try {
         }
     }
 
-    # Collect Unity's errors into a committed report BEFORE the dirty check
-    # below - writing the report is itself a tracked-file change, so it has
-    # to be committed here rather than left to trip that check. This is the
-    # whole point of the loop: Claude Code has no Unity and no access to this
-    # PC, so the errors have to reach it through the repo.
+    # Collect Unity's errors and check Builds/ for real output into
+    # committed reports BEFORE the dirty check below - writing them is
+    # itself a tracked-file change, so it has to be committed here rather
+    # than left to trip that check. This is the whole point of the loop:
+    # Claude Code has no Unity, no GitHub Actions API access, and no other
+    # way to see this PC, so both have to reach it through the repo.
     if (-not $SkipErrorReport) {
+        $devDir = Join-Path (Split-Path $PSScriptRoot -Parent) "dev"
+
         try {
-            $collectScript = Join-Path (Split-Path $PSScriptRoot -Parent) "dev\collect-errors.ps1"
-            & $collectScript -RepoPath $RepoPath -Branch $Branch -OriginRemote $OriginRemote -Commit -NoPush
+            & (Join-Path $devDir "collect-errors.ps1") -RepoPath $RepoPath -Branch $Branch -OriginRemote $OriginRemote -Commit -NoPush
         }
         catch {
             # Never let error reporting be the reason a sync fails.
             Write-Log "Error report step failed (continuing with the sync): $_"
+        }
+
+        try {
+            & (Join-Path $devDir "report-build-status.ps1") -RepoPath $RepoPath -Branch $Branch -OriginRemote $OriginRemote -Commit -NoPush
+        }
+        catch {
+            Write-Log "Build status report step failed (continuing with the sync): $_"
         }
     }
 

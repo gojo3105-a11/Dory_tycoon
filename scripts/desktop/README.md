@@ -72,6 +72,12 @@ cd C:\Dory_tycoon
 (NullReferenceException 등). 내용이 이전과 같으면 커밋하지 않으므로 15분마다 같은 커밋이
 쌓이지 않는다.
 
+`scripts/dev/report-build-status.ps1`도 같은 흐름으로 함께 돈다 - `GameSpecs/*.json` 각각에
+대해 `Builds/<id>/`를 뒤져서 실제 `.apk`/`.aab` 파일이 있는지, 있다면 크기/해시/생성 시각을
+`Reports/build-status/latest.txt`에 남긴다. self-hosted runner가 이 클론(`C:\Dory_tycoon`)을
+그대로 작업 디렉터리로 쓰기 때문에 가능한 방법이다 - GitHub Actions API 없이도 "APK가 진짜
+생겼는지"를 Claude Code가 직접 확인할 수 있다.
+
 ## 동작 방식
 
 `sync-and-run.ps1`이 하는 일:
