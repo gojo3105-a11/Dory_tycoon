@@ -23,12 +23,19 @@
     - TestResultsPath: for -runTests, which Unity controls internally and
       doesn't go through our sentinel. Checks the NUnit XML result file's
       root "result" attribute instead.
+    - CompileLogPath: for a bare compile check (-quit with no
+      -executeMethod). Scans the log for C# compiler errors. A sentinel is
+      useless here by definition: when the code doesn't compile, there is
+      no compiled assembly for -executeMethod to call into, so nothing
+      could write one.
 .PARAMETER UnityArgs
   Full argument list to pass to Unity.exe (batchmode/nographics/projectPath/etc).
 .PARAMETER SentinelName
   Name (without extension) of the Logs/<name>.exitcode file to read.
 .PARAMETER TestResultsPath
   Path to the -testResults XML file to check instead of a sentinel.
+.PARAMETER CompileLogPath
+  Path to the -logFile to scan for compiler errors instead of a sentinel.
 .PARAMETER TimeoutMinutes
   Safety cap - if Unity is still running after this long, kill it and fail.
 #>
@@ -41,13 +48,15 @@ param(
 
     [string]$TestResultsPath,
 
+    [string]$CompileLogPath,
+
     [int]$TimeoutMinutes = 30
 )
 
 $ErrorActionPreference = "Stop"
 
-if (-not $SentinelName -and -not $TestResultsPath) {
-    Write-Error "wait-for-unity.ps1: pass either -SentinelName or -TestResultsPath."
+if (-not $SentinelName -and -not $TestResultsPath -and -not $CompileLogPath) {
+    Write-Error "wait-for-unity.ps1: pass one of -SentinelName, -TestResultsPath, or -CompileLogPath."
     exit 1
 }
 
@@ -96,6 +105,26 @@ if ($SentinelName) {
     $code = (Get-Content $sentinelPath -Raw).Trim()
     Write-Host "Sentinel $sentinelPath reports exit code $code"
     exit ([int]$code)
+}
+
+if ($CompileLogPath) {
+    if (-not (Test-Path $CompileLogPath)) {
+        Write-Error "Unity exited without writing a log at $CompileLogPath - it likely failed to start at all."
+        exit 1
+    }
+
+    # "error CS####" is what the C# compiler emits; the second pattern
+    # catches the case where Unity reports the failure without echoing the
+    # individual errors into this log.
+    $compileErrors = Select-String -Path $CompileLogPath -Pattern 'error CS\d+', 'Scripts have compiler errors'
+    if ($compileErrors) {
+        Write-Host "Compile errors found in ${CompileLogPath}:"
+        $compileErrors | ForEach-Object { Write-Host "  $($_.Line.Trim())" }
+        exit 1
+    }
+
+    Write-Host "No compile errors found in $CompileLogPath."
+    exit 0
 }
 
 if (-not (Test-Path $TestResultsPath)) {

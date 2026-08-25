@@ -1,5 +1,32 @@
 # Build
 
+## 컴파일만 빠르게 확인하기
+
+CI 파이프라인 전체(생성→검증→테스트→빌드)를 돌리지 않고 "일단 컴파일은 되는지"만 보고 싶을 때
+두 가지 방법이 있다.
+
+**1. Unity Editor에서 (가장 빠름)**: 프로젝트를 열면 Unity가 자동으로 전체 스크립트를 컴파일한다.
+컴파일 에러가 있으면 Console 창(`Ctrl+Shift+C`)에 빨간 줄로 나오고, 에디터 우하단에도 에러 개수가
+표시된다. 에러가 있는 동안에는 `Game Factory` 메뉴 자체가 동작하지 않는다(에디터 스크립트도 같이
+컴파일에 실패하므로) - 그것도 컴파일 실패의 신호다.
+
+에러가 없으면 그 자리에서 `Game Factory` 메뉴로 파이프라인 각 단계를 직접 실행할 수 있다
+(`Generate > Factory Runner Sample` → `Validate > All GameSpecs` → `Build > Factory Runner (APK)`).
+
+**2. Editor를 열지 않고 커맨드라인에서**:
+
+```powershell
+cd C:\Dory_tycoon
+.\scripts\dev\compile-check.ps1
+```
+
+Unity를 배치 모드로 띄워 전체 컴파일만 하고 종료한 뒤, `Logs/unity-compile.log`에서 `error CS####`를
+찾아 PASS/FAIL을 알려준다. **Unity Editor가 같은 프로젝트를 열고 있으면 실패한다** (Unity는 같은
+프로젝트를 두 번 열지 못한다) - 먼저 Editor를 닫아야 한다.
+
+이 스크립트는 일부러 `-executeMethod` 센티넬을 쓰지 않는다: 컴파일이 깨진 상태에서는 호출할
+어셈블리 자체가 없으므로, 정작 이 스크립트가 잡아내야 할 상황에서 센티넬이 절대 기록될 수 없다.
+
 ## 로컬에서 빌드하기 (Unity Editor)
 
 1. `Game Factory > Generate > Factory Runner Sample` (또는 원하는 GameSpec에 대해
