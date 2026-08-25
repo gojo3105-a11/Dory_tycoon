@@ -148,9 +148,37 @@ try {
     # around, and treating that as "dirty" would block every scheduled sync
     # from then on. A merge that would actually overwrite an untracked file
     # fails on its own, and the handler below restores the original state.
+    #
+    # One specific tracked file gets the same tolerance: merely opening the
+    # Unity Editor can touch ProjectSettings/ProjectVersion.txt (it can
+    # append a revision-hash line) even when the actual Unity version is
+    # unchanged. Left as a hard stop, this silently blocked every single
+    # scheduled sync overnight - the very first thing that happens after
+    # a local Editor session is a sync run, and it kept hitting this wall.
+    # Auto-commit it, but only when m_EditorVersion itself is unchanged;
+    # if that line actually differs, still stop and ask a human, since
+    # CLAUDE.md is explicit that the tracked Unity version must never
+    # change without an explicit request.
     $dirty = Invoke-Git @("status", "--porcelain", "--untracked-files=no")
     if ($dirty) {
-        throw "Uncommitted changes to tracked files - stopping. Commit or stash them first:`n`n$dirty"
+        $dirtyLines = $dirty -split "\r?\n" | Where-Object { $_ }
+        $onlyProjectVersion = ($dirtyLines.Count -eq 1) -and ($dirtyLines[0] -match '^\s*M\s+ProjectSettings/ProjectVersion\.txt\s*$')
+
+        if (-not $onlyProjectVersion) {
+            throw "Uncommitted changes to tracked files - stopping. Commit or stash them first:`n`n$dirty"
+        }
+
+        $projectVersionPath = Join-Path $RepoPath "ProjectSettings\ProjectVersion.txt"
+        $oldVersionLine = (Invoke-Git @("show", "HEAD:ProjectSettings/ProjectVersion.txt")) -split "\r?\n" | Where-Object { $_ -like "m_EditorVersion:*" } | Select-Object -First 1
+        $newVersionLine = (Get-Content $projectVersionPath) | Where-Object { $_ -like "m_EditorVersion:*" } | Select-Object -First 1
+
+        if ($oldVersionLine -ne $newVersionLine) {
+            throw "ProjectSettings/ProjectVersion.txt's m_EditorVersion changed ('$oldVersionLine' -> '$newVersionLine') - stopping. This needs a human decision, not an automated commit."
+        }
+
+        Write-Log "ProjectVersion.txt changed but m_EditorVersion is still '$newVersionLine' - Editor housekeeping, not a real version change. Committing it."
+        Invoke-Git @("add", "ProjectSettings/ProjectVersion.txt") | Out-Null
+        Invoke-Git @("commit", "-m", "chore: Unity Editor touched ProjectVersion.txt (version unchanged)") | Out-Null
     }
 
     $currentBranch = Invoke-Git @("rev-parse", "--abbrev-ref", "HEAD")
