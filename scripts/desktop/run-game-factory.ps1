@@ -30,13 +30,13 @@ function Show-ErrorBox($message) {
 }
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-    Show-ErrorBox "GitHub CLI(gh)가 설치되어 있지 않습니다.`n`nPowerShell에서 아래 명령으로 설치 후 'gh auth login'으로 로그인해주세요:`n`nwinget install --id GitHub.cli"
+    Show-ErrorBox "The GitHub CLI (gh) is not installed.`n`nInstall it from PowerShell and then run 'gh auth login':`n`nwinget install --id GitHub.cli"
     exit 1
 }
 
 $gameId = [Microsoft.VisualBasic.Interaction]::InputBox(
-    "실행할 GameSpec id를 입력하세요 (GameSpecs/<id>.json)",
-    "Game Factory 실행",
+    "Which GameSpec id should run? (GameSpecs/<id>.json)",
+    "Run Game Factory",
     "game01"
 )
 
@@ -51,12 +51,12 @@ try {
     }
 }
 catch {
-    Show-ErrorBox "실행 요청에 실패했습니다:`n`n$_`n`n'gh auth login'으로 로그인되어 있는지 확인해주세요."
+    Show-ErrorBox "The run request failed:`n`n$_`n`nCheck that you are logged in with 'gh auth login'."
     exit 1
 }
 
 $openLog = [System.Windows.Forms.MessageBox]::Show(
-    "'$gameId' 파이프라인 실행을 요청했습니다.`n`n지금 GitHub Actions 진행 상황 페이지를 여시겠습니까?",
+    "Requested a pipeline run for '$gameId'.`n`nOpen the GitHub Actions progress page now?",
     "Game Factory",
     "YesNo",
     "Information"

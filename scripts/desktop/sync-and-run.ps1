@@ -94,7 +94,7 @@ function Invoke-Git {
 
         $delay = [Math]::Pow(2, $attempt + 1)
         Write-Log "git $($Arguments -join ' ') failed; retrying in ${delay}s"
-        Start-Sleep -Seconds $delay
+        Start-Sleep -Seconds ([int]$delay)
         $attempt++
     }
 }
@@ -135,7 +135,7 @@ try {
     # fails on its own, and the handler below restores the original state.
     $dirty = Invoke-Git @("status", "--porcelain", "--untracked-files=no")
     if ($dirty) {
-        throw "추적 중인 파일에 커밋되지 않은 변경이 있어 중단했습니다. 먼저 커밋하거나 stash 해주세요:`n`n$dirty"
+        throw "Uncommitted changes to tracked files - stopping. Commit or stash them first:`n`n$dirty"
     }
 
     $currentBranch = Invoke-Git @("rev-parse", "--abbrev-ref", "HEAD")
@@ -167,7 +167,7 @@ try {
         # A failed abort must not mask why the merge failed in the first place.
         try { Invoke-Git @("merge", "--abort") | Out-Null } catch { Write-Log "merge --abort also failed: $_" }
 
-        throw "병합에 실패해서 중단했습니다 (저장소를 원래 상태로 되돌리려고 시도했습니다). 직접 확인이 필요합니다:`n`n$mergeError"
+        throw "Merge failed - stopping (tried to restore the original state). This needs a human:`n`n$mergeError"
     }
 
     $after = Invoke-Git @("rev-parse", "HEAD")
@@ -176,13 +176,13 @@ try {
     Write-Log (Invoke-Git @("push", $OriginRemote, $Branch) -Retries 4)
 
     if ($forkHead -eq $after) {
-        Show-Result "이미 최신 상태입니다. 포크에 새로 올라간 변경이 없어서 파이프라인도 실행하지 않았습니다." "Information"
+        Show-Result "Already up to date. Nothing new reached the fork, so no pipeline run was started." "Information"
         exit 0
     }
 
     if ($forkHead) {
         $commitCount = Invoke-Git @("rev-list", "--count", "$forkHead..$after")
-        $summary = "새 커밋 $commitCount개를 포크에 push했습니다."
+        $summary = "Pushed $commitCount new commit(s) to the fork."
 
         $changedPaths = (Invoke-Git @("diff", "--name-only", $forkHead, $after)) -split "\r?\n" | Where-Object { $_ }
         $specChanges = $changedPaths | Where-Object { $_ -like "GameSpecs/*" }
@@ -193,29 +193,29 @@ try {
         # up new Unity errors.
         $buildRelevant = $changedPaths | Where-Object { $_ -notlike "Reports/*" }
         if (-not $buildRelevant) {
-            Show-Result "$summary`n`n오류 리포트만 갱신되어 파이프라인은 실행하지 않았습니다." "Information"
+            Show-Result "$summary`n`nOnly the error report changed, so no pipeline run was started." "Information"
             exit 0
         }
     }
     else {
-        $summary = "브랜치를 포크에 처음 push했습니다."
+        $summary = "Pushed the branch to the fork for the first time."
         $specChanges = $null
     }
 
     if ($NoTrigger) {
-        Show-Result "$summary`n`n(-NoTrigger 지정으로 파이프라인은 실행하지 않았습니다.)" "Information"
+        Show-Result "$summary`n`n(-NoTrigger was set, so no pipeline run was started.)" "Information"
         exit 0
     }
 
     # A push already starts game-factory.yml when GameSpecs/** changed;
     # triggering again here would just queue a duplicate run.
     if ($specChanges) {
-        Show-Result "$summary`n`nGameSpecs 변경이 포함되어 파이프라인이 자동으로 시작됩니다.`n`n진행 상황: https://github.com/$RepoSlug/actions" "Information"
+        Show-Result "$summary`n`nGameSpecs changed, so the push starts the pipeline on its own.`n`nProgress: https://github.com/$RepoSlug/actions" "Information"
         exit 0
     }
 
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        Show-Result "$summary`n`n다만 GitHub CLI(gh)가 없어서 파이프라인을 자동 실행하지 못했습니다. 아래로 설치 후 'gh auth login' 해주세요:`n`nwinget install --id GitHub.cli" "Warning"
+        Show-Result "$summary`n`nBut the GitHub CLI (gh) is missing, so the pipeline could not be started. Install it and run 'gh auth login':`n`nwinget install --id GitHub.cli" "Warning"
         exit 1
     }
 
@@ -226,14 +226,14 @@ try {
     $ErrorActionPreference = "Stop"
 
     if ($ghExit -ne 0) {
-        Show-Result "$summary`n`n하지만 파이프라인 실행 요청이 실패했습니다 (exit $ghExit):`n$(($ghOutput | Out-String).Trim())`n`n'gh auth login' 상태를 확인해주세요." "Error"
+        Show-Result "$summary`n`nBut the pipeline run request failed (exit $ghExit):`n$(($ghOutput | Out-String).Trim())`n`nCheck your 'gh auth login' state." "Error"
         exit 1
     }
 
-    Show-Result "$summary`n`n'$GameId' 파이프라인 실행을 요청했습니다.`n`n진행 상황: https://github.com/$RepoSlug/actions" "Information"
+    Show-Result "$summary`n`nRequested a pipeline run for '$GameId'.`n`nProgress: https://github.com/$RepoSlug/actions" "Information"
     exit 0
 }
 catch {
-    Show-Result "동기화에 실패했습니다:`n`n$_" "Error"
+    Show-Result "Sync failed:`n`n$_" "Error"
     exit 1
 }

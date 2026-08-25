@@ -132,6 +132,13 @@ git branch -D fork-check
 파일이 없거나 오래되었으면(생성 시각 확인) 그때 사용자에게 요청한다. **"에러 있으면 붙여주세요"를
 먼저 말하지 말고, 위 방법으로 먼저 확인한다.**
 
+## PowerShell 스크립트 규칙
+
+`scripts/**/*.ps1`는 **ASCII만 사용한다 (한글 금지).** Windows PowerShell 5.1은 BOM 없는 UTF-8
+`.ps1`을 로컬 코드페이지로 읽어서 한글 문자열 리터럴이 깨지고, 심하면 파싱 자체가 실패한다
+(실제로 겪은 문제 - `collect-errors.ps1`/`sync-and-run.ps1`이 이것 때문에 실행되지 않았다).
+사용자에게 보여줄 한국어 설명은 `.md` 문서에 쓴다 (문서는 실행되지 않으므로 안전하다).
+
 ## Git 규칙
 
 - 작업 단위를 작게 나누어 커밋한다 (`feat: add game spec system`, `feat: add runner module` 등).
