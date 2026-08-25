@@ -14,6 +14,16 @@
 # Never ignore Assets/GameFactory/Build (our C# build automation folder)
 !/Assets/GameFactory/Build/
 
+# ===== Generated per-game output =====
+# GameFactoryGenerator rebuilds all of this from GameSpecs/*.json at the
+# start of every pipeline run, so it is a pure derivative and stays out of
+# git - committing generated Unity scenes from both the PC and CI would
+# just produce conflicts on files nobody edits by hand.
+/Assets/GeneratedGames/
+/Assets/GeneratedGames.meta
+/Assets/Resources/GameSpecs/
+/Assets/Resources/GameSpecs.meta
+
 # Visual Studio / Rider / VS Code cache
 .vs/
 .vscode/

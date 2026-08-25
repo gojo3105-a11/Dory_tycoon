@@ -43,6 +43,10 @@ namespace GameFactory.Editor
             Directory.CreateDirectory(EditorPaths.ToAbsolutePath(PrefabFolder));
             Directory.CreateDirectory(EditorPaths.ToAbsolutePath(MaterialFolder));
 
+            // AssetDatabase.CreateAsset below refuses to write into a folder
+            // the database has not seen yet, so make it pick these up first.
+            AssetDatabase.Refresh();
+
             Material creamMat = GetOrCreateMaterial("Cream.mat", CreamColor);
             Material hairMat = GetOrCreateMaterial("Hair.mat", HairColor);
             Material bowTieMat = GetOrCreateMaterial("BowTie.mat", BowTieColor);
@@ -81,8 +85,11 @@ namespace GameFactory.Editor
             GameObject go = GameObject.CreatePrimitive(type);
             go.name = name;
 
-            // Visual-only placeholder: no physics collisions come from this hierarchy.
-            Object.DestroyImmediate(go.GetComponent<Collider>());
+            // Visual-only placeholder: no physics collisions come from this
+            // hierarchy. (Which Collider subclass CreatePrimitive attaches
+            // varies by primitive, hence the base-class lookup.)
+            Collider autoCollider = go.GetComponent<Collider>();
+            if (autoCollider != null) Object.DestroyImmediate(autoCollider);
 
             go.GetComponent<MeshRenderer>().sharedMaterial = material;
 

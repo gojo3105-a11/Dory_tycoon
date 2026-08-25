@@ -152,11 +152,14 @@ namespace GameFactory.Editor
             GameUIController controller = controllerGO.AddComponent<GameUIController>();
             controller.SetReferences(scoreText, panel, finalScoreText, bestScoreText, restartButton);
 
-            ShopController shopController = BuildShopUI(canvasGO.transform);
-            shopButton.onClick.AddListener(shopController.Open);
+            // The shop button is handed to BuildShopUI rather than wired with
+            // onClick.AddListener here: a listener added at edit time is not
+            // persisted into the saved scene. ShopController hooks it up in
+            // its own Start instead, like GameUIController does for Restart.
+            BuildShopUI(canvasGO.transform, shopButton);
         }
 
-        private static ShopController BuildShopUI(Transform canvasTransform)
+        private static void BuildShopUI(Transform canvasTransform, Button openButton)
         {
             GameObject shopPanel = new GameObject("ShopPanel", typeof(RectTransform));
             shopPanel.transform.SetParent(canvasTransform, false);
@@ -196,9 +199,7 @@ namespace GameFactory.Editor
 
             GameObject shopControllerGO = new GameObject("ShopController");
             ShopController shopController = shopControllerGO.AddComponent<ShopController>();
-            shopController.SetReferences(shopPanel, currencyText, coinMagnetButton, coinMagnetButtonLabel, redSkinButton, redSkinButtonLabel, closeButton);
-
-            return shopController;
+            shopController.SetReferences(shopPanel, currencyText, openButton, coinMagnetButton, coinMagnetButtonLabel, redSkinButton, redSkinButtonLabel, closeButton);
         }
 
         private static (Button button, Text label) CreateShopButton(Transform parent, string name, Vector2 anchoredPosition, float width = 220f)

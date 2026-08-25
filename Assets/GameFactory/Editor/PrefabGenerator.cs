@@ -89,8 +89,11 @@ namespace GameFactory.Editor
         {
             GameObject mainCharacterPrefab = MainCharacterGenerator.EnsureMainCharacterPrefab();
             GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(mainCharacterPrefab, parent);
-            instance.transform.SetParent(parent, false);
+
+            // Instantiating with a parent preserves world position, so pin the
+            // visual to the gameplay root explicitly.
             instance.transform.localPosition = Vector3.zero;
+            instance.transform.localRotation = Quaternion.identity;
         }
 
         private static GameObject CreateGroundTilePrefab(GameSpec spec, string assetFolder, float tileWidth, int groundLayer)

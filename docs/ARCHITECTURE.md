@@ -83,6 +83,12 @@ Runtime asmdef를 참조).
   (`GameFactoryGenerator`는 `genre != Runner`면 예외를 던진다).
 - GravitySwitch 외의 Modules(DoubleJump, Dash, MovingPlatform 등) 폴더는 비어 있다 - 실제로
   필요해지는 다음 게임에서 구현한다.
-- CI에서 생성된 Scene/Prefab을 자동으로 커밋하지 않는다 (의도적 - 아직 사람이 검토 없이 저장소에
-  커밋을 남기지 않도록). `Assets/GeneratedGames/`는 git에 포함되는 실제 에셋이므로, 사람이 로컬
-  Unity에서 생성 후 리뷰하고 커밋하는 것을 기본 흐름으로 가정한다.
+- 생성된 Scene/Prefab은 **git에 커밋하지 않는다** (`.gitignore`에서 `Assets/GeneratedGames/`와
+  `Assets/Resources/GameSpecs/`를 제외). GameSpec에서 매 파이프라인 실행마다 결정적으로 다시
+  생성되는 순수 파생물이고, PC와 CI 양쪽에서 같은 Unity Scene을 커밋하면 아무도 손으로 편집하지
+  않는 파일에서 충돌만 생긴다. 빌드 전에 항상 Generate 단계가 선행되므로 산출물이 저장소에 없어도
+  파이프라인은 성립한다.
+  - 예외: `Assets/Common/Character/Prefabs/MainCharacter.prefab`은 10개 게임이 공유하는 실제
+    에셋이므로 커밋 대상이다 (지금은 `MainCharacterGenerator`가 만든 임시 placeholder이고, 실제
+    3D 모델로 교체되면 그 파일이 그대로 유지된다 - `EnsureMainCharacterPrefab`은 이미 있으면
+    다시 만들지 않는다).

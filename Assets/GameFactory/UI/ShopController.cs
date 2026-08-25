@@ -16,6 +16,7 @@ namespace GameFactory.UI
     {
         [SerializeField] private GameObject shopPanel;
         [SerializeField] private Text currencyText;
+        [SerializeField] private Button openButton;
         [SerializeField] private Button coinMagnetButton;
         [SerializeField] private Text coinMagnetButtonLabel;
         [SerializeField] private Button redSkinButton;
@@ -25,10 +26,11 @@ namespace GameFactory.UI
         private string gameId;
 
         /// <summary>Wires structural references. Called at edit time by SceneGenerator.</summary>
-        public void SetReferences(GameObject panel, Text currency, Button coinMagnet, Text coinMagnetLabel, Button redSkin, Text redSkinLabel, Button close)
+        public void SetReferences(GameObject panel, Text currency, Button open, Button coinMagnet, Text coinMagnetLabel, Button redSkin, Text redSkinLabel, Button close)
         {
             shopPanel = panel;
             currencyText = currency;
+            openButton = open;
             coinMagnetButton = coinMagnet;
             coinMagnetButtonLabel = coinMagnetLabel;
             redSkinButton = redSkin;
@@ -36,10 +38,17 @@ namespace GameFactory.UI
             closeButton = close;
         }
 
+        /// <summary>
+        /// Button clicks are hooked up here, at runtime, and not by
+        /// SceneGenerator: onClick.AddListener registers a non-persistent
+        /// listener, which is not serialized into the saved scene, so wiring
+        /// it at edit time would silently produce dead buttons.
+        /// </summary>
         private void Start()
         {
             gameId = GameManager.Instance != null ? GameManager.Instance.GameId : string.Empty;
 
+            if (openButton != null) openButton.onClick.AddListener(Open);
             if (coinMagnetButton != null) coinMagnetButton.onClick.AddListener(HandleCoinMagnetClicked);
             if (redSkinButton != null) redSkinButton.onClick.AddListener(HandleRedSkinClicked);
             if (closeButton != null) closeButton.onClick.AddListener(Close);

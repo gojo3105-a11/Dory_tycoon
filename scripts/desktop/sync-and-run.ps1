@@ -107,10 +107,15 @@ try {
         }
     }
 
-    # Refuse to merge over uncommitted work rather than risk losing it.
-    $dirty = Invoke-Git @("status", "--porcelain")
+    # Refuse to merge over uncommitted edits to tracked files rather than
+    # risk losing them. Untracked files are deliberately tolerated: running
+    # the generator locally leaves Assets/GeneratedGames and friends lying
+    # around, and treating that as "dirty" would block every scheduled sync
+    # from then on. A merge that would actually overwrite an untracked file
+    # fails on its own, and the handler below restores the original state.
+    $dirty = Invoke-Git @("status", "--porcelain", "--untracked-files=no")
     if ($dirty) {
-        throw "작업 트리에 커밋되지 않은 변경이 있어 중단했습니다. 먼저 커밋하거나 stash 해주세요:`n`n$dirty"
+        throw "추적 중인 파일에 커밋되지 않은 변경이 있어 중단했습니다. 먼저 커밋하거나 stash 해주세요:`n`n$dirty"
     }
 
     $currentBranch = Invoke-Git @("rev-parse", "--abbrev-ref", "HEAD")
