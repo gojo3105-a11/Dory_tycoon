@@ -86,14 +86,14 @@ scripts/
   "com.unity.modules.audio": "1.0.0",
   "com.unity.modules.physics2d": "1.0.0",
   "com.unity.modules.ui": "1.0.0",
-  "com.unity.test-framework": "1.4.5"
+  "com.unity.test-framework": "1.4.5",
+  "com.unity.ugui": "2.5.0"
 }
 ```
 
-- 위는 원본 선언이고, 실제로 Unity 6.5가 리졸브한 버전은 다르다 (예: `com.unity.ugui`가
-  `UnityEngine.UI` 네임스페이스 제공을 위해 추가로 필요했고, PC에서 Package Manager로 직접
-  설치/버전 조정함). **정확한 최종 버전은 `Packages/packages-lock.json`을 확인해야 한다 (이
-  원격 환경에는 그 파일 최신본이 없어 확인 필요로 남겨둔다).**
+- **`Packages/packages-lock.json` 확보 완료(PC에서 커밋).** Unity 6.5가 실제로 리졸브한 버전:
+  `com.unity.ugui 2.5.0`, `com.unity.test-framework 1.7.0`(선언은 1.4.5지만 상위 호환 버전으로
+  리졸브됨), `com.unity.ext.nunit 2.1.0`, 나머지 모듈은 전부 `1.0.0`.
 - TextMeshPro, Input System(신규), URP/HDRP, Cinemachine, Addressables 등은 **미설치**.
 
 ## 7. Input System
@@ -152,7 +152,6 @@ scripts/
 
 ## 14. 다음에 확인이 필요한 항목
 
-- `Packages/packages-lock.json`의 정확한 리졸브 버전
 - Android Minimum/Target API Level 실제 값 (Player Settings에서 확인)
 - 3D 캐릭터/환경 에셋을 도입할 경우 필요한 추가 패키지(예: 애니메이션 리타게팅, glTF 임포터 등)와
   Image-to-3D 변환에 실제로 쓸 수 있는 도구가 이 환경(원격 컨테이너 + PC)에 있는지 - **아직
