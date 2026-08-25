@@ -72,10 +72,11 @@ scripts/
    재실행하면서 원래 프로세스가 먼저 종료되는 문제 때문에, 직접 `& $unity ...`로 호출하는 대신 이
    래퍼가 "이 실행이 띄운 Unity 프로세스가 전부 종료될 때까지" 능동적으로 기다린 뒤 진짜 결과
    (성공/실패)를 판정한다.
-4. **현재 상태**: 실제 Android Player 빌드는 성공을 확인했다. 그 직후 빌드 리포트 파일이 Unity의
-   `-logFile`과 같은 경로에 쓰려다 충돌(Windows `Sharing violation`)하는 버그가 있었는데 방금
-   수정해서 push했다 - **이 문서 작성 시점 기준, 수정 후 전체 파이프라인(5단계 모두 초록)이 처음부터
-   끝까지 한 번에 통과하는 것은 아직 재확인 전이다.** 재확인되는 대로 이 섹션을 갱신한다.
+4. **현재 상태 (재확인 완료)**: 로그 파일 경로 충돌 버그(`unity-build-report.log` 분리)를 수정한 뒤
+   재실행한 파이프라인에서 실제로 설치 가능한 APK가 정상 생성되었고, 사용자가 직접 기기에 설치해
+   정상 동작을 확인했다. **Generate → Validate → Test(EditMode/PlayMode) → Build 5단계 파이프라인이
+   self-hosted Windows runner에서 끝까지 통과해 유효한 APK를 만들어내는 것이 실전 확인되었다.**
+   이제부터 10개 게임 제작은 이 검증된 파이프라인을 기반으로 진행한다.
 
 ## 6. 사용 중인 Unity Packages (`Packages/manifest.json`)
 
@@ -153,7 +154,8 @@ scripts/
 
 - `Packages/packages-lock.json`의 정확한 리졸브 버전
 - Android Minimum/Target API Level 실제 값 (Player Settings에서 확인)
-- 이번에 고친 파이프라인이 5단계 모두 초록으로 끝나는지 최종 재확인
 - 3D 캐릭터/환경 에셋을 도입할 경우 필요한 추가 패키지(예: 애니메이션 리타게팅, glTF 임포터 등)와
   Image-to-3D 변환에 실제로 쓸 수 있는 도구가 이 환경(원격 컨테이너 + PC)에 있는지 - **아직
   조사 전, Phase 4에서 확인한다.**
+
+~~파이프라인 5단계 최종 재확인~~ - **완료.** 사용자가 실제 기기에서 APK 정상 설치/동작을 확인함.
