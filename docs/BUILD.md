@@ -5,10 +5,13 @@
 1. `Game Factory > Generate > Factory Runner Sample` (또는 원하는 GameSpec에 대해
    `GameFactoryGenerator.Generate("GameSpecs/<id>.json")`)로 Scene을 먼저 생성한다.
 2. `Game Factory > Build > Factory Runner (APK)`를 실행한다.
-3. 결과물은 `Builds/<game_id>/APK/<game_id>.apk` (또는 AAB 빌드 시 `Builds/<game_id>/AAB/`)에
-   생성된다. Unity 콘솔 원본 로그는 `Logs/unity-build.log`, BuildAndroid가 정리한 단계별
-   요약은 `Logs/unity-build-report.log` (일부러 다른 파일 - 같은 파일에 쓰면 Unity의
-   `-logFile`이 이미 그 경로를 열고 있어서 Windows에서 `IOException: Sharing violation`이 난다).
+3. 결과물은 `Builds/<game_id>/APK/<GameXX>_<제목>_v<버전>.apk` (또는 AAB 빌드 시
+   `Builds/<game_id>/AAB/`)에 생성된다 - 예: `game01`/제목 "Factory Runner"/버전 `0.1.0`이면
+   `Builds/game01/APK/Game01_FactoryRunner_v0.1.0.apk` (`BundleIdUtility`처럼 폴더 경로는 항상
+   `game.id` 그대로 쓰지만, 파일명만 사람이 읽기 좋은 `GameXX_제목_v버전` 형식이다). Unity 콘솔
+   원본 로그는 `Logs/unity-build.log`, BuildAndroid가 정리한 단계별 요약은
+   `Logs/unity-build-report.log` (일부러 다른 파일 - 같은 파일에 쓰면 Unity의 `-logFile`이 이미
+   그 경로를 열고 있어서 Windows에서 `IOException: Sharing violation`이 난다).
 
 ## CLI로 빌드하기
 

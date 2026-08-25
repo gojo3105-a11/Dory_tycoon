@@ -108,12 +108,13 @@ APK 빌드 전 다음을 확인한다(실행은 Unity가 설치된 self-hosted r
 - [ ] 상점에서 구매한 강화가 다음 판에 실제로 적용됨
 - [ ] 기존 EditMode/PlayMode 테스트 통과 (Shop 관련 테스트는 필요 시 추가)
 
-## 8. 빌드/리포트 산출물
+## 8. 빌드/리포트 산출물 (파일명 규칙 구현 완료)
 
-- APK 출력: `Builds/Game01/Game01_FactoryRunner_v0.1.0.apk` (신규 지침 명명 규칙) - 기존
-  `BuildAndroid.cs`의 출력 경로 규칙(`Builds/<gameId>/APK/<gameId>.apk`)과 다르므로, 이 명명
-  규칙을 반영하려면 `BuildAndroid.cs`에 버전/표시용 이름을 위한 소폭 확장이 필요하다(게임 로직
-  변경 아님, 파일명 조합 로직 추가).
+- APK 출력: `Builds/game01/APK/Game01_FactoryRunner_v0.1.0.apk` - 폴더 경로는 기존 규칙
+  (`Builds/<gameId>/APK/`, CI 아티팩트 업로드 glob과의 호환을 위해 `gameId` 그대로 소문자 유지)을
+  유지하고, **파일명만** `GameXX_제목_v버전` 형식으로 조합하도록 `BuildAndroid.cs`를 확장했다
+  (`CapitalizeGameId`/`SanitizeForFileName`). 초기 버전 기본값도 `1.0.0` → `0.1.0`으로 바꿔
+  신규 지침의 명명 예시와 실제 버전이 일치하도록 했다.
 - 패키지 ID: `com.gamefactory.game01` (§2의 id 정리 이후 자동 생성됨).
 - 리포트: `Reports/Game01_Report.txt` - 게임 종류/게임 방법/게임 특징/조작방법/목표/성장요소/
   사용캐릭터/사용맵/APK 정보를 한국어 평문으로 작성(신규 지침 §10 필수 항목), **APK 파일이 실제로

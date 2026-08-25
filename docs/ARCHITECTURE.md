@@ -24,7 +24,7 @@ GameValidator.ValidateAll()   : 중복 id, Bundle ID 충돌, 필수 오브젝트
 Unity Test Framework (EditMode + PlayMode)
         │
         ▼
-BuildAndroid.Build(id, apk|aab)   →  Builds/<id>/{APK,AAB}/<id>.{apk,aab}
+BuildAndroid.Build(id, apk|aab)   →  Builds/<id>/{APK,AAB}/<GameXX>_<Title>_v<Version>.{apk,aab}
 ```
 
 ## 폴더 구조와 책임

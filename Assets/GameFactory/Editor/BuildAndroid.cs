@@ -106,7 +106,8 @@ namespace GameFactory.Editor
             string extension = buildType == AndroidBuildType.Aab ? "aab" : "apk";
             string outputFolder = Path.Combine("Builds", gameId, buildType == AndroidBuildType.Aab ? "AAB" : "APK");
             Directory.CreateDirectory(EditorPaths.ToAbsolutePath(outputFolder));
-            string outputPath = Path.Combine(outputFolder, $"{gameId}.{extension}");
+            string fileName = $"{CapitalizeGameId(gameId)}_{SanitizeForFileName(spec.game.title)}_v{PlayerSettings.bundleVersion}.{extension}";
+            string outputPath = Path.Combine(outputFolder, fileName);
 
             var options = new BuildPlayerOptions
             {
@@ -136,7 +137,7 @@ namespace GameFactory.Editor
 
             if (string.IsNullOrEmpty(PlayerSettings.bundleVersion))
             {
-                PlayerSettings.bundleVersion = "1.0.0";
+                PlayerSettings.bundleVersion = "0.1.0";
             }
 
             if (PlayerSettings.Android.bundleVersionCode <= 0)
@@ -209,6 +210,25 @@ namespace GameFactory.Editor
             string logPath = Path.Combine(EditorPaths.ProjectRoot, "Logs", "unity-build-report.log");
             Directory.CreateDirectory(Path.GetDirectoryName(logPath));
             File.WriteAllText(logPath, $"[{gameId}]\n{content}");
+        }
+
+        /// <summary>"game01" -> "Game01", matching the GameXX_Title_vVersion output filename convention.</summary>
+        private static string CapitalizeGameId(string gameId)
+        {
+            if (string.IsNullOrEmpty(gameId)) return gameId;
+            return char.ToUpperInvariant(gameId[0]) + gameId.Substring(1);
+        }
+
+        /// <summary>Strips spaces/punctuation from a game title so it's safe to use in a file name (Hangul/other letters are kept).</summary>
+        private static string SanitizeForFileName(string value)
+        {
+            var sb = new StringBuilder();
+            foreach (char c in value ?? string.Empty)
+            {
+                if (char.IsLetterOrDigit(c)) sb.Append(c);
+            }
+
+            return sb.Length > 0 ? sb.ToString() : "Game";
         }
 
         private static string GetCommandLineArg(string name)
