@@ -131,11 +131,94 @@ namespace GameFactory.Editor
             CreateText(buttonGO.transform, "Label", "Restart", 40, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
 
+            GameObject shopButtonGO = new GameObject("ShopButton", typeof(RectTransform));
+            shopButtonGO.transform.SetParent(panel.transform, false);
+            RectTransform shopButtonRect = shopButtonGO.GetComponent<RectTransform>();
+            shopButtonRect.anchorMin = new Vector2(0.5f, 0.5f);
+            shopButtonRect.anchorMax = new Vector2(0.5f, 0.5f);
+            shopButtonRect.pivot = new Vector2(0.5f, 0.5f);
+            shopButtonRect.sizeDelta = new Vector2(280f, 90f);
+            shopButtonRect.anchoredPosition = new Vector2(0f, -200f);
+            Image shopButtonImage = shopButtonGO.AddComponent<Image>();
+            shopButtonImage.color = new Color(0.9f, 0.6f, 0.2f);
+            Button shopButton = shopButtonGO.AddComponent<Button>();
+
+            CreateText(shopButtonGO.transform, "Label", "상점", 36, TextAnchor.MiddleCenter,
+                Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+
             panel.SetActive(false);
 
             GameObject controllerGO = new GameObject("GameUIController");
             GameUIController controller = controllerGO.AddComponent<GameUIController>();
             controller.SetReferences(scoreText, panel, finalScoreText, bestScoreText, restartButton);
+
+            ShopController shopController = BuildShopUI(canvasGO.transform);
+            shopButton.onClick.AddListener(shopController.Open);
+        }
+
+        private static ShopController BuildShopUI(Transform canvasTransform)
+        {
+            GameObject shopPanel = new GameObject("ShopPanel", typeof(RectTransform));
+            shopPanel.transform.SetParent(canvasTransform, false);
+            RectTransform shopRect = shopPanel.GetComponent<RectTransform>();
+            shopRect.anchorMin = Vector2.zero;
+            shopRect.anchorMax = Vector2.one;
+            shopRect.sizeDelta = Vector2.zero;
+            shopRect.anchoredPosition = Vector2.zero;
+            Image shopImage = shopPanel.AddComponent<Image>();
+            shopImage.color = new Color(0.05f, 0.05f, 0.1f, 0.95f);
+
+            CreateText(shopPanel.transform, "ShopTitle", "상점", 56, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(400f, 80f), new Vector2(0f, -60f));
+
+            Text currencyText = CreateText(shopPanel.transform, "CurrencyText", "0", 40, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(300f, 60f), new Vector2(0f, -140f));
+
+            CreateText(shopPanel.transform, "CoinMagnetLabel", "코인 자석", 36, TextAnchor.MiddleLeft,
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 0.5f),
+                new Vector2(260f, 60f), new Vector2(-140f, -240f));
+            (Button coinMagnetButton, Text coinMagnetButtonLabel) = CreateShopButton(
+                shopPanel.transform, "CoinMagnetButton", new Vector2(150f, -240f));
+
+            CreateText(shopPanel.transform, "RedSkinLabel", "빨간 스킨", 36, TextAnchor.MiddleLeft,
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 0.5f),
+                new Vector2(260f, 60f), new Vector2(-140f, -320f));
+            (Button redSkinButton, Text redSkinButtonLabel) = CreateShopButton(
+                shopPanel.transform, "RedSkinButton", new Vector2(150f, -320f));
+
+            (Button closeButton, Text closeButtonLabel) = CreateShopButton(
+                shopPanel.transform, "CloseButton", new Vector2(0f, -420f), width: 260f);
+            closeButtonLabel.text = "닫기";
+
+            shopPanel.SetActive(false);
+
+            GameObject shopControllerGO = new GameObject("ShopController");
+            ShopController shopController = shopControllerGO.AddComponent<ShopController>();
+            shopController.SetReferences(shopPanel, currencyText, coinMagnetButton, coinMagnetButtonLabel, redSkinButton, redSkinButtonLabel, closeButton);
+
+            return shopController;
+        }
+
+        private static (Button button, Text label) CreateShopButton(Transform parent, string name, Vector2 anchoredPosition, float width = 220f)
+        {
+            GameObject buttonGO = new GameObject(name, typeof(RectTransform));
+            buttonGO.transform.SetParent(parent, false);
+            RectTransform buttonRect = buttonGO.GetComponent<RectTransform>();
+            buttonRect.anchorMin = new Vector2(0.5f, 1f);
+            buttonRect.anchorMax = new Vector2(0.5f, 1f);
+            buttonRect.pivot = new Vector2(0.5f, 0.5f);
+            buttonRect.sizeDelta = new Vector2(width, 70f);
+            buttonRect.anchoredPosition = anchoredPosition;
+            Image buttonImage = buttonGO.AddComponent<Image>();
+            buttonImage.color = new Color(0.2f, 0.6f, 0.9f);
+            Button button = buttonGO.AddComponent<Button>();
+
+            Text label = CreateText(buttonGO.transform, "Label", string.Empty, 32, TextAnchor.MiddleCenter,
+                Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+
+            return (button, label);
         }
 
         private static Text CreateText(Transform parent, string name, string content, int fontSize, TextAnchor alignment,

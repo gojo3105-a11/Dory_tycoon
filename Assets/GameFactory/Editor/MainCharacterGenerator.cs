@@ -1,4 +1,5 @@
 using System.IO;
+using GameFactory.Core;
 using UnityEditor;
 using UnityEngine;
 
@@ -65,6 +66,8 @@ namespace GameFactory.Editor
 
             AddPrimitiveChild(root.transform, "BowTie", PrimitiveType.Cube, bowTieMat,
                 localPosition: new Vector3(0f, 0.78f, 0.28f), localScale: new Vector3(0.28f, 0.14f, 0.08f));
+
+            root.AddComponent<MainCharacterSkin>();
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
             Object.DestroyImmediate(root);

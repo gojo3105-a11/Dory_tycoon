@@ -21,13 +21,20 @@ namespace GameFactory.Gameplay.Runner
         /// <summary>Called by CoinSpawner when this pooled instance is reused.</summary>
         public void ResetState() => collected = false;
 
-        private void OnTriggerEnter2D(Collider2D other)
+        /// <summary>Collects this coin. Called directly by CoinMagnet, or via the trigger below on direct player contact.</summary>
+        public void Collect()
         {
-            if (collected || !other.CompareTag(playerTag)) return;
+            if (collected) return;
 
             collected = true;
             GameManager.Instance.AddScore(scoreValue);
             GetComponent<RecycleWhenPassed>()?.ReleaseNow();
+        }
+
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            if (!other.CompareTag(playerTag)) return;
+            Collect();
         }
     }
 }

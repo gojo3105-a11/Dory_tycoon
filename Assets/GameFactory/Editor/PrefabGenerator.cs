@@ -70,6 +70,10 @@ namespace GameFactory.Editor
 
             InstantiateMainCharacterVisual(go.transform);
 
+            GameObject magnetGO = new GameObject("CoinMagnet");
+            magnetGO.transform.SetParent(go.transform, false);
+            magnetGO.AddComponent<CoinMagnet>();
+
             RunnerPlayerController controller = go.AddComponent<RunnerPlayerController>();
             controller.SetGroundCheck(groundCheck, 1 << groundLayer);
 

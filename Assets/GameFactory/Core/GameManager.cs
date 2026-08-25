@@ -68,6 +68,7 @@ namespace GameFactory.Core
 
             CurrentState = GameState.GameOver;
             int best = SaveSystem.SaveBestScore(gameId, Score);
+            SaveSystem.SaveInt(gameId, ShopKeys.Currency, SaveSystem.GetInt(gameId, ShopKeys.Currency) + Score);
             GameOver?.Invoke(Score, best);
         }
 
