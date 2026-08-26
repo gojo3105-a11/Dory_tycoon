@@ -138,9 +138,9 @@ Feel 평가는 코드를 읽고 판단한 것이며 실제 화면을 직접 본 
 1. 코인 획득/중력 전환 Particle, 충돌 시 Camera Shake/Hit Stop
 2. 버튼 터치 피드백 + 화면 전환 애니메이션
 3. Vibration 피드백(점프/충돌)
-4. 게임오버 화면 → 결과 화면 재설계(§17 "결과 화면" 항목에 맞춰 Retry/Home 명확화 - 지금도
-   Restart는 있지만 "Home"에 해당하는 타이틀 복귀 동선이 없음, Main Menu 자체가 없으므로 P0
-   1번과 연동)
+4. ~~게임오버 화면 → 결과 화면 재설계~~ - **TASK-001에서 이미 해결됨.** Main Menu/Title이
+   생기면서 Home 버튼이 자연스럽게 타이틀로 복귀하는 동선이 생겼다(GameOverPanel의 Home
+   버튼 → `SceneController.ReloadCurrent()` → Title 표시).
 
 **P2 = 추가 개선**
 1. `ShopController` 데이터 기반 구조로 일반화
