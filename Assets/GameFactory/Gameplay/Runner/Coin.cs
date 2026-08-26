@@ -12,6 +12,7 @@ namespace GameFactory.Gameplay.Runner
 
         private bool collected;
 
+        private static readonly Color CollectVfxColor = new Color(1f, 0.85f, 0.2f);
         private static AudioClip collectClip;
 
         private void Reset()
@@ -33,6 +34,7 @@ namespace GameFactory.Gameplay.Runner
 
             if (collectClip == null) collectClip = ProceduralTone.Sine("SFX_Coin", 1200f, 0.1f);
             AudioManager.Instance?.PlaySfx(collectClip);
+            VfxManager.Instance?.PlayBurst(transform.position, CollectVfxColor, 0.12f, 10);
 
             GetComponent<RecycleWhenPassed>()?.ReleaseNow();
         }

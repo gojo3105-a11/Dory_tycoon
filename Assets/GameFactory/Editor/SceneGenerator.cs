@@ -45,6 +45,8 @@ namespace GameFactory.Editor
             audioManagerGO.AddComponent<AudioSource>();
             audioManagerGO.AddComponent<AudioManager>();
 
+            CreateVfxManager();
+
             GameObject cameraGO = new GameObject("Main Camera");
             cameraGO.tag = "MainCamera";
             cameraGO.transform.position = new Vector3(2f, 0f, -10f);
@@ -328,6 +330,37 @@ namespace GameFactory.Editor
             }
 
             return cachedFont;
+        }
+
+        /// <summary>
+        /// One persistent, manually-Emit()'d ParticleSystem for hit/collect
+        /// bursts (see VfxManager) - burst-only, so rateOverTime stays 0 and
+        /// every caller supplies its own count via Emit().
+        /// </summary>
+        private static void CreateVfxManager()
+        {
+            GameObject vfxManagerGO = new GameObject("VfxManager");
+            ParticleSystem particles = vfxManagerGO.AddComponent<ParticleSystem>();
+
+            ParticleSystem.MainModule main = particles.main;
+            main.playOnAwake = false;
+            main.loop = false;
+            main.duration = 0.5f;
+            main.startLifetime = 0.4f;
+            main.startSpeed = 3f;
+            main.startSize = 0.15f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            ParticleSystem.EmissionModule emission = particles.emission;
+            emission.rateOverTime = 0f;
+
+            ParticleSystem.ShapeModule shape = particles.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 0.1f;
+
+            particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            vfxManagerGO.AddComponent<VfxManager>();
         }
 
         /// <summary>

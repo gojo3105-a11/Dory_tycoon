@@ -49,6 +49,11 @@ namespace GameFactory.Core
 
             Instance = this;
 
+            // A HitStop coroutine (RunnerPlayerController) can be cut short by
+            // a scene reload before it restores Time.timeScale, so every fresh
+            // load unconditionally resets it - not just the StartGame() path below.
+            Time.timeScale = 1f;
+
             // Stays on the title screen (GameState.Ready, its default) unless
             // GameUIController's Play button calls StartGame(), or a restart
             // requested skipping straight back into gameplay.

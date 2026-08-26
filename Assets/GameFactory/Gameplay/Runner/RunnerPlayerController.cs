@@ -1,3 +1,4 @@
+using System.Collections;
 using GameFactory.Core;
 using GameFactory.Modules.GravitySwitch;
 using UnityEngine;
@@ -16,7 +17,13 @@ namespace GameFactory.Gameplay.Runner
         [SerializeField] private Transform groundCheck;
         [SerializeField] private float groundCheckRadius = 0.15f;
 
+        [SerializeField] private float hitStopDuration = 0.05f;
+        [SerializeField] private float hitStopTimeScale = 0.05f;
+        [SerializeField] private float hitShakeDuration = 0.2f;
+        [SerializeField] private float hitShakeMagnitude = 0.15f;
+
         private Rigidbody2D body;
+        private CameraFollow2D cameraFollow;
         private bool isGrounded;
         private bool isDead;
 
@@ -40,6 +47,7 @@ namespace GameFactory.Gameplay.Runner
         private void Awake()
         {
             body = GetComponent<Rigidbody2D>();
+            cameraFollow = Camera.main != null ? Camera.main.GetComponent<CameraFollow2D>() : null;
             GravitySwitchController.ResetToDefault();
         }
 
@@ -79,6 +87,7 @@ namespace GameFactory.Gameplay.Runner
 
             if (jumpClip == null) jumpClip = ProceduralTone.Sine("SFX_Jump", 620f, 0.12f);
             AudioManager.Instance?.PlaySfx(jumpClip);
+            if (SettingsSystem.VibrationEnabled) Handheld.Vibrate();
         }
 
         private void OnTriggerEnter2D(Collider2D other)
@@ -95,7 +104,18 @@ namespace GameFactory.Gameplay.Runner
 
             isDead = true;
             body.linearVelocity = Vector2.zero;
+            cameraFollow?.Shake(hitShakeDuration, hitShakeMagnitude);
+            StartCoroutine(HitStop(hitStopDuration, hitStopTimeScale));
+            if (SettingsSystem.VibrationEnabled) Handheld.Vibrate();
             GameManager.Instance.TriggerGameOver();
+        }
+
+        /// <summary>Briefly slows time on impact, then restores it - purely a game-feel beat, not a state change.</summary>
+        private IEnumerator HitStop(float duration, float slowTimeScale)
+        {
+            Time.timeScale = slowTimeScale;
+            yield return new WaitForSecondsRealtime(duration);
+            Time.timeScale = 1f;
         }
     }
 }
