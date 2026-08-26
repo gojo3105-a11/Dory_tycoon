@@ -24,6 +24,7 @@ namespace GameFactory.UI
         [SerializeField] private Button closeButton;
 
         private string gameId;
+        private PanelTransition shopTransition;
 
         /// <summary>Wires structural references. Called at edit time by SceneGenerator.</summary>
         public void SetReferences(GameObject panel, Text currency, Button open, Button coinMagnet, Text coinMagnetLabel, Button redSkin, Text redSkinLabel, Button close)
@@ -47,6 +48,7 @@ namespace GameFactory.UI
         private void Start()
         {
             gameId = GameManager.Instance != null ? GameManager.Instance.GameId : string.Empty;
+            shopTransition = shopPanel != null ? shopPanel.GetComponent<PanelTransition>() : null;
 
             if (openButton != null) openButton.onClick.AddListener(Open);
             if (coinMagnetButton != null) coinMagnetButton.onClick.AddListener(HandleCoinMagnetClicked);
@@ -59,13 +61,16 @@ namespace GameFactory.UI
 
         public void Open()
         {
-            if (shopPanel != null) shopPanel.SetActive(true);
+            if (shopTransition != null) shopTransition.Show();
+            else if (shopPanel != null) shopPanel.SetActive(true);
+
             Refresh();
         }
 
         public void Close()
         {
-            if (shopPanel != null) shopPanel.SetActive(false);
+            if (shopTransition != null) shopTransition.Hide();
+            else if (shopPanel != null) shopPanel.SetActive(false);
         }
 
         private void HandleCoinMagnetClicked()

@@ -21,6 +21,9 @@ namespace GameFactory.UI
         [SerializeField] private Text titleBestScoreText;
         [SerializeField] private Button playButton;
 
+        private PanelTransition gameOverTransition;
+        private PanelTransition titleTransition;
+
         /// <summary>Wires structural references. Called at edit time by SceneGenerator.</summary>
         public void SetReferences(Text score, GameObject gameOver, Text finalScore, Text bestScore, Button restart, Button home,
             GameObject title, Text titleBestScore, Button play)
@@ -38,6 +41,9 @@ namespace GameFactory.UI
 
         private void Start()
         {
+            gameOverTransition = gameOverPanel != null ? gameOverPanel.GetComponent<PanelTransition>() : null;
+            titleTransition = titlePanel != null ? titlePanel.GetComponent<PanelTransition>() : null;
+
             if (gameOverPanel != null) gameOverPanel.SetActive(false);
             if (restartButton != null) restartButton.onClick.AddListener(HandleRestartClicked);
             if (homeButton != null) homeButton.onClick.AddListener(HandleHomeClicked);
@@ -74,7 +80,9 @@ namespace GameFactory.UI
 
         private void HandleGameOver(int finalScore, int bestScore)
         {
-            if (gameOverPanel != null) gameOverPanel.SetActive(true);
+            if (gameOverTransition != null) gameOverTransition.Show();
+            else if (gameOverPanel != null) gameOverPanel.SetActive(true);
+
             if (finalScoreText != null) finalScoreText.text = $"Score: {finalScore}";
             if (bestScoreText != null) bestScoreText.text = $"Best: {bestScore}";
         }
@@ -92,7 +100,9 @@ namespace GameFactory.UI
 
         private void HandlePlayClicked()
         {
-            if (titlePanel != null) titlePanel.SetActive(false);
+            if (titleTransition != null) titleTransition.Hide();
+            else if (titlePanel != null) titlePanel.SetActive(false);
+
             GameManager.Instance?.StartGame();
         }
 
