@@ -77,6 +77,8 @@ namespace GameFactory.Editor
             RunnerPlayerController controller = go.AddComponent<RunnerPlayerController>();
             controller.SetGroundCheck(groundCheck, 1 << groundLayer);
 
+            if (spec.mechanics.gravitySwitch) go.AddComponent<GravitySwitchVfx>();
+
             return SaveAsPrefab(go, assetFolder, "Player.prefab");
         }
 
