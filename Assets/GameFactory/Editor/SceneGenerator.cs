@@ -142,6 +142,7 @@ namespace GameFactory.Editor
             Image buttonImage = buttonGO.AddComponent<Image>();
             buttonImage.color = new Color(0.2f, 0.6f, 0.9f);
             Button restartButton = buttonGO.AddComponent<Button>();
+            buttonGO.AddComponent<ButtonPunchFeedback>();
 
             CreateText(buttonGO.transform, "Label", "Restart", 40, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
@@ -157,6 +158,7 @@ namespace GameFactory.Editor
             Image homeButtonImage = homeButtonGO.AddComponent<Image>();
             homeButtonImage.color = new Color(0.55f, 0.55f, 0.6f);
             Button homeButton = homeButtonGO.AddComponent<Button>();
+            homeButtonGO.AddComponent<ButtonPunchFeedback>();
 
             CreateText(homeButtonGO.transform, "Label", "Home", 36, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
@@ -172,10 +174,14 @@ namespace GameFactory.Editor
             Image shopButtonImage = shopButtonGO.AddComponent<Image>();
             shopButtonImage.color = new Color(0.9f, 0.6f, 0.2f);
             Button shopButton = shopButtonGO.AddComponent<Button>();
+            shopButtonGO.AddComponent<ButtonPunchFeedback>();
 
             CreateText(shopButtonGO.transform, "Label", "상점", 36, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
 
+            CanvasGroup panelCanvasGroup = panel.AddComponent<CanvasGroup>();
+            panelCanvasGroup.alpha = 0f;
+            panel.AddComponent<PanelTransition>();
             panel.SetActive(false);
 
             // Button clicks (Restart/Home/Play/Shop) are all wired at runtime
@@ -210,6 +216,10 @@ namespace GameFactory.Editor
             Image titleImage = titlePanel.AddComponent<Image>();
             titleImage.color = new Color(0.08f, 0.08f, 0.12f, 1f);
 
+            CanvasGroup titleCanvasGroup = titlePanel.AddComponent<CanvasGroup>();
+            titleCanvasGroup.alpha = 1f;
+            titlePanel.AddComponent<PanelTransition>();
+
             CreateText(titlePanel.transform, "GameTitleText", gameTitle, 60, TextAnchor.MiddleCenter,
                 new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 new Vector2(600f, 140f), new Vector2(0f, 220f));
@@ -229,6 +239,7 @@ namespace GameFactory.Editor
             Image playButtonImage = playButtonGO.AddComponent<Image>();
             playButtonImage.color = new Color(0.2f, 0.75f, 0.35f);
             Button playButton = playButtonGO.AddComponent<Button>();
+            playButtonGO.AddComponent<ButtonPunchFeedback>();
 
             CreateText(playButtonGO.transform, "Label", "PLAY", 44, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
@@ -272,6 +283,9 @@ namespace GameFactory.Editor
                 shopPanel.transform, "CloseButton", new Vector2(0f, -420f), width: 260f);
             closeButtonLabel.text = "닫기";
 
+            CanvasGroup shopCanvasGroup = shopPanel.AddComponent<CanvasGroup>();
+            shopCanvasGroup.alpha = 0f;
+            shopPanel.AddComponent<PanelTransition>();
             shopPanel.SetActive(false);
 
             GameObject shopControllerGO = new GameObject("ShopController");
@@ -292,6 +306,7 @@ namespace GameFactory.Editor
             Image buttonImage = buttonGO.AddComponent<Image>();
             buttonImage.color = new Color(0.2f, 0.6f, 0.9f);
             Button button = buttonGO.AddComponent<Button>();
+            buttonGO.AddComponent<ButtonPunchFeedback>();
 
             Text label = CreateText(buttonGO.transform, "Label", string.Empty, 32, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);

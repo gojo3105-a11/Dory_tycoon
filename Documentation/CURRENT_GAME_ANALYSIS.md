@@ -208,6 +208,50 @@ TASK-001/002/003 세 가지 모두 코드 구현·커밋·푸시 완료. TASK-00
 원격 환경에서 불가능하므로 NOT VERIFIED로 남아 있고, PC 쪽 `compile-check.ps1` 통과 확인과
 실제 Play 모드 확인이 필요하다.
 
+## P1 Task 목록
+
+### TASK-006 Particle + Camera Shake + Hit Stop
+- 목표: 코인 획득/중력 전환에 파티클, 장애물 충돌 시 카메라 셰이크 + 짧은 Hit Stop.
+- 수정 파일: `CameraFollow2D.cs`(`Shake()` 추가), `RunnerPlayerController.cs`(`Die()`에서
+  셰이크+HitStop 트리거), `GameManager.cs`(`Awake()`에서 `Time.timeScale` 무조건 리셋 - HitStop
+  코루틴이 씬 리로드로 중간에 끊겨도 다음 씬이 슬로모션에 갇히지 않도록), `Coin.cs`,
+  `PrefabGenerator.cs`(GravitySwitch 사용 시 Player에 `GravitySwitchVfx` 부착),
+  `SceneGenerator.cs`(`VfxManager` 생성)
+- 신규 파일: `Assets/GameFactory/Core/VfxManager.cs`(재사용되는 단일 ParticleSystem - 풀링된
+  코인/장애물에 파티클을 자식으로 붙이면 `GameObjectPool.Release()`가 즉시 `SetActive(false)`해서
+  파티클이 보이기도 전에 꺼지므로, 씬 루트에 고정해두고 위치만 옮겨 `Emit()`하는 방식으로 회피),
+  `Assets/GameFactory/Modules/GravitySwitch/GravitySwitchVfx.cs`(중력 전환 이벤트 구독)
+- 의존성: 없음(외부 에셋 불필요, Unity 내장 ParticleSystem만 사용)
+- 완료 조건: 장애물 충돌 시 카메라가 흔들리고 짧게 슬로모션이 걸린다. 코인 획득/중력 전환 시
+  파티클이 실제로 보인다.
+- 테스트 방법: PC Play 모드 실측 필요(NOT VERIFIED, 특히 타이밍/강도 같은 "Feel"은 코드 리뷰만으로
+  판단 불가).
+- **구현 상태: 코드 구현 완료, 커밋/푸시 완료 (`f1466d5`).**
+
+### TASK-007 Vibration 피드백 (점프/충돌)
+- 목표: 점프/장애물 충돌 시 `Handheld.Vibrate()` 호출.
+- 수정 파일: `SettingsSystem.cs`(`VibrationEnabled` 추가, `SoundEnabled`와 동일 패턴),
+  `RunnerPlayerController.cs`
+- 신규 파일: 없음
+- 의존성: 없음
+- 완료 조건: 점프/충돌 시 진동이 발생한다. `SettingsSystem.VibrationEnabled`가 false면 발생하지 않는다.
+- 테스트 방법: 실기기 필요(에디터에서는 `Handheld.Vibrate()`가 no-op) - NOT VERIFIED.
+- **구현 상태: 코드 구현 완료, 커밋/푸시 완료 (`c086852`).**
+
+### TASK-008 버튼 터치 피드백 + 패널 전환 애니메이션
+- 목표: 버튼이 눌렸을 때 스케일 피드백, 패널(GameOverPanel/ShopPanel/TitlePanel) 전환이 즉시
+  `SetActive`가 아니라 페이드로 보이게 한다.
+- 수정 파일: `SceneGenerator.cs`(모든 버튼에 `ButtonPunchFeedback` 부착, 세 패널에
+  `CanvasGroup`+`PanelTransition` 부착), `GameUIController.cs`/`ShopController.cs`
+  (`SetActive(true/false)` → `PanelTransition.Show()/Hide()`, 씬 로드 시 최초 상태 설정 라인은
+  애니메이션 없이 그대로 유지)
+- 신규 파일: `Assets/GameFactory/UI/ButtonPunchFeedback.cs`(눌림 시 스케일 축소 후 원복),
+  `Assets/GameFactory/UI/PanelTransition.cs`(`CanvasGroup.alpha` 코루틴 페이드)
+- 의존성: 없음
+- 완료 조건: 버튼을 누르면 살짝 작아졌다 돌아온다. 패널이 즉시 나타나지 않고 페이드 인/아웃된다.
+- 테스트 방법: PC Play 모드 실측 필요(NOT VERIFIED, 타이밍/Feel은 코드 리뷰만으로 판단 불가).
+- **구현 상태: 코드 구현 완료, 커밋/푸시 완료.**
+
 ### TASK-004 / TASK-005 (환경 그래픽, 캐릭터 그래픽) - 보류
 현재 이 원격 환경과 PC 양쪽 모두 실제 아트 에셋도, 라이선스 있는 무료 에셋 소스도, 이미지→3D
 변환 도구도 연결되어 있지 않다(§14/§15 기준 재확인 - 이전 세션에서 이미 조사한 결론과 동일).
