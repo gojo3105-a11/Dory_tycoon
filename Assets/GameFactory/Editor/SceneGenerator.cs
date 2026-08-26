@@ -98,12 +98,21 @@ namespace GameFactory.Editor
 
             canvasGO.AddComponent<GraphicRaycaster>();
 
-            Text scoreText = CreateText(canvasGO.transform, "ScoreText", "0", 64, TextAnchor.UpperLeft,
+            GameObject safeAreaGO = new GameObject("SafeArea", typeof(RectTransform));
+            safeAreaGO.transform.SetParent(canvasGO.transform, false);
+            RectTransform safeAreaRect = safeAreaGO.GetComponent<RectTransform>();
+            safeAreaRect.anchorMin = Vector2.zero;
+            safeAreaRect.anchorMax = Vector2.one;
+            safeAreaRect.sizeDelta = Vector2.zero;
+            safeAreaRect.anchoredPosition = Vector2.zero;
+            safeAreaGO.AddComponent<SafeAreaFitter>();
+
+            Text scoreText = CreateText(safeAreaGO.transform, "ScoreText", "0", 64, TextAnchor.UpperLeft,
                 new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f),
                 new Vector2(300f, 100f), new Vector2(180f, -70f));
 
             GameObject panel = new GameObject("GameOverPanel", typeof(RectTransform));
-            panel.transform.SetParent(canvasGO.transform, false);
+            panel.transform.SetParent(safeAreaGO.transform, false);
             RectTransform panelRect = panel.GetComponent<RectTransform>();
             panelRect.anchorMin = Vector2.zero;
             panelRect.anchorMax = Vector2.one;
@@ -172,8 +181,8 @@ namespace GameFactory.Editor
             // registers a non-persistent listener, which is not serialized
             // into the saved scene, so wiring it at edit time would silently
             // produce dead buttons.
-            BuildShopUI(canvasGO.transform, shopButton);
-            (GameObject titlePanel, Text titleBestScoreText, Button playButton) = BuildTitleUI(canvasGO.transform, gameTitle);
+            BuildShopUI(safeAreaGO.transform, shopButton);
+            (GameObject titlePanel, Text titleBestScoreText, Button playButton) = BuildTitleUI(safeAreaGO.transform, gameTitle);
 
             GameObject controllerGO = new GameObject("GameUIController");
             GameUIController controller = controllerGO.AddComponent<GameUIController>();
@@ -187,10 +196,10 @@ namespace GameFactory.Editor
         /// meant to be the first thing visible - GameUIController.Start()
         /// re-confirms this against GameManager's actual state anyway.
         /// </summary>
-        private static (GameObject panel, Text bestScoreText, Button playButton) BuildTitleUI(Transform canvasTransform, string gameTitle)
+        private static (GameObject panel, Text bestScoreText, Button playButton) BuildTitleUI(Transform parentTransform, string gameTitle)
         {
             GameObject titlePanel = new GameObject("TitlePanel", typeof(RectTransform));
-            titlePanel.transform.SetParent(canvasTransform, false);
+            titlePanel.transform.SetParent(parentTransform, false);
             RectTransform titleRect = titlePanel.GetComponent<RectTransform>();
             titleRect.anchorMin = Vector2.zero;
             titleRect.anchorMax = Vector2.one;
@@ -225,10 +234,10 @@ namespace GameFactory.Editor
             return (titlePanel, titleBestScoreText, playButton);
         }
 
-        private static void BuildShopUI(Transform canvasTransform, Button openButton)
+        private static void BuildShopUI(Transform parentTransform, Button openButton)
         {
             GameObject shopPanel = new GameObject("ShopPanel", typeof(RectTransform));
-            shopPanel.transform.SetParent(canvasTransform, false);
+            shopPanel.transform.SetParent(parentTransform, false);
             RectTransform shopRect = shopPanel.GetComponent<RectTransform>();
             shopRect.anchorMin = Vector2.zero;
             shopRect.anchorMax = Vector2.one;
