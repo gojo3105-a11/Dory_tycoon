@@ -7,9 +7,11 @@
   container - can tell whether a build actually produced an APK/AAB.
 
 .DESCRIPTION
-  This project's self-hosted runner uses this same clone (RepoPath) as its
-  job workspace, so a successful BuildAndroid step leaves the real file
-  right here on disk - no GitHub API access needed to check it.
+  Scans Builds/<gameId>/ under both RepoPath (a manual/interactive clone)
+  and CiWorkspacePath (the self-hosted runner's own _work checkout, which
+  GitHub Actions does NOT default to RepoPath) - a successful BuildAndroid
+  step on either one leaves the real file on disk, no GitHub API access
+  needed to check it.
 
   For each file found: name, size, SHA-256 (first 16 hex chars - enough to
   notice a rebuild without hashing megabytes twice), and last-write time.
@@ -26,6 +28,7 @@
 [CmdletBinding()]
 param(
     [string]$RepoPath = "C:\Dory_tycoon",
+    [string]$CiWorkspacePath = "C:\actions-runner\_work\Dory_tycoon\Dory_tycoon",
     [string]$Branch = "claude/delete-current-content-mgn4xm",
     [string]$OriginRemote = "origin",
     [switch]$Commit,
@@ -86,31 +89,44 @@ if (-not (Test-Path $specsDir)) {
 
 $gameIds = Get-ChildItem -Path $specsDir -Filter "*.json" -File | ForEach-Object { $_.BaseName } | Sort-Object
 
+# A GitHub Actions self-hosted runner does NOT reuse RepoPath as its job
+# workspace by default - it checks out into its own _work folder - so a
+# real build there never showed up here unless we also scan CiWorkspacePath.
+$scanRoots = @(@{ Label = "RepoPath"; Path = $RepoPath })
+if ($CiWorkspacePath -and ($CiWorkspacePath -ne $RepoPath) -and (Test-Path $CiWorkspacePath)) {
+    $scanRoots += @{ Label = "CiWorkspacePath"; Path = $CiWorkspacePath }
+}
+
 $lines = New-Object System.Collections.Generic.List[string]
 $anyBuild = $false
 
 foreach ($gameId in $gameIds) {
-    $gameBuildDir = Join-Path $RepoPath "Builds\$gameId"
     [void]$lines.Add("## $gameId")
     [void]$lines.Add("")
 
-    $outputs = @()
-    if (Test-Path $gameBuildDir) {
-        $outputs = Get-ChildItem -Path $gameBuildDir -Recurse -File -Include "*.apk", "*.aab" -ErrorAction SilentlyContinue
-    }
+    $entries = New-Object System.Collections.Generic.List[string]
 
-    if (-not $outputs) {
-        [void]$lines.Add("No .apk/.aab found under Builds\$gameId\.")
-    }
-    else {
-        $anyBuild = $true
+    foreach ($root in $scanRoots) {
+        $gameBuildDir = Join-Path $root.Path "Builds\$gameId"
+        if (-not (Test-Path $gameBuildDir)) { continue }
+
+        $outputs = Get-ChildItem -Path $gameBuildDir -Recurse -File -Include "*.apk", "*.aab" -ErrorAction SilentlyContinue
         foreach ($file in ($outputs | Sort-Object LastWriteTime -Descending)) {
-            $relative = $file.FullName.Substring($RepoPath.Length).TrimStart('\')
+            $relative = $file.FullName.Substring($root.Path.Length).TrimStart('\')
             $size = Format-Size $file.Length
             $modified = $file.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
             $hash = Get-FileHashShort $file.FullName
-            [void]$lines.Add("- $relative  ($size, sha256:$hash, built $modified)")
+            $entries.Add("- [$($root.Label)] $relative  ($size, sha256:$hash, built $modified)")
         }
+    }
+
+    if ($entries.Count -eq 0) {
+        $checkedPaths = ($scanRoots | ForEach-Object { $_.Path }) -join ", "
+        [void]$lines.Add("No .apk/.aab found under Builds\$gameId\ (checked: $checkedPaths).")
+    }
+    else {
+        $anyBuild = $true
+        foreach ($entry in $entries) { [void]$lines.Add($entry) }
     }
 
     [void]$lines.Add("")

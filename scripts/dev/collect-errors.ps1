@@ -12,6 +12,11 @@
       Editor's own log, so it works while the Editor is open and captures
       Play-mode exceptions too.
     - <repo>\Logs\*.log - local pipeline / compile-check runs.
+    - <CiWorkspacePath>\Logs\*.log - the self-hosted runner's own checkout.
+      A GitHub Actions self-hosted runner does NOT reuse RepoPath as its job
+      workspace by default; it checks out into its own _work folder. Without
+      this, a real CI failure there never shows up in this report even
+      though RepoPath looks fine.
 
   Writes Reports/errors/latest.txt. Exits 0 whether or not errors were
   found - "no errors" is a perfectly good report.
@@ -37,6 +42,7 @@
 [CmdletBinding()]
 param(
     [string]$RepoPath = "C:\Dory_tycoon",
+    [string]$CiWorkspacePath = "C:\actions-runner\_work\Dory_tycoon\Dory_tycoon",
     [string]$Branch = "claude/delete-current-content-mgn4xm",
     [string]$OriginRemote = "origin",
     [int]$TailLines = 8000,
@@ -113,8 +119,15 @@ if (Test-Path $repoLogDir) {
         Select-Object -ExpandProperty FullName)
 }
 
+$ciLogDir = if ($CiWorkspacePath) { Join-Path $CiWorkspacePath "Logs" } else { $null }
+if ($ciLogDir -and ($ciLogDir -ne $repoLogDir) -and (Test-Path $ciLogDir)) {
+    $sources += (Get-ChildItem -Path $ciLogDir -Filter *.log -File |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -ExpandProperty FullName)
+}
+
 if (-not $sources) {
-    throw "No Unity logs found. Looked for '$editorLog' and '$repoLogDir\*.log'."
+    throw "No Unity logs found. Looked for '$editorLog', '$repoLogDir\*.log', and '$ciLogDir\*.log'."
 }
 
 $compileErrors = New-Object System.Collections.Generic.List[string]

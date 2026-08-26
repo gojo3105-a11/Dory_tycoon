@@ -349,8 +349,14 @@ namespace GameFactory.Editor
 
         /// <summary>
         /// One persistent, manually-Emit()'d ParticleSystem for hit/collect
-        /// bursts (see VfxManager) - burst-only, so rateOverTime stays 0 and
-        /// every caller supplies its own count via Emit().
+        /// bursts (see VfxManager). It is deliberately left looping and
+        /// playing with rateOverTime at 0: that emits nothing by itself, but
+        /// keeps the system simulating so a manual Emit() burst actually
+        /// animates. A stopped system freezes the particles it is handed.
+        ///
+        /// MainModule.duration is intentionally not set - it is read-only in
+        /// Unity's scripting API (assigning it is a compile error), and it is
+        /// irrelevant to a looping system that never emits on its own clock.
         /// </summary>
         private static void CreateVfxManager()
         {
@@ -358,9 +364,8 @@ namespace GameFactory.Editor
             ParticleSystem particles = vfxManagerGO.AddComponent<ParticleSystem>();
 
             ParticleSystem.MainModule main = particles.main;
-            main.playOnAwake = false;
-            main.loop = false;
-            main.duration = 0.5f;
+            main.playOnAwake = true;
+            main.loop = true;
             main.startLifetime = 0.4f;
             main.startSpeed = 3f;
             main.startSize = 0.15f;
@@ -373,7 +378,20 @@ namespace GameFactory.Editor
             shape.shapeType = ParticleSystemShapeType.Circle;
             shape.radius = 0.1f;
 
-            particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            // AddComponent'ing a ParticleSystem from script leaves its
+            // renderer without a material, which renders nothing (or magenta)
+            // - same class of bug as the Standard-vs-Unlit shader one, since
+            // the generated scene has no Light either. Sprites/Default is
+            // unlit and respects the per-particle startColor.
+            // sharedMaterial, not material: assigning .material at edit time
+            // makes Unity instantiate a copy and warn about leaking it into
+            // the scene (same idiom as MainCharacterGenerator).
+            ParticleSystemRenderer particleRenderer = vfxManagerGO.GetComponent<ParticleSystemRenderer>();
+            Shader particleShader = Shader.Find("Sprites/Default");
+            if (particleRenderer != null && particleShader != null)
+            {
+                particleRenderer.sharedMaterial = new Material(particleShader);
+            }
 
             vfxManagerGO.AddComponent<VfxManager>();
         }
