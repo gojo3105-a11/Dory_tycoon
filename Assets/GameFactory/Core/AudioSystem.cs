@@ -24,7 +24,7 @@ namespace GameFactory.Core
 
         public void PlaySfx(AudioClip clip)
         {
-            if (clip == null || source == null) return;
+            if (clip == null || source == null || !SettingsSystem.SoundEnabled) return;
             source.PlayOneShot(clip);
         }
 

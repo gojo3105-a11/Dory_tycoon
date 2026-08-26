@@ -41,6 +41,10 @@ namespace GameFactory.Editor
 
             new GameObject("TapInput").AddComponent<TapInput>();
 
+            GameObject audioManagerGO = new GameObject("AudioManager");
+            audioManagerGO.AddComponent<AudioSource>();
+            audioManagerGO.AddComponent<AudioManager>();
+
             GameObject cameraGO = new GameObject("Main Camera");
             cameraGO.tag = "MainCamera";
             cameraGO.transform.position = new Vector3(2f, 0f, -10f);

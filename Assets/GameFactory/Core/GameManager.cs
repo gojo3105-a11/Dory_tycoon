@@ -28,6 +28,8 @@ namespace GameFactory.Core
         /// </summary>
         private static bool autoStartOnLoad;
 
+        private static AudioClip gameOverClip;
+
         /// <summary>Raised whenever Score changes, with the new total.</summary>
         public event Action<int> ScoreChanged;
 
@@ -80,6 +82,10 @@ namespace GameFactory.Core
             CurrentState = GameState.GameOver;
             int best = SaveSystem.SaveBestScore(gameId, Score);
             SaveSystem.SaveInt(gameId, ShopKeys.Currency, SaveSystem.GetInt(gameId, ShopKeys.Currency) + Score);
+
+            if (gameOverClip == null) gameOverClip = ProceduralTone.Sine("SFX_GameOver", 220f, 0.35f);
+            AudioManager.Instance?.PlaySfx(gameOverClip);
+
             GameOver?.Invoke(Score, best);
         }
 

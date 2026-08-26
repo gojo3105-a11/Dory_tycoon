@@ -20,6 +20,8 @@ namespace GameFactory.Gameplay.Runner
         private bool isGrounded;
         private bool isDead;
 
+        private static AudioClip jumpClip;
+
         /// <summary>Applies GameSpec-driven tuning. Called at runtime by RunnerGameInitializer.</summary>
         public void Configure(float speed, float jump, bool useGravitySwitch)
         {
@@ -74,6 +76,9 @@ namespace GameFactory.Gameplay.Runner
             bool inverted = gravitySwitchEnabled && GravitySwitchController.IsInverted;
             float jumpDirection = inverted ? -1f : 1f;
             body.linearVelocity = new Vector2(body.linearVelocity.x, jumpDirection * jumpPower);
+
+            if (jumpClip == null) jumpClip = ProceduralTone.Sine("SFX_Jump", 620f, 0.12f);
+            AudioManager.Instance?.PlaySfx(jumpClip);
         }
 
         private void OnTriggerEnter2D(Collider2D other)
