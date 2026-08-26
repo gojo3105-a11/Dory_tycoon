@@ -24,9 +24,10 @@ Feel 평가는 코드를 읽고 판단한 것이며 실제 화면을 직접 본 
   손댈 필요가 없다(§13 캐릭터 시스템 요구사항과 방향이 일치).
 - `SaveSystem`이 `<gameId>.<key>` 형식으로 네임스페이스 분리되어 있어 여러 게임이 한 기기를
   공유해도 세이브가 충돌하지 않는다.
-- Update()/FixedUpdate()/LateUpdate() 호출이 전체 코드베이스에 8곳뿐이고 각각 목적이 명확하다
-  (입력 폴링 1곳, 카메라 1곳, 스포너 4곳, 재활용 판정 1곳, 플레이어 물리 1곳) - God Object 없음,
-  모든 MonoBehaviour가 100줄 미만.
+- Update()/FixedUpdate()/LateUpdate() 호출이 전체 코드베이스에 9곳뿐이고 각각 목적이 명확하다
+  (입력 폴링 1곳, 카메라 1곳, 스포너 4곳, 재활용 판정 1곳, 플레이어 물리 1곳, Safe Area 재계산 1곳
+  [TASK-003, 씬당 1개 인스턴스뿐이고 실제 변경 시에만 재계산]) - God Object 없음, 모든
+  MonoBehaviour가 100줄 미만.
 
 ## 퀄리티가 낮은 부분
 
@@ -162,6 +163,9 @@ Feel 평가는 코드를 읽고 판단한 것이며 실제 화면을 직접 본 
 - 테스트 방법: PC에서 `compile-check.ps1` 통과 확인 → Unity Editor Play 모드로 직접 눌러보고
   Title→Play→게임오버→Home→Title 순환이 실제로 되는지 확인(이 원격 환경은 Play 모드 확인 불가,
   PC 확인 필수 - NOT VERIFIED 상태로 보고).
+- **구현 상태: 코드 구현 완료, 커밋/푸시 완료 (`c220fb1`).** PlayMode 테스트도 새 플로우에 맞게
+  갱신함(`GameStartsOnTitleScreenInReadyState`가 `Ready` 상태를 검증, 나머지 테스트는
+  `StartGame()`을 먼저 호출). Unity Editor Play 모드 실측(NOT VERIFIED)만 PC 확인 대기 중.
 
 ### TASK-002 최소 SFX 연결 (점프/코인/충돌)
 - 목표: `AudioManager`(이미 구현됨, 미사용 상태)를 실제로 호출해 점프/코인 획득/충돌 3가지
@@ -177,6 +181,10 @@ Feel 평가는 코드를 읽고 판단한 것이며 실제 화면을 직접 본 
   `SettingsSystem.SoundEnabled`가 false면 재생되지 않는다.
 - 테스트 방법: PC Play 모드에서 소리가 실제로 나는지 확인 (NOT VERIFIED 상태로 보고 예정 -
   이 환경은 오디오 재생 확인 불가).
+- **구현 상태: 코드 구현 완료, 커밋/푸시 완료 (`157db13`).** `ProceduralTone.Sine`으로 사인파
+  생성, `AudioManager.PlaySfx`에 `SettingsSystem.SoundEnabled` 게이트 추가, 씬에 없던
+  AudioManager+AudioSource를 `SceneGenerator`가 새로 생성하도록 수정(기존엔 아예 인스턴스가
+  없어 무음이었음). 실제 재생음 청취(NOT VERIFIED)만 PC 확인 대기 중.
 
 ### TASK-003 Safe Area 대응
 - 목표: 노치/펀치홀 기기에서 UI가 잘리지 않도록 모든 UI 패널을 Safe Area 안쪽으로 앵커링한다.
@@ -188,6 +196,17 @@ Feel 평가는 코드를 읽고 판단한 것이며 실제 화면을 직접 본 
   anchorMin/Max를 계산한다.
 - 테스트 방법: 코드 검토로 로직 확인(실제 노치 기기 시뮬레이션은 Unity Editor의 Device Simulator
   필요 - NOT VERIFIED, PC 확인 필요).
+- **구현 상태: 코드 구현 완료, 커밋/푸시 완료 (`6095094`).** HUD/GameOverPanel/ShopPanel/
+  TitlePanel 전부 새 `SafeArea` 컨테이너 하위로 옮김. Device Simulator 실측(NOT VERIFIED)만
+  PC 확인 대기 중.
+
+## P0 완료 요약
+
+TASK-001/002/003 세 가지 모두 코드 구현·커밋·푸시 완료. TASK-004/005(실제 3D 모델/환경 아트)는
+§15/§43에 따라 여전히 보류 상태 - 라이선스 있는 에셋이나 image-to-3D 도구를 사용자가 지정하기
+전까지는 시작하지 않는다. 세 TASK 모두 Unity Editor Play 모드/Device Simulator 실측은 이
+원격 환경에서 불가능하므로 NOT VERIFIED로 남아 있고, PC 쪽 `compile-check.ps1` 통과 확인과
+실제 Play 모드 확인이 필요하다.
 
 ### TASK-004 / TASK-005 (환경 그래픽, 캐릭터 그래픽) - 보류
 현재 이 원격 환경과 PC 양쪽 모두 실제 아트 에셋도, 라이선스 있는 무료 에셋 소스도, 이미지→3D

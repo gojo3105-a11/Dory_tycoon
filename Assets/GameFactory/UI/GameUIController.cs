@@ -16,21 +16,32 @@ namespace GameFactory.UI
         [SerializeField] private Text finalScoreText;
         [SerializeField] private Text bestScoreText;
         [SerializeField] private Button restartButton;
+        [SerializeField] private Button homeButton;
+        [SerializeField] private GameObject titlePanel;
+        [SerializeField] private Text titleBestScoreText;
+        [SerializeField] private Button playButton;
 
         /// <summary>Wires structural references. Called at edit time by SceneGenerator.</summary>
-        public void SetReferences(Text score, GameObject gameOver, Text finalScore, Text bestScore, Button restart)
+        public void SetReferences(Text score, GameObject gameOver, Text finalScore, Text bestScore, Button restart, Button home,
+            GameObject title, Text titleBestScore, Button play)
         {
             scoreText = score;
             gameOverPanel = gameOver;
             finalScoreText = finalScore;
             bestScoreText = bestScore;
             restartButton = restart;
+            homeButton = home;
+            titlePanel = title;
+            titleBestScoreText = titleBestScore;
+            playButton = play;
         }
 
         private void Start()
         {
             if (gameOverPanel != null) gameOverPanel.SetActive(false);
             if (restartButton != null) restartButton.onClick.AddListener(HandleRestartClicked);
+            if (homeButton != null) homeButton.onClick.AddListener(HandleHomeClicked);
+            if (playButton != null) playButton.onClick.AddListener(HandlePlayClicked);
 
             GameManager manager = GameManager.Instance;
             if (manager == null) return;
@@ -38,6 +49,13 @@ namespace GameFactory.UI
             manager.ScoreChanged += HandleScoreChanged;
             manager.GameOver += HandleGameOver;
             HandleScoreChanged(manager.Score);
+            RefreshTitleBestScore();
+
+            // Title starts on top and covers the HUD/gameplay behind it (it
+            // is the last sibling added under Canvas by SceneGenerator, so it
+            // draws last) until Play is pressed - the character still stands
+            // on the start line since physics/ground-check keep running.
+            if (titlePanel != null) titlePanel.SetActive(manager.CurrentState != GameManager.GameState.Playing);
         }
 
         private void OnDestroy()
@@ -64,6 +82,24 @@ namespace GameFactory.UI
         private void HandleRestartClicked()
         {
             GameManager.Instance?.RestartGame();
+        }
+
+        /// <summary>Reloads without requesting an auto-start, so the reload lands back on the title screen.</summary>
+        private void HandleHomeClicked()
+        {
+            SceneController.ReloadCurrent();
+        }
+
+        private void HandlePlayClicked()
+        {
+            if (titlePanel != null) titlePanel.SetActive(false);
+            GameManager.Instance?.StartGame();
+        }
+
+        private void RefreshTitleBestScore()
+        {
+            if (titleBestScoreText == null || GameManager.Instance == null) return;
+            titleBestScoreText.text = $"Best: {SaveSystem.GetBestScore(GameManager.Instance.GameId)}";
         }
     }
 }

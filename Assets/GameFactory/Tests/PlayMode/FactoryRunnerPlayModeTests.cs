@@ -33,9 +33,28 @@ namespace GameFactory.Tests.PlayMode
             yield return null;
         }
 
+        /// <summary>
+        /// A fresh scene load now lands on the title screen (GameState.Ready)
+        /// instead of auto-starting - see GameManager.Awake/GameUIController's
+        /// Play button. The state-machine tests below are about Playing/
+        /// GameOver behavior specifically, so each calls StartGame() first to
+        /// simulate the player pressing Play, same as they did implicitly
+        /// when the scene auto-started.
+        /// </summary>
         [UnityTest]
-        public IEnumerator GameStartsInPlayingStateWithZeroScore()
+        public IEnumerator GameStartsOnTitleScreenInReadyState()
         {
+            yield return null;
+
+            Assert.AreEqual(GameManager.GameState.Ready, GameManager.Instance.CurrentState);
+            Assert.AreEqual(0, GameManager.Instance.Score);
+        }
+
+        [UnityTest]
+        public IEnumerator StartGame_EntersPlayingStateWithZeroScore()
+        {
+            yield return null;
+            GameManager.Instance.StartGame();
             yield return null;
 
             Assert.AreEqual(GameManager.GameState.Playing, GameManager.Instance.CurrentState);
@@ -45,6 +64,10 @@ namespace GameFactory.Tests.PlayMode
         [UnityTest]
         public IEnumerator AddScore_IncreasesScoreAndFiresEvent()
         {
+            yield return null;
+            GameManager.Instance.StartGame();
+            yield return null;
+
             int reported = -1;
             GameManager.Instance.ScoreChanged += s => reported = s;
 
@@ -58,6 +81,10 @@ namespace GameFactory.Tests.PlayMode
         [UnityTest]
         public IEnumerator TriggerGameOver_ChangesStateAndFiresEvent()
         {
+            yield return null;
+            GameManager.Instance.StartGame();
+            yield return null;
+
             bool fired = false;
             GameManager.Instance.GameOver += (finalScore, best) => fired = true;
 
@@ -71,6 +98,10 @@ namespace GameFactory.Tests.PlayMode
         [UnityTest]
         public IEnumerator AddScore_AfterGameOver_IsIgnored()
         {
+            yield return null;
+            GameManager.Instance.StartGame();
+            yield return null;
+
             GameManager.Instance.AddScore(3);
             GameManager.Instance.TriggerGameOver();
             yield return null;

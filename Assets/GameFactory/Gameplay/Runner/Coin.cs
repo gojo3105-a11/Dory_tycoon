@@ -12,6 +12,8 @@ namespace GameFactory.Gameplay.Runner
 
         private bool collected;
 
+        private static AudioClip collectClip;
+
         private void Reset()
         {
             Collider2D col = GetComponent<Collider2D>();
@@ -28,6 +30,10 @@ namespace GameFactory.Gameplay.Runner
 
             collected = true;
             GameManager.Instance.AddScore(scoreValue);
+
+            if (collectClip == null) collectClip = ProceduralTone.Sine("SFX_Coin", 1200f, 0.1f);
+            AudioManager.Instance?.PlaySfx(collectClip);
+
             GetComponent<RecycleWhenPassed>()?.ReleaseNow();
         }
 

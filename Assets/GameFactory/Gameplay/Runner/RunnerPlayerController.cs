@@ -20,6 +20,8 @@ namespace GameFactory.Gameplay.Runner
         private bool isGrounded;
         private bool isDead;
 
+        private static AudioClip jumpClip;
+
         /// <summary>Applies GameSpec-driven tuning. Called at runtime by RunnerGameInitializer.</summary>
         public void Configure(float speed, float jump, bool useGravitySwitch)
         {
@@ -53,23 +55,30 @@ namespace GameFactory.Gameplay.Runner
 
         private void FixedUpdate()
         {
-            if (isDead) return;
-
-            body.linearVelocity = new Vector2(moveSpeed, body.linearVelocity.y);
-
             if (groundCheck != null)
             {
                 isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
             }
+
+            // Ground check above still runs on the title screen so the
+            // character visibly stands on the start line instead of hovering;
+            // only forward movement itself waits for Play.
+            if (isDead || GameManager.Instance == null || GameManager.Instance.CurrentState != GameManager.GameState.Playing) return;
+
+            body.linearVelocity = new Vector2(moveSpeed, body.linearVelocity.y);
         }
 
         private void HandleTap()
         {
             if (isDead || !isGrounded) return;
+            if (GameManager.Instance == null || GameManager.Instance.CurrentState != GameManager.GameState.Playing) return;
 
             bool inverted = gravitySwitchEnabled && GravitySwitchController.IsInverted;
             float jumpDirection = inverted ? -1f : 1f;
             body.linearVelocity = new Vector2(body.linearVelocity.x, jumpDirection * jumpPower);
+
+            if (jumpClip == null) jumpClip = ProceduralTone.Sine("SFX_Jump", 620f, 0.12f);
+            AudioManager.Instance?.PlaySfx(jumpClip);
         }
 
         private void OnTriggerEnter2D(Collider2D other)

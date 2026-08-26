@@ -21,6 +21,15 @@ namespace GameFactory.Core
         public int Score { get; private set; }
         public string GameId => gameId;
 
+        /// <summary>
+        /// Survives a scene reload (an instance field would not, since reload
+        /// destroys and recreates every GameObject) so RestartGame can skip
+        /// the title screen while returning Home does not.
+        /// </summary>
+        private static bool autoStartOnLoad;
+
+        private static AudioClip gameOverClip;
+
         /// <summary>Raised whenever Score changes, with the new total.</summary>
         public event Action<int> ScoreChanged;
 
@@ -39,11 +48,15 @@ namespace GameFactory.Core
             }
 
             Instance = this;
-        }
 
-        private void Start()
-        {
-            StartGame();
+            // Stays on the title screen (GameState.Ready, its default) unless
+            // GameUIController's Play button calls StartGame(), or a restart
+            // requested skipping straight back into gameplay.
+            if (autoStartOnLoad)
+            {
+                autoStartOnLoad = false;
+                StartGame();
+            }
         }
 
         public void StartGame()
@@ -69,11 +82,17 @@ namespace GameFactory.Core
             CurrentState = GameState.GameOver;
             int best = SaveSystem.SaveBestScore(gameId, Score);
             SaveSystem.SaveInt(gameId, ShopKeys.Currency, SaveSystem.GetInt(gameId, ShopKeys.Currency) + Score);
+
+            if (gameOverClip == null) gameOverClip = ProceduralTone.Sine("SFX_GameOver", 220f, 0.35f);
+            AudioManager.Instance?.PlaySfx(gameOverClip);
+
             GameOver?.Invoke(Score, best);
         }
 
+        /// <summary>Reloads the scene and jumps straight back into gameplay, skipping the title screen.</summary>
         public void RestartGame()
         {
+            autoStartOnLoad = true;
             SceneController.ReloadCurrent();
         }
 
