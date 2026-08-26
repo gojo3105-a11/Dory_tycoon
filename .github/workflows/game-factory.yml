@@ -4,6 +4,11 @@ name: Game Factory Pipeline
 # Triggers on any GameSpecs/ change; each step's Unity invocation exits
 # non-zero on failure, which stops the job before the next step runs.
 #
+# Deliberately matches GameSpecs/** (not just *.json, unlike test.yml and
+# validate.yml): scripts/desktop/{sync-and-run,run-game-factory}.ps1 start
+# this pipeline without the GitHub CLI by pushing a bump to the non-JSON
+# GameSpecs/.ci-trigger file, which needs this broader glob to land on.
+#
 # Unity invocations go through scripts/ci/wait-for-unity.ps1 rather than
 # calling Unity.exe directly - see that script's header comment for why
 # (Unity can relaunch itself as a separate process on Windows, so trusting
