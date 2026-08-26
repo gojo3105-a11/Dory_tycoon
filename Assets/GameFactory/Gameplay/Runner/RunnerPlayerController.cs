@@ -53,19 +53,23 @@ namespace GameFactory.Gameplay.Runner
 
         private void FixedUpdate()
         {
-            if (isDead) return;
-
-            body.linearVelocity = new Vector2(moveSpeed, body.linearVelocity.y);
-
             if (groundCheck != null)
             {
                 isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
             }
+
+            // Ground check above still runs on the title screen so the
+            // character visibly stands on the start line instead of hovering;
+            // only forward movement itself waits for Play.
+            if (isDead || GameManager.Instance == null || GameManager.Instance.CurrentState != GameManager.GameState.Playing) return;
+
+            body.linearVelocity = new Vector2(moveSpeed, body.linearVelocity.y);
         }
 
         private void HandleTap()
         {
             if (isDead || !isGrounded) return;
+            if (GameManager.Instance == null || GameManager.Instance.CurrentState != GameManager.GameState.Playing) return;
 
             bool inverted = gravitySwitchEnabled && GravitySwitchController.IsInverted;
             float jumpDirection = inverted ? -1f : 1f;

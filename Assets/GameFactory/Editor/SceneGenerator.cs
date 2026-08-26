@@ -70,7 +70,7 @@ namespace GameFactory.Editor
 
             LevelGenerator.ConfigureRunnerLevel(spec, playerInstance.transform, prefabs.GravityZone);
 
-            BuildUI();
+            BuildUI(spec.game.title);
             EnsureEventSystem(scene);
 
             Directory.CreateDirectory(EditorPaths.ToAbsolutePath(sceneFolder));
@@ -81,7 +81,7 @@ namespace GameFactory.Editor
             return sceneAssetPath;
         }
 
-        private static void BuildUI()
+        private static void BuildUI(string gameTitle)
         {
             GameObject canvasGO = new GameObject("Canvas");
             Canvas canvas = canvasGO.AddComponent<Canvas>();
@@ -131,6 +131,21 @@ namespace GameFactory.Editor
             CreateText(buttonGO.transform, "Label", "Restart", 40, TextAnchor.MiddleCenter,
                 Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
 
+            GameObject homeButtonGO = new GameObject("HomeButton", typeof(RectTransform));
+            homeButtonGO.transform.SetParent(panel.transform, false);
+            RectTransform homeButtonRect = homeButtonGO.GetComponent<RectTransform>();
+            homeButtonRect.anchorMin = new Vector2(0.5f, 0.5f);
+            homeButtonRect.anchorMax = new Vector2(0.5f, 0.5f);
+            homeButtonRect.pivot = new Vector2(0.5f, 0.5f);
+            homeButtonRect.sizeDelta = new Vector2(280f, 90f);
+            homeButtonRect.anchoredPosition = new Vector2(0f, -190f);
+            Image homeButtonImage = homeButtonGO.AddComponent<Image>();
+            homeButtonImage.color = new Color(0.55f, 0.55f, 0.6f);
+            Button homeButton = homeButtonGO.AddComponent<Button>();
+
+            CreateText(homeButtonGO.transform, "Label", "Home", 36, TextAnchor.MiddleCenter,
+                Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+
             GameObject shopButtonGO = new GameObject("ShopButton", typeof(RectTransform));
             shopButtonGO.transform.SetParent(panel.transform, false);
             RectTransform shopButtonRect = shopButtonGO.GetComponent<RectTransform>();
@@ -138,7 +153,7 @@ namespace GameFactory.Editor
             shopButtonRect.anchorMax = new Vector2(0.5f, 0.5f);
             shopButtonRect.pivot = new Vector2(0.5f, 0.5f);
             shopButtonRect.sizeDelta = new Vector2(280f, 90f);
-            shopButtonRect.anchoredPosition = new Vector2(0f, -200f);
+            shopButtonRect.anchoredPosition = new Vector2(0f, -300f);
             Image shopButtonImage = shopButtonGO.AddComponent<Image>();
             shopButtonImage.color = new Color(0.9f, 0.6f, 0.2f);
             Button shopButton = shopButtonGO.AddComponent<Button>();
@@ -148,15 +163,62 @@ namespace GameFactory.Editor
 
             panel.SetActive(false);
 
+            // Button clicks (Restart/Home/Play/Shop) are all wired at runtime
+            // by GameUIController/ShopController, not here: onClick.AddListener
+            // registers a non-persistent listener, which is not serialized
+            // into the saved scene, so wiring it at edit time would silently
+            // produce dead buttons.
+            BuildShopUI(canvasGO.transform, shopButton);
+            (GameObject titlePanel, Text titleBestScoreText, Button playButton) = BuildTitleUI(canvasGO.transform, gameTitle);
+
             GameObject controllerGO = new GameObject("GameUIController");
             GameUIController controller = controllerGO.AddComponent<GameUIController>();
-            controller.SetReferences(scoreText, panel, finalScoreText, bestScoreText, restartButton);
+            controller.SetReferences(scoreText, panel, finalScoreText, bestScoreText, restartButton, homeButton,
+                titlePanel, titleBestScoreText, playButton);
+        }
 
-            // The shop button is handed to BuildShopUI rather than wired with
-            // onClick.AddListener here: a listener added at edit time is not
-            // persisted into the saved scene. ShopController hooks it up in
-            // its own Start instead, like GameUIController does for Restart.
-            BuildShopUI(canvasGO.transform, shopButton);
+        /// <summary>
+        /// Title screen: game name, best score, and a Play button. Left
+        /// active by default (unlike GameOverPanel/ShopPanel) since it is
+        /// meant to be the first thing visible - GameUIController.Start()
+        /// re-confirms this against GameManager's actual state anyway.
+        /// </summary>
+        private static (GameObject panel, Text bestScoreText, Button playButton) BuildTitleUI(Transform canvasTransform, string gameTitle)
+        {
+            GameObject titlePanel = new GameObject("TitlePanel", typeof(RectTransform));
+            titlePanel.transform.SetParent(canvasTransform, false);
+            RectTransform titleRect = titlePanel.GetComponent<RectTransform>();
+            titleRect.anchorMin = Vector2.zero;
+            titleRect.anchorMax = Vector2.one;
+            titleRect.sizeDelta = Vector2.zero;
+            titleRect.anchoredPosition = Vector2.zero;
+            Image titleImage = titlePanel.AddComponent<Image>();
+            titleImage.color = new Color(0.08f, 0.08f, 0.12f, 1f);
+
+            CreateText(titlePanel.transform, "GameTitleText", gameTitle, 60, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(600f, 140f), new Vector2(0f, 220f));
+
+            Text titleBestScoreText = CreateText(titlePanel.transform, "TitleBestScoreText", "Best: 0", 36, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(400f, 60f), new Vector2(0f, 120f));
+
+            GameObject playButtonGO = new GameObject("PlayButton", typeof(RectTransform));
+            playButtonGO.transform.SetParent(titlePanel.transform, false);
+            RectTransform playButtonRect = playButtonGO.GetComponent<RectTransform>();
+            playButtonRect.anchorMin = new Vector2(0.5f, 0.5f);
+            playButtonRect.anchorMax = new Vector2(0.5f, 0.5f);
+            playButtonRect.pivot = new Vector2(0.5f, 0.5f);
+            playButtonRect.sizeDelta = new Vector2(320f, 110f);
+            playButtonRect.anchoredPosition = new Vector2(0f, -60f);
+            Image playButtonImage = playButtonGO.AddComponent<Image>();
+            playButtonImage.color = new Color(0.2f, 0.75f, 0.35f);
+            Button playButton = playButtonGO.AddComponent<Button>();
+
+            CreateText(playButtonGO.transform, "Label", "PLAY", 44, TextAnchor.MiddleCenter,
+                Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+
+            return (titlePanel, titleBestScoreText, playButton);
         }
 
         private static void BuildShopUI(Transform canvasTransform, Button openButton)
