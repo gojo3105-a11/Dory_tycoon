@@ -202,13 +202,26 @@ PASS / FAIL / 실행 불가 (사유)
 
 이 목록이 실제 코드 상태와 항상 일치하도록, 각 Phase를 완료할 때마다 이 파일을 갱신한다.
 
+## 10개 게임 프로젝트 진행 상태
+
+`GAME_10_MASTER_PLAN.md` 기준 10개 게임 전체 기획 완료, 순차 개발 진행 중(한 번에 한 게임만).
+
+- [x] Phase 0-1: `PROJECT_ANALYSIS.md`, `GAME_10_MASTER_PLAN.md`
+- [x] Game01 (Factory Runner): 시나리오/구현계획/캐릭터(임시)/맵/핵심루프/상점/컴파일 오류 0개/
+      APK 빌드 확인(`game-factory-game01` 아티팩트, self-hosted runner)/`Reports/Game01_Report.txt`
+      전부 완료 - **Game01 완료.**
+- [ ] Game02 (Idle Factory Tycoon): 아직 시작 안 함. `Game02_SCENARIO.md`부터 순서대로.
+- [ ] Game03~10: 미착수.
+
 ## 다음으로 할 만한 작업 (미구현/알려진 한계)
 
-- Puzzle/Physics 등 다른 장르의 Scene/PrefabGenerator가 없다 (Runner만 구현됨).
+- Puzzle/Physics 등 다른 장르의 Scene/PrefabGenerator가 없다 (Runner만 구현됨) - Game02(Idle)부터는
+  새 장르용 생성기가 필요하다.
 - GravitySwitch 외 Modules(DoubleJump, Dash, MovingPlatform 등)는 폴더만 있고 비어 있다.
-- 이 원격 컨테이너에서는 위 모든 C# 코드가 Unity로 컴파일/실행/빌드된 적이 없다 - Windows/Unity
-  환경에서의 최초 검증이 반드시 필요하다 (특히 TagManager.asset 직접 조작, `PlayerSettings.Android`
-  서명 API, `PrefabUtility.InstantiatePrefab(Object, Scene)` 오버로드 등 이 환경에서 확인 불가능했던
-  API 사용부는 우선적으로 확인할 것).
-- self-hosted Windows runner가 아직 등록되어 있지 않다면 GitHub Actions 워크플로우 4개는 실행되지
-  않는다 (`docs/AUTOMATION.md`의 runner 준비 절차 참고).
+- self-hosted Windows runner 등록 및 실제 빌드 파이프라인 실행이 검증됨(Game01 APK 빌드 성공) -
+  `TagManager.asset` 직접 조작, `PlayerSettings.Android` 서명 API,
+  `PrefabUtility.InstantiatePrefab(Object, Scene)` 오버로드 등 이전에 "확인 불가능"으로
+  표시했던 API들도 실제로 컴파일/실행되는 것을 확인했다.
+- `Assets/Common/Character/Prefabs/MainCharacter.prefab`은 아직 실제 3D 모델이 아니라
+  Unity 프리미티브 임시 placeholder다 (`Assets/Common/Character/CHARACTER_DESIGN.md` 참고) -
+  실제 3D 모델 확보/변환 도구 조사는 여전히 미착수.

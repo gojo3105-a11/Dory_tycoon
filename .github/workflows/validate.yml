@@ -3,13 +3,13 @@ name: Validate GameSpecs
 on:
   push:
     paths:
-      - 'GameSpecs/**'
+      - 'GameSpecs/*.json'
       - 'Assets/GameFactory/Core/GameSpec/**'
       - 'Assets/GameFactory/Editor/GameValidator.cs'
       - 'Assets/GameFactory/Editor/BundleIdUtility.cs'
   pull_request:
     paths:
-      - 'GameSpecs/**'
+      - 'GameSpecs/*.json'
       - 'Assets/GameFactory/Core/GameSpec/**'
       - 'Assets/GameFactory/Editor/GameValidator.cs'
       - 'Assets/GameFactory/Editor/BundleIdUtility.cs'

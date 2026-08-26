@@ -4,11 +4,11 @@ on:
   push:
     paths:
       - 'Assets/GameFactory/**'
-      - 'GameSpecs/**'
+      - 'GameSpecs/*.json'
   pull_request:
     paths:
       - 'Assets/GameFactory/**'
-      - 'GameSpecs/**'
+      - 'GameSpecs/*.json'
   workflow_dispatch:
     inputs:
       game_id:
