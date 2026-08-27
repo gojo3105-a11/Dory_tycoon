@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "id": "godot_engine_4.3",
+      "name": "Godot Engine 4.3",
+      "type": "code",
+      "source": "https://github.com/godotengine/godot",
+      "version": "4.3-stable",
+      "license": "MIT",
+      "code_license": "MIT",
+      "weights_license": null,
+      "commercial_use": true,
+      "attribution_required": true,
+      "redistribution_rules": "MIT: keep copyright notice",
+      "verified_at": "2026-08-27T16:54:34.900212+00:00",
+      "verified_by": "claude_code_infrastructure_build",
+      "games": [],
+      "status": "APPROVED",
+      "notes": "engine binary; the exported game itself is separately licensed"
+    },
+    {
+      "id": "qwen2.5-coder",
+      "name": "Qwen2.5-Coder weights",
+      "type": "model_weights",
+      "source": "https://ollama.com/library/qwen2.5-coder",
+      "version": null,
+      "license": "UNVERIFIED",
+      "code_license": null,
+      "weights_license": "UNVERIFIED",
+      "commercial_use": null,
+      "attribution_required": null,
+      "redistribution_rules": null,
+      "verified_at": null,
+      "verified_by": null,
+      "games": [],
+      "status": "UNKNOWN",
+      "notes": "code licence and weight licence are tracked separately; verify the exact model repository before production use"
+    }
+  ],
+  "created_at": "2026-08-27T16:46:28.344699+00:00",
+  "updated_at": "2026-08-27T16:54:34.900486+00:00"
+}

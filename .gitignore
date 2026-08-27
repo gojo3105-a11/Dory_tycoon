@@ -6,3 +6,16 @@ exports/
 *.aab
 *.log
 *.tmp
+
+# AI_GAME_COMPANY runtime artifacts (machine-specific or regenerated)
+AI_GAME_COMPANY/company/state/*
+!AI_GAME_COMPANY/company/state/.gitkeep
+AI_GAME_COMPANY/company/queue/*
+!AI_GAME_COMPANY/company/queue/.gitkeep
+AI_GAME_COMPANY/logs/*
+!AI_GAME_COMPANY/logs/.gitkeep
+AI_GAME_COMPANY/builds/*
+!AI_GAME_COMPANY/builds/.gitkeep
+AI_GAME_COMPANY/reports/SELFTEST_*
+__pycache__/
+*.pyc

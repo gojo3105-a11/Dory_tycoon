@@ -1,0 +1,85 @@
+{
+  "_comment": "Master prompt sections 4, 5, 8. A model is usable in Production only when license_status == APPROVED. Model IDs are candidates until a human verifies the exact repository license; nothing here is pre-approved by assumption.",
+  "local_llm_candidates": [
+    {
+      "id": "qwen2.5-coder:7b",
+      "role": "LOCAL_PLANNER",
+      "runtime": "ollama",
+      "min_ram_gb": 10,
+      "min_vram_gb": 6,
+      "license": "UNVERIFIED",
+      "license_status": "UNKNOWN",
+      "verify_url": "https://ollama.com/library/qwen2.5-coder"
+    },
+    {
+      "id": "qwen2.5-coder:3b",
+      "role": "LOCAL_PLANNER",
+      "runtime": "ollama",
+      "min_ram_gb": 6,
+      "min_vram_gb": 4,
+      "license": "UNVERIFIED",
+      "license_status": "UNKNOWN",
+      "verify_url": "https://ollama.com/library/qwen2.5-coder"
+    },
+    {
+      "id": "qwen2.5-coder:1.5b",
+      "role": "LOCAL_PLANNER",
+      "runtime": "ollama",
+      "min_ram_gb": 4,
+      "min_vram_gb": 0,
+      "license": "UNVERIFIED",
+      "license_status": "UNKNOWN",
+      "verify_url": "https://ollama.com/library/qwen2.5-coder"
+    },
+    {
+      "id": "deepseek-r1:8b",
+      "role": "LOCAL_REASONER",
+      "runtime": "ollama",
+      "min_ram_gb": 12,
+      "min_vram_gb": 8,
+      "license": "UNVERIFIED",
+      "license_status": "UNKNOWN",
+      "verify_url": "https://ollama.com/library/deepseek-r1"
+    },
+    {
+      "id": "deepseek-r1:7b",
+      "role": "LOCAL_REASONER",
+      "runtime": "ollama",
+      "min_ram_gb": 10,
+      "min_vram_gb": 6,
+      "license": "UNVERIFIED",
+      "license_status": "UNKNOWN",
+      "verify_url": "https://ollama.com/library/deepseek-r1"
+    },
+    {
+      "id": "deepseek-r1:1.5b",
+      "role": "LOCAL_REASONER",
+      "runtime": "ollama",
+      "min_ram_gb": 4,
+      "min_vram_gb": 0,
+      "license": "UNVERIFIED",
+      "license_status": "UNKNOWN",
+      "verify_url": "https://ollama.com/library/deepseek-r1"
+    }
+  ],
+  "image_model_candidates": [
+    {
+      "id": "FLUX.1-schnell",
+      "runtime": "comfyui_or_diffusers",
+      "min_vram_gb": 8,
+      "license": "UNVERIFIED",
+      "license_status": "UNKNOWN",
+      "verify_url": "https://huggingface.co/black-forest-labs/FLUX.1-schnell"
+    }
+  ],
+  "image_to_3d_candidates": [
+    {
+      "id": "TripoSR",
+      "runtime": "python_local",
+      "min_vram_gb": 6,
+      "license": "UNVERIFIED",
+      "license_status": "UNKNOWN",
+      "note": "Master prompt section 10: mesh output is never treated as a finished rigged game character."
+    }
+  ]
+}

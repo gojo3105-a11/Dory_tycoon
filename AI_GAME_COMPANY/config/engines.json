@@ -1,0 +1,32 @@
+{
+  "_comment": "Engine adapter config. The master prompt assumes Unity; this repository (Dory_tycoon) is Godot 4.3. Both adapters exist and 'active_engine' selects one. Paths are discovered at runtime and cached here - never hardcoded in code (master prompt section 18).",
+  "active_engine": "godot",
+  "godot": {
+    "executable": null,
+    "discovery_env_vars": ["GODOT_BIN", "GODOT4_BIN"],
+    "discovery_names": ["godot4", "godot", "Godot_v4.3-stable_linux.x86_64", "Godot_v4.4-stable_linux.x86_64"],
+    "discovery_globs": [
+      "/usr/local/bin/godot*",
+      "/opt/godot*/godot*",
+      "C:/Program Files/Godot/*.exe",
+      "C:/Godot/*.exe"
+    ],
+    "project_path": "..",
+    "android_export_preset": "Android",
+    "validate_args": ["--headless", "--path", "{project}", "--editor", "--quit"],
+    "expected_version_prefix": "4."
+  },
+  "unity": {
+    "executable": null,
+    "discovery_env_vars": ["UNITY_BIN", "UNITY_EDITOR_PATH"],
+    "discovery_globs": [
+      "C:/Program Files/Unity/Hub/Editor/*/Editor/Unity.exe",
+      "/Applications/Unity/Hub/Editor/*/Unity.app/Contents/MacOS/Unity",
+      "~/Unity/Hub/Editor/*/Editor/Unity"
+    ],
+    "project_path": null,
+    "compile_method": "GameFactoryValidator.CompileCheck",
+    "build_method": "GameFactoryBuild.BuildAndroid",
+    "build_target": "Android"
+  }
+}

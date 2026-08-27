@@ -1,0 +1,55 @@
+{
+  "_comment": "Department roster (master prompt sections 2, 3, 5, 16). 'agent' values here are the ones agent_router.py selects; each entry records what it may decide alone and what it must escalate.",
+  "agents": [
+    {
+      "id": "claude",
+      "runtime": "claude_code_cli",
+      "roles": ["CEO", "Lead Developer", "Game Director", "Architecture Owner",
+                "Failure Recovery Supervisor"],
+      "owns": ["system construction", "core gameplay code", "high-risk decisions",
+               "failure root-cause analysis", "final QA approval",
+               "phase progression decisions"],
+      "must_not": ["approve a release without a HUMAN_GATE",
+                   "treat its own output as acceptance evidence"],
+      "cost": "subscription"
+    },
+    {
+      "id": "codex",
+      "runtime": "codex_cli",
+      "roles": ["Independent Code Reviewer"],
+      "owns": ["code review", "bug hunting", "Android compatibility review",
+               "performance review", "test case generation",
+               "implementation alternatives"],
+      "on_limit": "record CODEX_LIMITED, fall back to local reasoner, then Claude review",
+      "must_not": ["use OPENAI_API_KEY", "read or copy ~/.codex/auth.json"],
+      "cost": "subscription"
+    },
+    {
+      "id": "local_planner",
+      "runtime": "ollama",
+      "model_role": "LOCAL_PLANNER",
+      "owns": ["JSON/config generation", "game data", "simple code drafts",
+               "repetitive documents", "scene/prefab checklists", "test cases",
+               "idea expansion"],
+      "cost": "free_local"
+    },
+    {
+      "id": "local_reasoner",
+      "runtime": "ollama",
+      "model_role": "LOCAL_REASONER",
+      "owns": ["build error analysis", "stack trace analysis", "logic review",
+               "design alternatives", "performance bottleneck estimates"],
+      "cost": "free_local"
+    },
+    {
+      "id": "human",
+      "runtime": "person",
+      "owns": ["CLI login", "terms acceptance", "payment", "Android signing secrets",
+               "Google Play account", "character image input",
+               "3D character quality approval", "final release approval",
+               "final fun judgement (HUMAN_PLAYTEST)"],
+      "cost": "attention"
+    }
+  ],
+  "disagreement_rule": "When reviewers disagree, the actual compile/test/build result decides (section 16). With no machine evidence, the task becomes NEEDS_HUMAN_REVIEW."
+}

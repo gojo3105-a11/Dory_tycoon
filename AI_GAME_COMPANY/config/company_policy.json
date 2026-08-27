@@ -1,0 +1,32 @@
+{
+  "_comment": "Master prompt section 7. Cost-prevention policy. Runtime code must fail closed when a flag is false.",
+  "allow_paid_api": false,
+  "allow_paid_assets": false,
+  "allow_cloud_ai_generation": false,
+  "allow_auto_purchase": false,
+  "use_claude_code": true,
+  "use_codex_subscription": true,
+  "use_local_ai": true,
+  "ollama_local_only": true,
+  "allow_ollama_cloud": false,
+  "allow_openai_api_billing": false,
+  "blocked_env_keys": [
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GOOGLE_API_KEY",
+    "GEMINI_API_KEY",
+    "REPLICATE_API_TOKEN",
+    "FAL_KEY",
+    "STABILITY_API_KEY",
+    "HUGGINGFACE_API_TOKEN",
+    "HF_TOKEN",
+    "ELEVENLABS_API_KEY",
+    "AZURE_OPENAI_API_KEY",
+    "MISTRAL_API_KEY",
+    "GROQ_API_KEY"
+  ],
+  "max_retry": 5,
+  "same_error_hash_limit": 2,
+  "ollama_endpoint": "http://localhost:11434",
+  "release_requires_all_licenses_approved": true
+}

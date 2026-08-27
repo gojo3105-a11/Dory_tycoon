@@ -1,0 +1,402 @@
+[
+  {
+    "id": "hardware_profiler",
+    "name": "Hardware Profiler",
+    "expected": "HARDWARE_PROFILE.json written with real OS/CPU/RAM/GPU/program data",
+    "actual": "Linux, 4 cores, 15GB RAM, GPU=False, 8 programs detected",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": "company/state/HARDWARE_PROFILE.json",
+    "detail": {},
+    "duration_s": 1.76
+  },
+  {
+    "id": "policy_loader",
+    "name": "Policy Loader",
+    "expected": "company_policy.json loads and paid flags default to false",
+    "actual": "loaded_from_file=True, paid flags all false=True",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": "config/company_policy.json",
+    "detail": {
+      "source": "config/company_policy.json",
+      "allow_paid_api": false,
+      "allow_paid_assets": false,
+      "allow_cloud_ai_generation": false,
+      "allow_auto_purchase": false,
+      "use_local_ai": true,
+      "ollama_local_only": true,
+      "blocked_env_keys": [
+        "ANTHROPIC_API_KEY",
+        "AZURE_OPENAI_API_KEY",
+        "ELEVENLABS_API_KEY",
+        "FAL_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+        "GROQ_API_KEY",
+        "HF_TOKEN",
+        "HUGGINGFACE_API_TOKEN",
+        "MISTRAL_API_KEY",
+        "OPENAI_API_KEY",
+        "REPLICATE_API_TOKEN",
+        "STABILITY_API_KEY"
+      ],
+      "blocked_keys_present_in_env": [],
+      "max_retry": 5
+    },
+    "duration_s": 0.0
+  },
+  {
+    "id": "state_manager",
+    "name": "State Manager",
+    "expected": "company_state.json written atomically and reloads identically",
+    "actual": "phase=INFRASTRUCTURE, history_entries=10, atomic_write=ok",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": "company/state/company_state.json",
+    "detail": {},
+    "duration_s": 0.0
+  },
+  {
+    "id": "task_queue",
+    "name": "Task Queue (SQLite)",
+    "expected": "enqueue -> claim(RUNNING) -> PASS, and PASS refused without evidence",
+    "actual": "claimed=RUNNING, pass_without_evidence_rejected=True, final=PASS, counts={'PASS': 5}",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": "company/queue/tasks.sqlite3",
+    "detail": {},
+    "duration_s": 0.01
+  },
+  {
+    "id": "ollama_call",
+    "name": "Ollama localhost call",
+    "expected": "HTTP 200 from http://localhost:11434/api/tags",
+    "actual": "NOT_RUNNING: [Errno 111] Connection refused",
+    "status": "LIMITED",
+    "log_path": null,
+    "output_path": null,
+    "detail": {
+      "hint": "start the local server with: ollama serve"
+    },
+    "duration_s": null
+  },
+  {
+    "id": "local_llm_save",
+    "name": "Local LLM response saved",
+    "expected": "response persisted as JSON under company/state/ai_outputs/",
+    "actual": "write path exercised with a status record (no model available)",
+    "status": "LIMITED",
+    "log_path": null,
+    "output_path": "company/state/ai_outputs/selftest_local_llm_unavailable_20260827_165426.json",
+    "detail": {},
+    "duration_s": null
+  },
+  {
+    "id": "codex_exec",
+    "name": "Codex exec test / LIMITED handling",
+    "expected": "codex exec runs, or the CODEX_LIMITED fallback engages",
+    "actual": "codex not installed; router fell back to 'claude' (chain ['codex', 'local_reasoner', 'claude'])",
+    "status": "LIMITED",
+    "log_path": null,
+    "output_path": null,
+    "detail": {
+      "routing": {
+        "task_kind": "code_review",
+        "risk": "HIGH_RISK",
+        "selected": "claude",
+        "chain": [
+          "codex",
+          "local_reasoner",
+          "claude"
+        ],
+        "unavailable": [
+          {
+            "agent": "codex",
+            "reason": "NOT_INSTALLED"
+          },
+          {
+            "agent": "local_reasoner",
+            "reason": "[Errno 111] Connection refused"
+          }
+        ],
+        "reviewer": "claude",
+        "reviewer_available": true,
+        "notes": []
+      },
+      "fallback_order": "local reasoner -> Claude review (section 3)"
+    },
+    "duration_s": 0.61
+  },
+  {
+    "id": "claude_cli",
+    "name": "Claude Code CLI non-interactive mode",
+    "expected": "claude --help documents --print before any subprocess use",
+    "actual": "version=2.1.247 (Claude Code), --print documented=True, --output-format=True",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": null,
+    "detail": {
+      "installed": true,
+      "path": "/opt/node22/bin/claude",
+      "version": "2.1.247 (Claude Code)",
+      "headless": true,
+      "output_format_json": true,
+      "status": "OK",
+      "note": "non-interactive mode verified via --help"
+    },
+    "duration_s": 0.66
+  },
+  {
+    "id": "blender_background",
+    "name": "Blender background test",
+    "expected": "blender --background --python selftest.py writes an output file",
+    "actual": "blender not installed; adapter verifies exit code AND output file when it is",
+    "status": "LIMITED",
+    "log_path": null,
+    "output_path": "tools/blender/selftest.py",
+    "detail": {},
+    "duration_s": 0.0
+  },
+  {
+    "id": "engine_validate",
+    "name": "godot batch compile/validate",
+    "expected": "headless validation exits 0 with no error lines",
+    "actual": "OK, exit=0, errors=0, warnings=4; static project check: ok=True, 3 scenes, 5 scripts, 0 broken res:// refs",
+    "status": "PASS",
+    "log_path": "logs/2026-08-27/godot_validate_165434.log",
+    "output_path": null,
+    "detail": {
+      "engine": {
+        "status": "OK",
+        "exit_code": 0,
+        "version": "4.3.stable.official.77dcf97d8",
+        "error_count": 0,
+        "errors": [],
+        "warning_count": 4,
+        "warnings": [
+          "WARNING: No Bone2D children of node Bone2D_LeftLeg. Cannot calculate bone length or angle reliably.",
+          "WARNING: No Bone2D children of node Bone2D_RightLeg. Cannot calculate bone length or angle reliably.",
+          "WARNING: No Bone2D children of node Bone2D_LeftArm. Cannot calculate bone length or angle reliably.",
+          "WARNING: No Bone2D children of node Bone2D_RightArm. Cannot calculate bone length or angle reliably."
+        ],
+        "log_path": "logs/2026-08-27/godot_validate_165434.log",
+        "artifact": null,
+        "detail": null,
+        "engine": "godot"
+      },
+      "static": {
+        "check": "godot_project_valid",
+        "root": "/home/user/Dory_tycoon",
+        "ok": true,
+        "problems": [],
+        "config_name": "\"Dory Tycoon\"",
+        "main_scene": "\"res://scenes/main/main.tscn\"",
+        "features": "PackedStringArray(\"4.3\", \"Mobile\")",
+        "broken_resource_refs": [],
+        "scene_count": 3,
+        "script_count": 5
+      }
+    },
+    "duration_s": 6.86
+  },
+  {
+    "id": "android_build",
+    "name": "Android build test",
+    "expected": "exit 0 AND build log clean AND APK present with manifest",
+    "actual": "HUMAN_GATE: export_presets.cfg missing: an Android export preset plus debug keystore must be created once in the Godot editor (HUMAN_GATE, section 37)",
+    "status": "HUMAN_GATE",
+    "log_path": null,
+    "output_path": null,
+    "detail": {
+      "status": "HUMAN_GATE",
+      "exit_code": null,
+      "version": null,
+      "error_count": 0,
+      "errors": [],
+      "warning_count": 0,
+      "warnings": [],
+      "log_path": null,
+      "artifact": null,
+      "detail": "export_presets.cfg missing: an Android export preset plus debug keystore must be created once in the Godot editor (HUMAN_GATE, section 37)",
+      "engine": "godot"
+    },
+    "duration_s": 0.05
+  },
+  {
+    "id": "build_log_collection",
+    "name": "Build log collection",
+    "expected": "every external command's stdout/stderr/exit code is written to logs/",
+    "actual": "log file captured all fields=True, 30 log file(s) in today's folder",
+    "status": "PASS",
+    "log_path": "logs/2026-08-27/selftest_log_capture_165434.log",
+    "output_path": null,
+    "detail": {},
+    "duration_s": 0.01
+  },
+  {
+    "id": "report_generator",
+    "name": "Report Generator",
+    "expected": "game report + AI activity report written; incomplete report refused",
+    "actual": "game_report=SELFTEST_Report.txt, activity=SELFTEST_AI_ACTIVITY.md, incomplete_rejected=True",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": "reports/SELFTEST_Report.txt",
+    "detail": {},
+    "duration_s": 0.0
+  },
+  {
+    "id": "retry_manager",
+    "name": "Retry Manager",
+    "expected": "same error hash -> ROOT_CAUSE_ANALYSIS; max_retry -> NEEDS_HUMAN_REVIEW",
+    "actual": "timestamps normalised to one hash=True, repeat decision=ROOT_CAUSE_ANALYSIS, budget exhausted=NEEDS_HUMAN_REVIEW",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": "company/state/retry",
+    "detail": {},
+    "duration_s": 0.0
+  },
+  {
+    "id": "resume",
+    "name": "Resume test",
+    "expected": "interrupted RUNNING task is re-found after restart and a completion with a missing artifact is revoked",
+    "actual": "interrupted task recovered=True, missing-artifact completion revoked=True, problems_detected=1",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": "company/state/company_state.json",
+    "detail": {},
+    "duration_s": 0.01
+  },
+  {
+    "id": "license_registry",
+    "name": "License Registry",
+    "expected": "UNKNOWN and unregistered assets block a release; APPROVED needs a verifier",
+    "actual": "release_allowed=False, blockers=['qwen2.5-coder', 'never_registered'], approve_without_verifier_rejected=True",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": "licenses/LICENSE_REGISTRY.json",
+    "detail": {},
+    "duration_s": 0.0
+  },
+  {
+    "id": "paid_api_block",
+    "name": "Paid API block test",
+    "expected": "paid keys stripped from child env; paid/purchase/remote-ollama actions raise PAID_ACTION_BLOCKED",
+    "actual": "keys stripped=['OPENAI_API_KEY', 'REPLICATE_API_TOKEN', 'ANTHROPIC_API_KEY'], paid_guard=True, purchase_guard=True, remote_ollama_blocked=True",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": null,
+    "detail": {
+      "note": "no real key was used; a synthetic env was tested"
+    },
+    "duration_s": 0.0
+  },
+  {
+    "id": "agent_router",
+    "name": "AI routing + disagreement rule",
+    "expected": "every task kind routes to an available agent or HUMAN; reviewer conflicts are settled by the real build result",
+    "actual": "json_config->claude; build_log_triage->claude; core_system->claude; code_review->claude; release_approval->human; machine_result_wins=True",
+    "status": "PASS",
+    "log_path": null,
+    "output_path": null,
+    "detail": {
+      "routes": {
+        "json_config": {
+          "task_kind": "json_config",
+          "risk": "LOW",
+          "selected": "claude",
+          "chain": [
+            "local_planner",
+            "claude"
+          ],
+          "unavailable": [
+            {
+              "agent": "local_planner",
+              "reason": "[Errno 111] Connection refused"
+            }
+          ],
+          "reviewer": null,
+          "reviewer_available": false,
+          "notes": []
+        },
+        "build_log_triage": {
+          "task_kind": "build_log_triage",
+          "risk": "MEDIUM",
+          "selected": "claude",
+          "chain": [
+            "local_reasoner",
+            "claude"
+          ],
+          "unavailable": [
+            {
+              "agent": "local_reasoner",
+              "reason": "[Errno 111] Connection refused"
+            }
+          ],
+          "reviewer": "claude",
+          "reviewer_available": true,
+          "notes": []
+        },
+        "core_system": {
+          "task_kind": "core_system",
+          "risk": "HIGH_RISK",
+          "selected": "claude",
+          "chain": [
+            "claude"
+          ],
+          "unavailable": [],
+          "reviewer": "codex",
+          "reviewer_available": false,
+          "notes": [
+            "codex unavailable: review falls back to local reasoner then Claude (section 3)"
+          ]
+        },
+        "code_review": {
+          "task_kind": "code_review",
+          "risk": "HIGH_RISK",
+          "selected": "claude",
+          "chain": [
+            "codex",
+            "local_reasoner",
+            "claude"
+          ],
+          "unavailable": [
+            {
+              "agent": "codex",
+              "reason": "NOT_INSTALLED"
+            },
+            {
+              "agent": "local_reasoner",
+              "reason": "[Errno 111] Connection refused"
+            }
+          ],
+          "reviewer": "claude",
+          "reviewer_available": true,
+          "notes": []
+        },
+        "release_approval": {
+          "task_kind": "release_approval",
+          "risk": "HIGH_RISK",
+          "selected": "human",
+          "chain": [
+            "human"
+          ],
+          "unavailable": [],
+          "reviewer": "human",
+          "reviewer_available": true,
+          "notes": []
+        }
+      },
+      "disagreement": {
+        "resolution": "FAIL",
+        "decided_by": "actual_build_or_test_result",
+        "note": "reviewers disagreed (claude=PASS, codex=FAIL); machine result wins",
+        "evidence": {
+          "status": "BUILD_FAILED",
+          "ok": false
+        }
+      }
+    },
+    "duration_s": 0.64
+  }
+]
