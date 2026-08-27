@@ -200,6 +200,28 @@ Feel 평가는 코드를 읽고 판단한 것이며 실제 화면을 직접 본 
   TitlePanel 전부 새 `SafeArea` 컨테이너 하위로 옮김. Device Simulator 실측(NOT VERIFIED)만
   PC 확인 대기 중.
 
+## CI 검증 결과 (2026-08-27 20:55, 실제 확인됨)
+
+TASK-001~008 전체가 들어간 상태로 self-hosted runner 파이프라인이 통과했다. 이건 추론이 아니라
+`Reports/errors/latest.txt` / `Reports/build-status/latest.txt`로 확인한 실측값이다.
+
+- **컴파일 에러 0개** (Runtime/Editor 양쪽 다. Runtime이 통과했으므로 그동안 가려져 있던
+  Editor 어셈블리도 실제로 컴파일된 것)
+- **APK 실제 생성 확인**: `Builds\game01\APK\Game01_FactoryRunner_v1.0.apk`
+  17.24 MB, sha256:60C6978B1E8C2889, 빌드 시각 2026-08-27 20:50:47
+  (위치는 `C:\actions-runner\_work\Dory_tycoon\Dory_tycoon` - 러너 워크스페이스)
+- 남은 CS0618 경고 1건은 현재 소스에 없는 `FindFirstObjectByType`를 가리킨다(전체 검색 결과
+  주석 1곳뿐). 24시간 창 안의 이전 실행 로그 잔여물이며 코드 문제가 아니다.
+
+여기까지 오는 데 걸린 실제 원인은 두 가지였다: (1) 리포트 스크립트가 러너 워크스페이스가 아닌
+`C:\Dory_tycoon`만 스캔해서 CI 실패가 전혀 보이지 않았음, (2) `Packages/manifest.json`에
+`com.unity.modules.particlesystem`가 없어서 `VfxManager.cs`가 CS1069로 컴파일 실패. 둘 다
+CLAUDE.md에 재발 방지용으로 기록했다.
+
+**여전히 NOT VERIFIED인 것**: Play 모드 실측(Title→Play→GameOver→Home 순환), SFX 실제 청취,
+Safe Area 실기기/Device Simulator 확인, 파티클/셰이크/HitStop의 "Feel", 진동(에디터에서 no-op).
+빌드가 된다는 것과 재미있게 동작한다는 것은 다른 문제다.
+
 ## P0 완료 요약
 
 TASK-001/002/003 세 가지 모두 코드 구현·커밋·푸시 완료. TASK-004/005(실제 3D 모델/환경 아트)는
