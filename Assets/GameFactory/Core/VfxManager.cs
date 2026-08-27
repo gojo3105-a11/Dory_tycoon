@@ -32,8 +32,16 @@ namespace GameFactory.Core
         {
             if (burstParticles == null) return;
 
+            // Moved before Emit because the shape module emits from the
+            // transform's current position, and simulationSpace is World -
+            // so the burst stays where it was spawned.
             transform.position = position;
-            var emitParams = new ParticleSystem.EmitParams { startColor = color, startSize = size };
+
+            ParticleSystem.EmitParams emitParams = new ParticleSystem.EmitParams
+            {
+                startColor = color,
+                startSize = size
+            };
             burstParticles.Emit(emitParams, count);
         }
 
