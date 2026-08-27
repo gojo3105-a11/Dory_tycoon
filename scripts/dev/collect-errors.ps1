@@ -26,6 +26,15 @@
   string literals (and can break parsing outright). Korean belongs in the
   .md docs, not in these scripts.
 
+.PARAMETER MaxLogAgeHours
+  Ignore logs older than this (default 24). Unity never deletes old logs, so
+  without a cut-off the report keeps replaying findings from days-old runs -
+  which makes a real fix look like it changed nothing, because the stale log
+  still carries the error it fixed. Logs that age out are listed under
+  "Logs skipped as stale" rather than silently dropped. If EVERY log is too
+  old, all of them are scanned anyway and the report says so at the top -
+  reporting a false "no errors" would be just as wrong.
+
 .PARAMETER Commit
   Also commit the report when its findings changed, and push it to the fork.
   This is what makes it visible to Claude Code.
@@ -47,6 +56,7 @@ param(
     [string]$OriginRemote = "origin",
     [int]$TailLines = 8000,
     [int]$MaxPerSection = 60,
+    [int]$MaxLogAgeHours = 24,
     [switch]$Commit,
     [switch]$NoPush
 )
@@ -130,12 +140,37 @@ if (-not $sources) {
     throw "No Unity logs found. Looked for '$editorLog', '$repoLogDir\*.log', and '$ciLogDir\*.log'."
 }
 
+# Unity never deletes old logs, so without an age cut-off this report keeps
+# replaying findings from runs that are days old. That is actively
+# misleading: after fixing a compile error, the stale log still carries it
+# and the report looks unchanged, so the fix reads as failed. Only logs
+# touched within MaxLogAgeHours count as evidence about the current code.
+$ageCutoff = (Get-Date).AddHours(-$MaxLogAgeHours)
+$freshSources = @($sources | Where-Object { (Get-Item $_).LastWriteTime -ge $ageCutoff })
+$staleSources = @($sources | Where-Object { (Get-Item $_).LastWriteTime -lt $ageCutoff })
+
+# Never report "no errors" purely because everything aged out - that would
+# be the same false clean signal from the other direction.
+$usingStaleFallback = $false
+if (-not $freshSources) {
+    $usingStaleFallback = $true
+    $freshSources = $sources
+    $staleSources = @()
+}
+
 $compileErrors = New-Object System.Collections.Generic.List[string]
 $obsoleteWarnings = New-Object System.Collections.Generic.List[string]
 $exceptions = New-Object System.Collections.Generic.List[string]
 $scanned = New-Object System.Collections.Generic.List[string]
+$skipped = New-Object System.Collections.Generic.List[string]
 
-foreach ($source in $sources) {
+foreach ($source in $staleSources) {
+    $modified = (Get-Item $source).LastWriteTime
+    $ageHours = [Math]::Round(((Get-Date) - $modified).TotalHours, 1)
+    $skipped.Add("$source  (modified: $($modified.ToString('yyyy-MM-dd HH:mm:ss')), ${ageHours}h old)")
+}
+
+foreach ($source in $freshSources) {
     $lines = Read-SharedFile $source $TailLines
     $modified = (Get-Item $source).LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
     $scanned.Add("$source  (modified: $modified, lines scanned: $($lines.Count))")
@@ -202,10 +237,29 @@ $report = New-Object System.Text.StringBuilder
 [void]$report.AppendLine("Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 [void]$report.AppendLine("$hashPrefix$findingsHash")
 [void]$report.AppendLine()
-[void]$report.AppendLine("## Logs scanned")
+
+if ($usingStaleFallback) {
+    [void]$report.AppendLine("WARNING: every log is older than $MaxLogAgeHours h, so the findings below")
+    [void]$report.AppendLine("may describe code that has since changed. Treat them as unconfirmed and")
+    [void]$report.AppendLine("check whether the pipeline actually ran.")
+    [void]$report.AppendLine()
+}
+
+[void]$report.AppendLine("## Logs scanned (newer than $MaxLogAgeHours h)")
 [void]$report.AppendLine()
 foreach ($entry in $scanned) { [void]$report.AppendLine("- $entry") }
 [void]$report.AppendLine()
+
+[void]$report.AppendLine("## Logs skipped as stale ($($skipped.Count))")
+[void]$report.AppendLine()
+if ($skipped.Count -eq 0) {
+    [void]$report.AppendLine("None.")
+}
+else {
+    foreach ($entry in $skipped) { [void]$report.AppendLine("- $entry") }
+}
+[void]$report.AppendLine()
+
 [void]$report.Append($findingsText)
 
 $previousHash = $null
