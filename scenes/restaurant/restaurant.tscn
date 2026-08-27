@@ -384,8 +384,10 @@ script = ExtResource("9_dory_script")
 position = Vector2(107.4, 132.26)
 
 [node name="Bone2D_Hip" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
 
 [node name="Bone2D_LeftLeg" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip"]
+rest = Transform2D(1, 0, 0, 1, -8.6, 0)
 position = Vector2(-8.6, 0)
 autocalculate_length_and_angle = false
 length = 20.0
@@ -398,6 +400,7 @@ offset = Vector2(-6.5, 70.5)
 z_index = 0
 
 [node name="Bone2D_RightLeg" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip"]
+rest = Transform2D(1, 0, 0, 1, 8.6, 0)
 position = Vector2(8.6, 0)
 autocalculate_length_and_angle = false
 length = 20.0
@@ -410,6 +413,7 @@ offset = Vector2(-1.0, 69.5)
 z_index = 4
 
 [node name="Bone2D_Torso" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
 
 [node name="TorsoSprite" type="Sprite2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso"]
 scale = Vector2(0.083, 0.083)
@@ -419,6 +423,7 @@ offset = Vector2(146.0, -747.0)
 z_index = 2
 
 [node name="Bone2D_LeftArm" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso"]
+rest = Transform2D(1, 0, 0, 1, 3.15, -37.52)
 position = Vector2(3.15, -37.52)
 autocalculate_length_and_angle = false
 length = 15.0
@@ -431,6 +436,7 @@ offset = Vector2(-73.0, 68.0)
 z_index = 1
 
 [node name="Bone2D_RightArm" type="Bone2D" parent="CenterContainer/DesignArea/World/Dory/Skeleton2D/Bone2D_Hip/Bone2D_Torso"]
+rest = Transform2D(1, 0, 0, 1, 21.41, -37.52)
 position = Vector2(21.41, -37.52)
 autocalculate_length_and_angle = false
 length = 15.0
