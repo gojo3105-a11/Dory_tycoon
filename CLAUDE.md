@@ -121,12 +121,29 @@ GameSpec의 mechanics/level/enemy/special 조합이 실제로 달라져야 한�
 **`Reports/errors/latest.txt`**에 커밋한다 (자동 동기화가 15분마다 실행). 이 파일에는 컴파일
 에러, CS0618 obsolete 경고, 런타임 예외가 들어 있다.
 
-**빌드(APK/AAB)가 실제로 만들어졌는지도 같은 방식으로 확인한다.** self-hosted runner는 PC의
-`C:\Dory_tycoon` 클론을 그대로 작업 디렉터리로 쓰므로, `Builds/<gameId>/`에 생긴 실제 파일을
-`scripts/dev/report-build-status.ps1`이 스캔해서 **`Reports/build-status/latest.txt`**에
+**빌드(APK/AAB)가 실제로 만들어졌는지도 같은 방식으로 확인한다.** `Builds/<gameId>/`에 생긴 실제
+파일을 `scripts/dev/report-build-status.ps1`이 스캔해서 **`Reports/build-status/latest.txt`**에
 커밋한다(같은 자동 동기화 주기). GitHub Actions API 접근이 없어도 이 파일 하나로 "APK가 실제로
 디스크에 있는지"를 확인할 수 있다 - CLAUDE.md 최상단 원칙("APK가 생성되지 않았는데 성공했다고
 보고하지 않는다")을 지키려면 이 파일을 반드시 먼저 확인한다.
+
+**중요 - 작업 디렉터리가 두 개다.** self-hosted runner는 `C:\Dory_tycoon`(사용자가 Unity Editor로
+직접 만지는 클론)을 쓰지 않는다. GitHub Actions runner는 자기 `_work` 폴더에 따로 체크아웃하며,
+이 프로젝트에서는 **`C:\actions-runner\_work\Dory_tycoon\Dory_tycoon`**이다. 두 리포트 스크립트는
+이제 양쪽을 모두 스캔한다(`-CiWorkspacePath` 파라미터). 이걸 몰라서 CI가 계속 실패하는데도 리포트에는
+아무것도 안 잡히는 상태로 17시간을 흘려보낸 적이 있다 - 리포트가 "갱신 안 됨"이면 스크립트가 엉뚱한
+폴더를 보고 있는 게 아닌지 먼저 의심한다. 두 폴더를 정션으로 합치지는 않는다: `actions/checkout`이
+매 실행마다 `git clean`을 돌려서 `C:\Dory_tycoon`의 커밋 안 된 작업을 날려버린다.
+
+**새 Unity 내장 모듈 API를 쓰면 `Packages/manifest.json`에 그 모듈을 추가해야 한다.** 이 프로젝트는
+내장 모듈을 의도적으로 최소한만 켜둔다(androidjni, audio, particlesystem, physics2d, ui). 예를 들어
+`UnityEngine.ParticleSystem`을 쓰기 시작했을 때 `com.unity.modules.particlesystem`을 안 넣어서
+`CS1069: The type name 'ParticleSystem' could not be found` 컴파일 에러로 파이프라인이 죽었다.
+`packages-lock.json`은 손으로 고치지 말고 Unity가 재생성하게 둔다.
+
+또한 `GameFactory.Editor.asmdef`가 `GameFactory.Runtime`을 참조하므로, **Runtime 쪽 컴파일이 깨지면
+Editor 쪽 파일은 아예 컴파일되지 않아 에러 목록에 나타나지도 않는다.** Runtime 에러를 먼저 고치고
+다시 확인해야 Editor 에러가 보인다 - 에러 목록이 짧다고 문제가 그것뿐이라고 단정하지 않는다.
 
 이 저장소(`gojo3105-a11/Dory_tycoon`)에는 그 파일들이 사용자가 병합할 때까지 안 들어올 수
 있으므로, 최신 상태는 **사용자 포크에서 직접 읽는다**:
