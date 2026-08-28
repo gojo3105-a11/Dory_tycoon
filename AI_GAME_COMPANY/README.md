@@ -65,23 +65,64 @@ Claude Code는 리눅스 원격 컨테이너에서 돈다. **Unity도, GPU도, O
 규칙 위반이다.** 추측으로 `codex exec --json --schema ...`를 짜 놓으면 그 플래그가 실제로 존재하는지
 알 수 없다.
 
-그래서 먼저 PC에서 이걸 실행해야 한다:
+그래서 먼저 PC에서 이걸 실행해야 한다. **한 번에 다 하는 방법:**
 
 ```powershell
 cd C:\Dory_tycoon
 git fetch origin claude/delete-current-content-mgn4xm
 git merge origin/claude/delete-current-content-mgn4xm
 
-.\AI_GAME_COMPANY\tools\detect-environment.ps1 -Commit
+# 먼저 뭘 설치할지만 보고 싶으면 (아무것도 안 바꿈)
+.\AI_GAME_COMPANY\tools\setup-pc.ps1 -DryRun
+
+# 실제 실행: 없는 무료 도구 설치 -> 환경 조사 -> 커밋/푸시
+.\AI_GAME_COMPANY\tools\setup-pc.ps1
 ```
+
+`git merge`를 스크립트 안에서 하지 않는 이유: 실행 도중에 이 스크립트 자신의 새 버전을 받아버리면
+구버전이 계속 돌아가는 헷갈리는 상황이 된다. 병합은 명령줄에서 먼저 한다.
 
 산출물:
 
 - `AI_GAME_COMPANY/config/HARDWARE_PROFILE.json` — CPU/RAM/GPU/VRAM, 각 도구의 installed/version/path/status,
   Ollama HTTP API 상태와 설치 모델 목록, Unity 버전 매칭, Android SDK/JDK 경로
+- `AI_GAME_COMPANY/config/INSTALL_REPORT.json` — 무엇을 설치했고 무엇을 왜 안 했는지
 - `AI_GAME_COMPANY/config/cli-probes/*.txt` — 각 CLI의 **원본 `--help` 텍스트**
 
-이 두 가지가 올라오면 그때부터 실제 지원되는 명령만으로 어댑터를 쓴다.
+이 세 가지가 올라오면 그때부터 실제 지원되는 명령만으로 어댑터를 쓴다.
+
+### 자동 설치 정책 (§43)
+
+§43은 *"추가 유료 비용 없이 설치 가능한 구성요소라면 설치 계획을 만들고 가능한 범위에서 진행한다"*고
+허용한다. 그래서 **무료·로그인 불필요**한 것만 자동 설치한다.
+
+| 대상 | 자동 설치 | 방법 | 비고 |
+|---|---|---|---|
+| Git | O | winget | |
+| Python 3 | O | winget | Orchestrator가 Python(§13) |
+| Node.js LTS | O | winget | Codex/Claude CLI 설치에 필요 |
+| Ollama **서버** | O | winget | 서버만. 모델은 아래 참고 |
+| Blender | O | winget | §11 background 스크립트용 |
+| Codex CLI | O (설치만) | npm | **로그인은 HUMAN_GATE**(§37) |
+| Claude Code CLI | O (설치만) | npm | **로그인은 HUMAN_GATE**(§37) |
+| **Unity** | **X** | — | 라이선스 + §19 검증된 Baseline. 자동 설치/업그레이드가 유일하게 동작하는 파이프라인을 깨뜨릴 수 있다 |
+| **Ollama 모델** | **X** | — | §4/§8. Model ID별 라이선스 확인 후 `LICENSE_REGISTRY.json`에 APPROVED가 되어야 받는다. "Qwen이니까 괜찮다"는 명시적으로 불충분 |
+| **ComfyUI / 이미지·3D 모델** | **X** | — | §9. 설치 전 저장소 라이선스 확인 필수 |
+| 유료 소프트웨어 | **X** | — | `PAID_ACTION_BLOCKED`로 기록, 결제 안 함 |
+
+설치기는 **패키지 ID를 추측해서 바로 실행하지 않는다.** §38("존재하지 않는 CLI 명령 추측 금지")에
+따라 먼저 `winget search --exact`로 해당 ID가 실제로 존재하는지 확인하고, 없으면
+`PACKAGE_ID_NOT_FOUND`로 기록한 뒤 넘어간다.
+
+winget의 표준 source/package 동의(`--accept-source-agreements`, `--accept-package-agreements`)는
+자동으로 처리되며, 어떤 동의를 자동 수락했는지 `INSTALL_REPORT.json`의 `autoAcceptedAgreements`에
+그대로 남긴다. winget 자체가 없으면 `BLOCKED_NO_PACKAGE_MANAGER`로 기록한다(Microsoft Store의
+"App Installer" 설치 필요).
+
+각 항목은 §43 형식대로 EXPECTED / ACTUAL / STATUS / LOG_PATH / OUTPUT_PATH로 기록된다.
+상태값: `ALREADY_INSTALLED`, `INSTALLED`, `WOULD_INSTALL`(DryRun), `FAILED`, `SKIPPED_POLICY`,
+`HUMAN_GATE`, `LICENSE_CHECK_REQUIRED`, `PACKAGE_ID_NOT_FOUND`, `BLOCKED_NO_PACKAGE_MANAGER`,
+`BLOCKED_MISSING_DEPENDENCY`.
 
 ### 보안 (§3, §7)
 

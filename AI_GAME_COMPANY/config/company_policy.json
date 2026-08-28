@@ -15,6 +15,21 @@
   "allow_openai_api_billing": false,
   "allow_ollama_cloud": false,
 
+  "allow_auto_install_free_tools": true,
+  "auto_install_package_manager": "winget",
+  "auto_install_accept_oss_package_agreements": true,
+  "_auto_install_note": "Section 43 permits installing components that cost nothing. Only free, no-login OSS tools are eligible. The installer verifies each package ID exists in the package manager before running it rather than assuming, per section 38. Accepting winget's standard source/package agreements for these OSS packages is covered by the user's explicit request to auto-install; every auto-accepted agreement is named in the install report.",
+
+  "never_auto_install": [
+    "unity",
+    "ollama_models",
+    "comfyui",
+    "image_generation_models",
+    "image_to_3d_models",
+    "any_paid_software"
+  ],
+  "_never_auto_install_note": "unity: licence tier plus section 19's verified-build Baseline - a wrong editor version breaks the working APK pipeline. ollama_models / image models / 3d models: sections 4, 8 and 9 require verifying the licence of each specific model ID before use, and 'it is a Qwen' is explicitly not sufficient. comfyui: pulls model weights whose licences are unverified.",
+
   "blocked_env_keys": [
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
