@@ -122,6 +122,22 @@
 
   "pending_verification": [
     {
+      "id": "kenney-platformer-art-deluxe",
+      "type": "2d_art_pack",
+      "candidateFor": "Runner ground / obstacle / coin sprites - replaces the solid-colour placeholders that are currently the game's entire visual identity",
+      "expectedLicense": "CC0",
+      "reason": "Secondary sources describe Kenney's asset packs as CC0 public domain with commercial use allowed and attribution not required. That is NOT sufficient under section 8. Claude Code cannot verify it directly: its container's egress proxy blocks kenney.nl, itch.io, opengameart.org and creativecommons.org.",
+      "verificationPlan": "Run AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1 on the PC. It downloads the archive, records its SHA-256, and commits the licence file shipped INSIDE the archive - the licence distributed with the exact bytes the game would use, which is stronger evidence than any web page. Status moves to APPROVED only after that captured text is read."
+    },
+    {
+      "id": "kenney-background-elements",
+      "type": "2d_art_pack",
+      "candidateFor": "Parallax background layers. The game currently has no background at all beyond a flat camera clear colour, so this is the single largest visual gap.",
+      "expectedLicense": "CC0",
+      "reason": "Same as above - unverified until the shipped licence file is captured.",
+      "verificationPlan": "Same as above."
+    },
+    {
       "id": "local-llm-models",
       "reason": "Section 4: model IDs are not yet known - they come from HARDWARE_PROFILE.json ollamaApi.models once detect-environment.ps1 runs on the PC. Each specific model ID gets its own entry; 'it is a Qwen' or 'it is a DeepSeek' is explicitly NOT sufficient to assume a licence."
     },

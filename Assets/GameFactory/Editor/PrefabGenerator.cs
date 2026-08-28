@@ -39,6 +39,14 @@ namespace GameFactory.Editor
     {
         private const int SpriteSize = 64;
 
+        /// <summary>
+        /// Where licensed art packs land. A file here wins over the
+        /// procedural placeholder of the same canonical name, so adding real
+        /// art is purely additive - if the folder is empty the generator
+        /// behaves exactly as before and the verified build cannot break.
+        /// </summary>
+        private const string SharedArtFolder = "Assets/Common/Art/Runner";
+
         public static RunnerPrefabSet GenerateRunnerPrefabs(GameSpec spec, string assetFolder)
         {
             int groundLayer = TagLayerUtility.EnsureLayer("Ground");
@@ -100,13 +108,11 @@ namespace GameFactory.Editor
 
         private static GameObject CreateGroundTilePrefab(GameSpec spec, string assetFolder, float tileWidth, int groundLayer)
         {
-            string spritePath = CreateSolidSprite(assetFolder, "ground_sprite.png", MutedColorFromSeed(spec.theme.environment));
-
             GameObject go = new GameObject("GroundTile");
             go.layer = groundLayer;
 
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+            sr.sprite = ResolveSprite("ground", assetFolder, "ground_sprite.png", MutedColorFromSeed(spec.theme.environment));
             sr.drawMode = SpriteDrawMode.Tiled;
             sr.size = new Vector2(tileWidth, 1f);
 
@@ -118,33 +124,31 @@ namespace GameFactory.Editor
 
         private static GameObject CreateObstaclePrefab(string assetFolder)
         {
-            string spritePath = CreateSolidSprite(assetFolder, "obstacle_sprite.png", new Color(0.85f, 0.15f, 0.15f));
-
             GameObject go = new GameObject("Obstacle");
             go.tag = "Obstacle";
 
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+            sr.sprite = ResolveSprite("obstacle", assetFolder, "obstacle_sprite.png", new Color(0.85f, 0.15f, 0.15f));
 
             BoxCollider2D col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = Vector2.one;
+            col.size = SpriteWorldSize(sr.sprite, Vector2.one);
 
             return SaveAsPrefab(go, assetFolder, "Obstacle.prefab");
         }
 
         private static GameObject CreateCoinPrefab(string assetFolder)
         {
-            string spritePath = CreateSolidSprite(assetFolder, "coin_sprite.png", new Color(1f, 0.85f, 0.2f), 48);
-
             GameObject go = new GameObject("Coin");
 
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+            sr.sprite = ResolveSprite("coin", assetFolder, "coin_sprite.png", new Color(1f, 0.85f, 0.2f), 48);
 
             BoxCollider2D col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = Vector2.one * 0.6f;
+            // Pickup stays slightly smaller than the art so a near miss reads
+            // as a miss rather than a surprise grab.
+            col.size = SpriteWorldSize(sr.sprite, Vector2.one) * 0.6f;
 
             go.AddComponent<Coin>();
 
@@ -153,8 +157,6 @@ namespace GameFactory.Editor
 
         private static GameObject CreateGravityZonePrefab(string assetFolder)
         {
-            string spritePath = CreateSolidSprite(assetFolder, "gravity_zone_sprite.png", new Color(0.55f, 0.2f, 0.9f, 0.25f));
-
             GameObject go = new GameObject("GravityZone");
 
             BoxCollider2D col = go.AddComponent<BoxCollider2D>();
@@ -162,7 +164,7 @@ namespace GameFactory.Editor
             col.size = new Vector2(10f, 6f);
 
             SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+            sr.sprite = ResolveSprite("gravity_zone", assetFolder, "gravity_zone_sprite.png", new Color(0.55f, 0.2f, 0.9f, 0.25f));
             sr.drawMode = SpriteDrawMode.Tiled;
             sr.size = new Vector2(10f, 6f);
             sr.sortingOrder = -1;
@@ -170,6 +172,33 @@ namespace GameFactory.Editor
             go.AddComponent<GravitySwitchZone>();
 
             return SaveAsPrefab(go, assetFolder, "GravityZone.prefab");
+        }
+
+        /// <summary>
+        /// Returns licensed art from SharedArtFolder when present, otherwise
+        /// generates the solid-colour placeholder. Callers get a Sprite either
+        /// way and do not need to care which they got.
+        /// </summary>
+        private static Sprite ResolveSprite(string canonicalName, string assetFolder, string placeholderFileName,
+            Color placeholderColor, int placeholderSize = SpriteSize)
+        {
+            string artPath = $"{SharedArtFolder}/{canonicalName}.png";
+            Sprite licensed = AssetDatabase.LoadAssetAtPath<Sprite>(artPath);
+            if (licensed != null) return licensed;
+
+            string placeholderPath = CreateSolidSprite(assetFolder, placeholderFileName, placeholderColor, placeholderSize);
+            return AssetDatabase.LoadAssetAtPath<Sprite>(placeholderPath);
+        }
+
+        /// <summary>
+        /// Sizes a collider from the sprite it is paired with. Real art can be
+        /// any resolution, so a hardcoded collider size that matched the 64px
+        /// placeholder would no longer line up with what the player sees.
+        /// </summary>
+        private static Vector2 SpriteWorldSize(Sprite sprite, Vector2 fallback)
+        {
+            if (sprite == null) return fallback;
+            return sprite.bounds.size;
         }
 
         private static Color MutedColorFromSeed(string seed)
