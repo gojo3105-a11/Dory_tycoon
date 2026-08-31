@@ -21,6 +21,9 @@ if __package__ in (None, ""):
 
 from company.orchestrator.hardware import HardwareProfile  # noqa: E402
 from company.orchestrator.policy import Policy  # noqa: E402
+from company.orchestrator.report_generator import (  # noqa: E402
+    GameNarrative, MissingRequiredSection, ReportGenerator, WouldDowngradeReport,
+)
 from company.orchestrator.state import CompanyState  # noqa: E402
 from company.orchestrator.tasks import TaskQueue  # noqa: E402
 
@@ -142,11 +145,86 @@ def cmd_status(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _narrative_path(game_id: str) -> Path:
+    return COMPANY_ROOT / "games" / game_id / "narrative.json"
+
+
+def _load_narrative(game_id: str) -> GameNarrative:
+    path = _narrative_path(game_id)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"{path} not found. The report's narrative sections (how it plays, what "
+            "makes it different, controls) cannot be derived from the filesystem - "
+            "they have to be written."
+        )
+    import json
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
+    known = {f for f in GameNarrative.__dataclass_fields__}
+    return GameNarrative(**{k: v for k, v in data.items() if k in known})
+
+
+def cmd_gate(args: argparse.Namespace) -> int:
+    """Section 23: may this game be called COMPLETE, and may the next one start?"""
+    generator = ReportGenerator(REPO_ROOT)
+    ok, blockers = generator.is_complete(args.game)
+
+    print(f"=== COMPLETION GATE: {args.game} ===")
+    if ok:
+        print("  COMPLETE - all checks pass. The next game may start.")
+        return 0
+
+    print("  NOT COMPLETE. Blockers:")
+    for blocker in blockers:
+        print(f"    - {blocker}")
+    print("\n  Section 23: do not start the next game until these clear.")
+    return 1
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    generator = ReportGenerator(REPO_ROOT)
+    try:
+        narrative = _load_narrative(args.game)
+    except FileNotFoundError as exc:
+        print(f"ERROR: {exc}")
+        return 2
+
+    try:
+        path = generator.write(args.game, narrative, force=args.force)
+    except MissingRequiredSection as exc:
+        print(f"ERROR: {exc}")
+        return 2
+    except WouldDowngradeReport as exc:
+        print(f"REFUSED: {exc}")
+        return 3
+
+    print(f"Wrote {path}")
+    ok, blockers = generator.is_complete(args.game)
+    if not ok:
+        # The report is still written - it just says what is missing, which is
+        # the point. Section 38: do not paper over an incomplete build.
+        print("Note: this game is NOT complete yet:")
+        for blocker in blockers:
+            print(f"  - {blocker}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
+
     sub.add_parser("doctor", help="what this machine can actually run").set_defaults(func=cmd_doctor)
     sub.add_parser("status", help="state and queue, reconciled with disk").set_defaults(func=cmd_status)
+
+    gate = sub.add_parser("gate", help="may this game be called COMPLETE?")
+    gate.add_argument("--game", default="game01")
+    gate.set_defaults(func=cmd_gate)
+
+    report = sub.add_parser("report", help="write Reports/GameXX_Report.txt")
+    report.add_argument("--game", default="game01")
+    report.add_argument("--force", action="store_true",
+                        help="overwrite even if that would replace a report "
+                             "recording an APK this machine cannot see")
+    report.set_defaults(func=cmd_report)
 
     args = parser.parse_args(argv)
     return args.func(args)
