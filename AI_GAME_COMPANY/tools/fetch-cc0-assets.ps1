@@ -1,32 +1,43 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Downloads candidate CC0 art packs on the PC, captures each pack's OWN
-  licence file as the verification evidence, and inventories what is inside -
-  without importing anything into the game yet.
+  Captures the licence and file inventory of art-pack archives on the PC, so
+  a pack can be licence-verified before any of it is imported into the game.
 
 .DESCRIPTION
-  Section 8 requires a real licence check per asset, and section 38 forbids
+  Section 8 requires a real licence check per asset and section 38 forbids
   shipping an asset whose licence is UNKNOWN. Claude Code cannot do this part:
   its container's egress proxy blocks kenney.nl, itch.io, opengameart.org and
-  even creativecommons.org, so it cannot read a licence page or download a
-  pack. This PC can.
+  even creativecommons.org, so it can neither read a licence page nor download
+  a pack.
 
   Capturing the licence file that ships INSIDE the archive is deliberately
   stronger evidence than reading a web page: it is the licence distributed
   with the exact bytes the game will use.
 
+  HOW ARCHIVES GET HERE
+    Default: drop the .zip files into
+      AI_GAME_COMPANY/asset_staging/_incoming/
+    and run this with no arguments. Every zip there is processed.
+
+    Earlier versions of this script hardcoded download URLs. Those URLs were
+    guesses - the sites are unreachable from the container that wrote them -
+    and section 38 forbids guessing. So downloading is now opt-in via -Url,
+    and the normal path is a file you fetched yourself in a browser.
+
   This script does NOT decide that a pack is approved and does NOT copy art
-  into Assets/. It stages, records, and stops. Claude reads the captured
-  licence text from the repository, and only then is the registry updated to
-  APPROVED and the art mapped in. Section 14: "AI said it is done" is not a
-  PASS.
+  into Assets/. It stages evidence and stops. Section 14: "the AI said it is
+  done" is not a PASS.
 
   ASCII only, deliberately: Windows PowerShell 5.1 reads a BOM-less UTF-8
   .ps1 using the local codepage, which mangles non-ASCII string literals.
 
-.PARAMETER Pack
-  Only process the pack with this id. Default: all packs in the manifest.
+.PARAMETER Url
+  Optional. Download this archive instead of reading the drop folder. Use it
+  only with a URL you have confirmed works.
+
+.PARAMETER PackId
+  Optional id for the -Url download. Defaults to the file name.
 
 .PARAMETER Commit
   Commit the captured licences, inventory and report, and push.
@@ -37,7 +48,8 @@ param(
     [string]$RepoPath = "C:\Dory_tycoon",
     [string]$Branch = "claude/delete-current-content-mgn4xm",
     [string]$OriginRemote = "origin",
-    [string]$Pack,
+    [string]$Url,
+    [string]$PackId,
     [switch]$Commit,
     [switch]$NoPush
 )
@@ -48,10 +60,11 @@ $stagingRelative = "AI_GAME_COMPANY/asset_staging"
 $configRelative = "AI_GAME_COMPANY/config"
 $stagingDir = Join-Path $RepoPath ($stagingRelative -replace '/', '\')
 $configDir = Join-Path $RepoPath ($configRelative -replace '/', '\')
+$incomingDir = Join-Path $stagingDir "_incoming"
 $reportPath = Join-Path $configDir "ASSET_FETCH_REPORT.json"
-$downloadCache = Join-Path $env:TEMP "ai_game_company_assets"
+$workDir = Join-Path $env:TEMP "ai_game_company_assets"
 
-foreach ($dir in @($stagingDir, $configDir, $downloadCache)) {
+foreach ($dir in @($stagingDir, $configDir, $incomingDir, $workDir)) {
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
 }
 
@@ -72,85 +85,89 @@ function Invoke-Git {
 }
 
 # ---------------------------------------------------------------------------
-# Candidate packs
-#
-# These are CANDIDATES, not approved assets. Nothing here is trusted until its
-# shipped licence file has been captured and reviewed.
+# Collect the archives to process
 # ---------------------------------------------------------------------------
 
-$packs = @(
-    [ordered]@{
-        id  = "kenney-platformer-art-deluxe"
-        name = "Kenney - Platformer Art Deluxe"
-        url = "https://kenney.nl/media/pages/assets/platformer-art-deluxe/6c1a2b0a5f-1677495181/kenney_platformer-art-deluxe.zip"
-        expectedLicense = "CC0"
-        use = "ground tiles, obstacles, coin, background elements for the Runner genre"
-    },
-    [ordered]@{
-        id  = "kenney-background-elements"
-        name = "Kenney - Background Elements"
-        url = "https://kenney.nl/media/pages/assets/background-elements/8a3a0d2a3f-1677495166/kenney_background-elements.zip"
-        expectedLicense = "CC0"
-        use = "parallax background layers - the single biggest visual gap right now"
+$archives = @()
+
+if ($Url) {
+    $downloadId = $PackId
+    if (-not $downloadId) {
+        $downloadId = [System.IO.Path]::GetFileNameWithoutExtension(([Uri]$Url).LocalPath)
     }
-)
+    if (-not $downloadId) { $downloadId = "downloaded-pack" }
 
-if ($Pack) { $packs = @($packs | Where-Object { $_.id -eq $Pack }) }
-if (-not $packs -or $packs.Count -eq 0) { throw "No packs matched '$Pack'." }
+    $target = Join-Path $incomingDir "$downloadId.zip"
+    Write-Host "Downloading $Url"
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $Url -OutFile $target -UseBasicParsing -TimeoutSec 300
+        $archives += Get-Item $target
+    }
+    catch {
+        Write-Host "Download failed: $($_.Exception.Message)"
+        exit 1
+    }
+}
+else {
+    $archives = @(Get-ChildItem -Path $incomingDir -Filter "*.zip" -File -ErrorAction SilentlyContinue)
+}
+
+if ($archives.Count -eq 0) {
+    Write-Host ""
+    Write-Host "No archives to process."
+    Write-Host ""
+    Write-Host "Download the art packs in a browser, then drop the .zip files into:"
+    Write-Host "  $incomingDir"
+    Write-Host ""
+    Write-Host "and run this script again. Nothing else is needed - the licence"
+    Write-Host "file inside each zip is what gets captured as evidence."
+    exit 0
+}
+
+Write-Host "Found $($archives.Count) archive(s) to process."
 
 # ---------------------------------------------------------------------------
-
-function Get-FileSha256([string]$Path) {
-    return (Get-FileHash -Path $Path -Algorithm SHA256).Hash
-}
+# Process each archive
+# ---------------------------------------------------------------------------
 
 $results = @()
 
-foreach ($pack in $packs) {
+foreach ($archive in $archives) {
+    $archiveId = $archive.BaseName
     Write-Host ""
-    Write-Host "=== $($pack.name) ==="
+    Write-Host "=== $archiveId ==="
 
     $record = [ordered]@{
-        id              = $pack.id
-        name            = $pack.name
-        sourceUrl       = $pack.url
-        expectedLicense = $pack.expectedLicense
-        intendedUse     = $pack.use
-        status          = "NOT_ATTEMPTED"
-        archiveSha256   = $null
-        licenseFiles    = @()
+        id                = $archiveId
+        archiveName       = $archive.Name
+        archiveSizeMb     = [Math]::Round($archive.Length / 1MB, 2)
+        archiveSha256     = $null
+        sourceUrl         = $Url
+        status            = "NOT_ATTEMPTED"
+        licenseFiles      = @()
         licenseAssertsCC0 = $false
-        imageCount      = 0
-        inventoryPath   = $null
-        detail          = $null
+        imageCount        = 0
+        inventoryPath     = $null
+        detail            = $null
     }
 
-    $zipPath = Join-Path $downloadCache "$($pack.id).zip"
-    $extractDir = Join-Path $downloadCache $pack.id
-    $packStaging = Join-Path $stagingDir $pack.id
+    $extractDir = Join-Path $workDir $archiveId
+    $packStaging = Join-Path $stagingDir $archiveId
 
     try {
-        if (Test-Path $zipPath) {
-            Write-Host "Using cached download."
-        }
-        else {
-            Write-Host "Downloading..."
-            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-            Invoke-WebRequest -Uri $pack.url -OutFile $zipPath -UseBasicParsing -TimeoutSec 300
-        }
-
-        $record.archiveSha256 = Get-FileSha256 $zipPath
+        $record.archiveSha256 = (Get-FileHash -Path $archive.FullName -Algorithm SHA256).Hash
 
         if (Test-Path $extractDir) { Remove-Item $extractDir -Recurse -Force }
         Write-Host "Extracting..."
-        Expand-Archive -Path $zipPath -DestinationPath $extractDir -Force
+        Expand-Archive -Path $archive.FullName -DestinationPath $extractDir -Force
 
         if (-not (Test-Path $packStaging)) { New-Item -ItemType Directory -Path $packStaging -Force | Out-Null }
 
-        # The licence shipped inside the archive is the evidence. Without one,
+        # The licence shipped inside the archive is the evidence. Without one
         # the pack stays unusable - section 38 forbids shipping UNKNOWN.
-        $licenseFiles = Get-ChildItem -Path $extractDir -Recurse -File |
-            Where-Object { $_.Name -match '(?i)^(license|licence|readme|copying)' }
+        $licenseFiles = @(Get-ChildItem -Path $extractDir -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '(?i)^(license|licence|readme|copying)' })
 
         foreach ($licenseFile in $licenseFiles) {
             $destName = "LICENSE_$($licenseFile.Name)"
@@ -163,26 +180,26 @@ foreach ($pack in $packs) {
             }
         }
 
-        $images = Get-ChildItem -Path $extractDir -Recurse -File -Include "*.png", "*.jpg" -ErrorAction SilentlyContinue
+        $images = @(Get-ChildItem -Path $extractDir -Recurse -File -Include "*.png", "*.jpg" -ErrorAction SilentlyContinue)
         $record.imageCount = $images.Count
 
         # A full inventory so the exact files to import can be chosen from the
         # repository, instead of guessing at names that may not exist.
         $inventoryFile = Join-Path $packStaging "INVENTORY.txt"
-        $relativeNames = $images | ForEach-Object { $_.FullName.Substring($extractDir.Length).TrimStart('\') }
+        $relativeNames = @($images | ForEach-Object { $_.FullName.Substring($extractDir.Length).TrimStart('\') })
         Set-Content -Path $inventoryFile -Value ($relativeNames -join "`r`n") -Encoding UTF8
-        $record.inventoryPath = "$stagingRelative/$($pack.id)/INVENTORY.txt"
+        $record.inventoryPath = "$stagingRelative/$archiveId/INVENTORY.txt"
 
-        $sourceNote = @(
-            "id:          $($pack.id)",
-            "name:        $($pack.name)",
-            "sourceUrl:   $($pack.url)",
+        $sourceLines = @(
+            "id:            $archiveId",
+            "archiveName:   $($archive.Name)",
             "archiveSha256: $($record.archiveSha256)",
-            "fetchedAt:   $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
-            "fetchedBy:   AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1",
-            "extractedTo: $extractDir  (NOT committed - only licence + inventory are)"
-        ) -join "`r`n"
-        Set-Content -Path (Join-Path $packStaging "SOURCE.txt") -Value $sourceNote -Encoding UTF8
+            "sourceUrl:     $(if ($Url) { $Url } else { 'manually downloaded into _incoming/' })",
+            "fetchedAt:     $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
+            "fetchedBy:     AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1",
+            "extractedTo:   $extractDir  (NOT committed - only licence + inventory are)"
+        )
+        Set-Content -Path (Join-Path $packStaging "SOURCE.txt") -Value ($sourceLines -join "`r`n") -Encoding UTF8
 
         if ($record.licenseFiles.Count -eq 0) {
             $record.status = "NO_LICENSE_FILE_FOUND"
@@ -200,11 +217,9 @@ foreach ($pack in $packs) {
         Write-Host "$($record.status)  ($($record.imageCount) images, $($record.licenseFiles.Count) licence file(s))"
     }
     catch {
-        $record.status = "FETCH_FAILED"
+        $record.status = "PROCESSING_FAILED"
         $record.detail = $_.Exception.Message
-        Write-Host "FETCH_FAILED: $($_.Exception.Message)"
-        Write-Host "If the URL 404s the pack was probably re-versioned; download it manually"
-        Write-Host "and extract into: $packStaging"
+        Write-Host "PROCESSING_FAILED: $($_.Exception.Message)"
     }
 
     $results += [pscustomobject]$record
@@ -214,6 +229,7 @@ $report = [ordered]@{
     generatedAt = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
     generatedBy = "AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1"
     outputPath  = $reportPath
+    incomingDir = $incomingDir
     note        = "Nothing here is APPROVED yet. Licence text and inventory are captured for review; Assets/ is untouched. Section 8 / section 38."
     results     = $results
 }
@@ -223,7 +239,7 @@ Set-Content -Path $reportPath -Value ($report | ConvertTo-Json -Depth 8) -Encodi
 Write-Host ""
 Write-Host "=== SUMMARY ==="
 foreach ($result in $results) {
-    Write-Host ("{0,-32} {1}" -f $result.id, $result.status)
+    Write-Host ("{0,-40} {1}" -f $result.id, $result.status)
 }
 Write-Host ""
 Write-Host "Report : $reportPath"
@@ -245,7 +261,7 @@ if (-not $pending) {
     exit 0
 }
 
-Invoke-Git @("commit", "-m", "chore: capture CC0 asset pack licences and inventory for review") | Out-Null
+Invoke-Git @("commit", "-m", "chore: capture art pack licences and inventory for review") | Out-Null
 if ($NoPush) { exit 0 }
 Invoke-Git @("push", $OriginRemote, $Branch) -Retries 4 | Out-Null
 Write-Host "Pushed."

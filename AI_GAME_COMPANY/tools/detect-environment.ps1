@@ -385,7 +385,7 @@ foreach ($keyName in $paidKeyNames) {
     $paidKeysPresent[$keyName] = [bool]([Environment]::GetEnvironmentVariable($keyName))
 }
 
-$profile = [ordered]@{
+$machineProfile = [ordered]@{
     generatedAt        = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
     generatedBy        = "AI_GAME_COMPANY/tools/detect-environment.ps1"
     repoPath           = $RepoPath
@@ -399,7 +399,7 @@ $profile = [ordered]@{
     note               = "Raw CLI help text is in cli-probes/. Per master prompt 41 STEP 5, adapters must only use commands that appear there."
 }
 
-$json = $profile | ConvertTo-Json -Depth 8
+$json = $machineProfile | ConvertTo-Json -Depth 8
 Set-Content -Path $profilePath -Value $json -Encoding UTF8
 
 Write-Host ""
