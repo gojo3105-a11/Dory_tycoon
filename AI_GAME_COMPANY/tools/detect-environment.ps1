@@ -114,6 +114,16 @@ function Invoke-Probe {
         }
         if ($Arguments -and $Arguments.Count -gt 0) { $startArgs.ArgumentList = $Arguments }
 
+        # npm installs its global CLIs as shims. Start-Process can launch a
+        # .cmd shim but NOT a .ps1 one - it has no associated executable
+        # handler - which is why 'claude' and 'codex' first came back as
+        # FOUND_BUT_NOT_RUNNABLE. Route those through cmd.exe instead.
+        if ($FilePath -match '\.ps1$') {
+            $startArgs.FilePath = "$env:ComSpec"
+            $shimName = [System.IO.Path]::GetFileNameWithoutExtension($FilePath)
+            $startArgs.ArgumentList = @("/c", $shimName) + $Arguments
+        }
+
         $process = Start-Process @startArgs
 
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
@@ -154,7 +164,8 @@ function Get-ToolInfo {
         [Parameter(Mandatory = $true)][string[]]$Commands,
         [string[]]$VersionArgs = @("--version"),
         [string[]]$HelpArgs = @("--help"),
-        [hashtable]$ExtraProbes = @{}
+        [hashtable]$ExtraProbes = @{},
+        [string[]]$ExtraPaths = @()
     )
 
     $info = [ordered]@{
@@ -166,20 +177,37 @@ function Get-ToolInfo {
         notes     = @()
     }
 
-    $resolved = $null
+    $resolvedPath = $null
     foreach ($command in $Commands) {
         $found = Get-Command $command -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($found) { $resolved = $found; break }
+        if ($found) {
+            $resolvedPath = $found.Source
+            if (-not $resolvedPath) { $resolvedPath = $found.Name }
+            break
+        }
     }
 
-    if (-not $resolved) {
-        Save-Probe -Name $Name -Title "$Name (not found on PATH)" -Body "Tried: $($Commands -join ', ')"
+    # Several tools install correctly but never add themselves to PATH -
+    # Blender's installer is the usual example, and adb lives inside Unity's
+    # bundled Android SDK. PATH alone would report those as NOT_FOUND even
+    # though winget just installed them successfully.
+    if (-not $resolvedPath) {
+        foreach ($pattern in $ExtraPaths) {
+            $match = Get-Item -Path $pattern -ErrorAction SilentlyContinue |
+                Sort-Object FullName -Descending | Select-Object -First 1
+            if ($match) { $resolvedPath = $match.FullName; break }
+        }
+    }
+
+    if (-not $resolvedPath) {
+        $tried = "PATH: $($Commands -join ', ')"
+        if ($ExtraPaths.Count -gt 0) { $tried += "`r`nPaths: $($ExtraPaths -join ', ')" }
+        Save-Probe -Name $Name -Title "$Name (not found)" -Body $tried
         return [pscustomobject]$info
     }
 
     $info.installed = $true
-    $info.path = $resolved.Source
-    if (-not $info.path) { $info.path = $resolved.Name }
+    $info.path = $resolvedPath
 
     $probeText = New-Object System.Text.StringBuilder
     [void]$probeText.AppendLine("resolved path: $($info.path)")
@@ -280,9 +308,18 @@ $tools.codex = Get-ToolInfo -Name "codex" -Commands @("codex") -VersionArgs @("-
 $tools.ollama = Get-ToolInfo -Name "ollama" -Commands @("ollama") -VersionArgs @("--version") -HelpArgs @("--help") `
     -ExtraProbes @{ "ollama list" = @("list"); "ollama ps" = @("ps") }
 
-$tools.blender = Get-ToolInfo -Name "blender" -Commands @("blender") -VersionArgs @("--version") -HelpArgs @("--help")
+$tools.blender = Get-ToolInfo -Name "blender" -Commands @("blender") -VersionArgs @("--version") -HelpArgs @("--help") `
+    -ExtraPaths @(
+        "C:\Program Files\Blender Foundation\Blender*\blender.exe",
+        "$env:LOCALAPPDATA\Programs\Blender Foundation\Blender*\blender.exe"
+    )
 
-$tools.adb = Get-ToolInfo -Name "adb" -Commands @("adb") -VersionArgs @("version") -HelpArgs @("--version")
+# adb ships inside Unity's bundled Android SDK rather than on PATH.
+$tools.adb = Get-ToolInfo -Name "adb" -Commands @("adb") -VersionArgs @("version") -HelpArgs @("--version") `
+    -ExtraPaths @(
+        "C:\Program Files\Unity\Hub\Editor\*\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools\adb.exe",
+        "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
+    )
 
 Write-Host "Probing Ollama HTTP API..."
 
