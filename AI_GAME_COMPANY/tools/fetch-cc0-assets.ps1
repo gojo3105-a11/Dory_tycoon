@@ -186,7 +186,21 @@ foreach ($archive in $archives) {
         # A full inventory so the exact files to import can be chosen from the
         # repository, instead of guessing at names that may not exist.
         $inventoryFile = Join-Path $packStaging "INVENTORY.txt"
-        $relativeNames = @($images | ForEach-Object { $_.FullName.Substring($extractDir.Length).TrimStart('\') })
+
+        # Resolve-Path first: $env:TEMP often hands back an 8.3 short path
+        # ("VASCO-~1") while Get-ChildItem returns the long form, so a naive
+        # Substring($extractDir.Length) cuts the wrong number of characters
+        # and silently mangles every entry. Anything that still does not sit
+        # under the root keeps its absolute path rather than being truncated.
+        $extractRoot = (Resolve-Path $extractDir).ProviderPath.TrimEnd('\')
+        $relativeNames = @($images | ForEach-Object {
+            if ($_.FullName.StartsWith($extractRoot, [StringComparison]::OrdinalIgnoreCase)) {
+                $_.FullName.Substring($extractRoot.Length).TrimStart('\')
+            }
+            else {
+                $_.FullName
+            }
+        })
         Set-Content -Path $inventoryFile -Value ($relativeNames -join "`r`n") -Encoding UTF8
         $record.inventoryPath = "$stagingRelative/$archiveId/INVENTORY.txt"
 

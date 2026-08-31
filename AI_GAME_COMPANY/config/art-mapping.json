@@ -1,0 +1,50 @@
+{
+  "_comment": "Which file from which APPROVED pack becomes which sprite in the game. apply-art-mapping.ps1 reads this, and refuses to copy from any pack whose LICENSE_REGISTRY.json status is not APPROVED - the section 8 gate enforced in code, not just in prose.",
+  "_version": 1,
+  "_lastUpdated": "2026-08-31",
+
+  "targets": [
+    {
+      "target": "Assets/Common/Art/Runner/ground.png",
+      "packId": "kenney-platformer-graphics-deluxe",
+      "archiveName": "platformerGraphicsDeluxe_Updated.zip",
+      "sourceFile": "Tiles/stoneMid.png",
+      "why": "Tileable ground with a distinct top surface, which is what SpriteRenderer.drawMode Tiled needs. 'Mid' (not 'Center') because Center is the fully enclosed variant with no top edge - it would look like the runner is inside the rock rather than on it. Stone is chosen over grass/sand/snow/castle because the GameSpec theme is Factory and stone-grey is the closest industrial read available in this pack; no metal tiles exist in it."
+    },
+    {
+      "target": "Assets/Common/Art/Runner/obstacle.png",
+      "packId": "kenney-platformer-graphics-deluxe",
+      "archiveName": "platformerGraphicsDeluxe_Updated.zip",
+      "sourceFile": "Items/spikes.png",
+      "why": "Reads as lethal at a glance, which matters in a runner where the player has a fraction of a second to decide to jump. boxWarning was the alternative but a crate reads as 'push me' or 'collect me', not 'this kills you'."
+    },
+    {
+      "target": "Assets/Common/Art/Runner/coin.png",
+      "packId": "kenney-platformer-graphics-deluxe",
+      "archiveName": "platformerGraphicsDeluxe_Updated.zip",
+      "sourceFile": "Items/coinGold.png",
+      "why": "Gold over silver/bronze for maximum contrast against the stone ground and dark background."
+    }
+  ],
+
+  "deliberatelyNotMapped": [
+    {
+      "target": "Assets/Common/Art/Runner/gravity_zone.png",
+      "decision": "keep the procedural placeholder",
+      "why": "The gravity zone is a translucent gameplay REGION marker, not a physical object. A flat translucent purple tint communicates 'the rules are different in here' better than any of the pack's illustrated sprites would, and it tiles cleanly at any size. Substituting art here would be change for its own sake."
+    }
+  ],
+
+  "queued": [
+    {
+      "what": "parallax background layers",
+      "packId": "kenney-background-elements-remastered",
+      "why": "Biggest remaining visual gap - the game's background is currently a single flat camera clear colour. Needs a ParallaxBackground component first, which does not exist yet, so it is a separate task rather than a file copy."
+    },
+    {
+      "what": "UI buttons and panels",
+      "packId": "kenney-ui-pack",
+      "why": "The UI is Unity's default buttons with solid colour fills. Swapping in real 9-sliced button art is high visual return, but needs sprite border setup per asset, so again a task rather than a copy."
+    }
+  ]
+}
