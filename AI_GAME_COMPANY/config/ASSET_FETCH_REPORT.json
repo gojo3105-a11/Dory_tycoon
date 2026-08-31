@@ -1,40 +1,69 @@
 ﻿{
-    "generatedAt":  "2026-08-31 20:40:31",
+    "generatedAt":  "2026-08-31 20:57:56",
     "generatedBy":  "AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1",
     "outputPath":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\config\\ASSET_FETCH_REPORT.json",
+    "incomingDir":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\asset_staging\\_incoming",
     "note":  "Nothing here is APPROVED yet. Licence text and inventory are captured for review; Assets/ is untouched. Section 8 / section 38.",
     "results":  [
                     {
-                        "id":  null,
-                        "name":  null,
-                        "sourceUrl":  null,
-                        "expectedLicense":  null,
-                        "intendedUse":  null,
-                        "status":  "FETCH_FAILED",
-                        "archiveSha256":  null,
+                        "id":  "kenney_background-elements-remastered",
+                        "archiveName":  "kenney_background-elements-remastered.zip",
+                        "archiveSizeMb":  0.99,
+                        "archiveSha256":  "9C904F0B7C52A15AEB2CBF454DE641620CFB9025B1611A0A21BD8C46992F4568",
+                        "sourceUrl":  "",
+                        "status":  "LICENSE_CAPTURED_PENDING_REVIEW",
                         "licenseFiles":  [
-
+                                             "LICENSE_License.txt"
                                          ],
-                        "licenseAssertsCC0":  false,
-                        "imageCount":  0,
-                        "inventoryPath":  null,
-                        "detail":  "\u0027Uri\u0027 매개 변수에 대한 인수의 유효성을 검사할 수 없습니다. 인수가 null이거나 비어 있습니다. null이거나 비어 있지 않은 인수를 제공하고 명령을 다시 시도하십시오."
+                        "licenseAssertsCC0":  true,
+                        "imageCount":  162,
+                        "inventoryPath":  "AI_GAME_COMPANY/asset_staging/kenney_background-elements-remastered/INVENTORY.txt",
+                        "detail":  "Licence captured and mechanically asserts CC0. Still requires review before the registry is set to APPROVED."
                     },
                     {
-                        "id":  null,
-                        "name":  null,
-                        "sourceUrl":  null,
-                        "expectedLicense":  null,
-                        "intendedUse":  null,
-                        "status":  "FETCH_FAILED",
-                        "archiveSha256":  null,
+                        "id":  "kenney_backgroundElements",
+                        "archiveName":  "kenney_backgroundElements.zip",
+                        "archiveSizeMb":  1.01,
+                        "archiveSha256":  "31FFECEC57BD51263F68E96E288AD06AC28EB1DFB41EDB06B006A1B42CC10E41",
+                        "sourceUrl":  "",
+                        "status":  "LICENSE_CAPTURED_PENDING_REVIEW",
                         "licenseFiles":  [
-
+                                             "LICENSE_License.txt"
                                          ],
-                        "licenseAssertsCC0":  false,
-                        "imageCount":  0,
-                        "inventoryPath":  null,
-                        "detail":  "\u0027Uri\u0027 매개 변수에 대한 인수의 유효성을 검사할 수 없습니다. 인수가 null이거나 비어 있습니다. null이거나 비어 있지 않은 인수를 제공하고 명령을 다시 시도하십시오."
+                        "licenseAssertsCC0":  true,
+                        "imageCount":  125,
+                        "inventoryPath":  "AI_GAME_COMPANY/asset_staging/kenney_backgroundElements/INVENTORY.txt",
+                        "detail":  "Licence captured and mechanically asserts CC0. Still requires review before the registry is set to APPROVED."
+                    },
+                    {
+                        "id":  "kenney_ui-pack",
+                        "archiveName":  "kenney_ui-pack.zip",
+                        "archiveSizeMb":  1.17,
+                        "archiveSha256":  "A8A14A234911EB648C062622915C93E79E94E97CB7F9F375A70F6617F1174318",
+                        "sourceUrl":  "",
+                        "status":  "LICENSE_CAPTURED_PENDING_REVIEW",
+                        "licenseFiles":  [
+                                             "LICENSE_License.txt"
+                                         ],
+                        "licenseAssertsCC0":  true,
+                        "imageCount":  870,
+                        "inventoryPath":  "AI_GAME_COMPANY/asset_staging/kenney_ui-pack/INVENTORY.txt",
+                        "detail":  "Licence captured and mechanically asserts CC0. Still requires review before the registry is set to APPROVED."
+                    },
+                    {
+                        "id":  "platformerGraphicsDeluxe_Updated",
+                        "archiveName":  "platformerGraphicsDeluxe_Updated.zip",
+                        "archiveSizeMb":  2.09,
+                        "archiveSha256":  "0B4A16FF5B04C89047DCC9D9C363E538BCA475DBA85FF706DC9CA2E6AE901CF2",
+                        "sourceUrl":  "",
+                        "status":  "LICENSE_CAPTURED_PENDING_REVIEW",
+                        "licenseFiles":  [
+                                             "LICENSE_license.txt"
+                                         ],
+                        "licenseAssertsCC0":  true,
+                        "imageCount":  344,
+                        "inventoryPath":  "AI_GAME_COMPANY/asset_staging/platformerGraphicsDeluxe_Updated/INVENTORY.txt",
+                        "detail":  "Licence captured and mechanically asserts CC0. Still requires review before the registry is set to APPROVED."
                     }
                 ]
 }
