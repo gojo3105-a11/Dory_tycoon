@@ -101,6 +101,14 @@ class HardwareProfile:
         return [str(m.get("name")) for m in self.raw.get("ollamaApi", {}).get("models", [])]
 
     @property
+    def ollama_model_sizes(self) -> list[tuple[str, float]]:
+        """(model id, weight size in GB) for each installed model."""
+        return [
+            (str(m.get("name")), float(m.get("sizeGb") or 0.0))
+            for m in self.raw.get("ollamaApi", {}).get("models", [])
+        ]
+
+    @property
     def unity_ok(self) -> bool:
         return self.raw.get("unity", {}).get("status") == "OK"
 
@@ -137,6 +145,40 @@ class HardwareProfile:
             f"is only {budget:.1f} GB"
         )
 
+    def model_fit(self, size_gb: float) -> tuple[str, str]:
+        """Can a model of this weight size actually run here?
+
+        Being downloaded is not the same as being runnable. Ollama will accept
+        a pull far larger than the machine's memory and then either fail to
+        load it or thrash to disk, which looks like a hang rather than an
+        error - so the size is checked against real RAM before anything tries
+        to use it.
+        """
+        if size_gb <= 0:
+            return "UNKNOWN", "no size recorded for this model"
+
+        if size_gb >= self.ram_total_gb:
+            return "NOT_VIABLE", (
+                f"{size_gb:.1f} GB of weights against {self.ram_total_gb:.1f} GB of "
+                "total RAM - larger than the whole machine, so it cannot be loaded "
+                "at all, whatever else is closed"
+            )
+
+        budget = self.ram_free_gb - 2.0
+        if size_gb > budget:
+            return "NOT_VIABLE", (
+                f"{size_gb:.1f} GB of weights against a {budget:.1f} GB budget "
+                f"({self.ram_free_gb:.1f} GB free minus 2 GB headroom) - it would "
+                "swap to disk instead of running"
+            )
+
+        if not self.has_dedicated_gpu:
+            return "LIMITED", (
+                f"{size_gb:.1f} GB fits the {budget:.1f} GB budget, but inference is "
+                "CPU-only here, so expect slow responses"
+            )
+        return "VIABLE", f"{size_gb:.1f} GB fits the {budget:.1f} GB budget"
+
     def verdicts(self) -> list[Verdict]:
         results: list[Verdict] = []
 
@@ -171,11 +213,28 @@ class HardwareProfile:
                 " CPU-only inference (no dedicated GPU detected), so expect slow "
                 "responses - suitable for short JSON/config generation, not long reasoning"
             )
-            installed = self.ollama_models
-            recommendation = (
-                f"pull a {tier} model, once its specific model ID is licence-checked "
-                "and APPROVED in LICENSE_REGISTRY.json"
-            ) if not installed else f"models already present: {', '.join(installed)}"
+            installed = self.ollama_model_sizes
+            if not installed:
+                recommendation = (
+                    f"pull a {tier} model, once its specific model ID is licence-checked "
+                    "and APPROVED in LICENSE_REGISTRY.json"
+                )
+            else:
+                # A pulled model that does not fit is worse than none: it looks
+                # like capability. Say which ones cannot run, and downgrade the
+                # verdict when nothing installed is usable.
+                lines, usable = [], 0
+                for name, size_gb in installed:
+                    fit, fit_why = self.model_fit(size_gb)
+                    if fit in ("VIABLE", "LIMITED"):
+                        usable += 1
+                    lines.append(f"{name}: {fit} - {fit_why}")
+                if usable == 0:
+                    status = "NOT_VIABLE"
+                    lines.append(
+                        f"nothing installed can run here; a {tier} model is what fits"
+                    )
+                recommendation = " | ".join(lines)
             results.append(Verdict("local_llm", status, why + gpu_note, recommendation))
 
         # --- local image generation ---

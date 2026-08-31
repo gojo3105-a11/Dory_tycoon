@@ -20,6 +20,9 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from company.orchestrator.hardware import HardwareProfile  # noqa: E402
+from company.orchestrator.ollama_client import (  # noqa: E402
+    NonLocalEndpointRefused, OllamaClient,
+)
 from company.orchestrator.policy import Policy  # noqa: E402
 from company.orchestrator.report_generator import (  # noqa: E402
     GameNarrative, MissingRequiredSection, ReportGenerator, WouldDowngradeReport,
@@ -93,6 +96,57 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
         if verdict.status == "NOT_VIABLE" and verdict.capability == "unity_android_build":
             exit_code = 1
 
+    return exit_code
+
+
+def cmd_ollama(_args: argparse.Namespace) -> int:
+    """Is the local model gateway usable, and is any installed model allowed?
+
+    Three separate questions that are easy to conflate: reachable, licensed
+    (section 8), and small enough to actually load on this machine (section 5).
+    A model can pass the first two and still be unusable.
+    """
+    policy = _load_policy()
+    registry = CONFIG_DIR / "LICENSE_REGISTRY.json"
+
+    try:
+        client = OllamaClient(
+            local_only=policy.allows("ollama_local_only"),
+            registry_path=registry if registry.is_file() else None,
+        )
+    except NonLocalEndpointRefused as exc:
+        print(f"REFUSED: {exc}")
+        return 2
+
+    print("=== OLLAMA ===")
+    print(client.status_summary())
+
+    profile_path = CONFIG_DIR / "HARDWARE_PROFILE.json"
+    if not profile_path.exists():
+        print("\nNo HARDWARE_PROFILE.json, so model sizes cannot be checked "
+              "against this machine's RAM.")
+        return 0
+
+    profile = HardwareProfile.load(profile_path)
+    print(f"\n=== FITS IN RAM? ({profile.ram_total_gb:.1f} GB total, "
+          f"{profile.ram_free_gb:.1f} GB free) ===")
+
+    sizes = profile.ollama_model_sizes
+    if not sizes:
+        print("  no models recorded in the hardware profile")
+        return 0
+
+    exit_code = 0
+    for name, size_gb in sizes:
+        fit, why = profile.model_fit(size_gb)
+        print(f"  {STATUS_MARK.get(fit, '[ ?? ]')} {name}")
+        print(f"         {why}")
+        if fit == "NOT_VIABLE":
+            exit_code = 1
+
+    tier, tier_why = profile.recommend_llm_tier()
+    print(f"\n  what fits instead: {tier or 'NONE'}")
+    print(f"    {tier_why}")
     return exit_code
 
 
@@ -214,6 +268,8 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("doctor", help="what this machine can actually run").set_defaults(func=cmd_doctor)
     sub.add_parser("status", help="state and queue, reconciled with disk").set_defaults(func=cmd_status)
+    sub.add_parser("ollama", help="local model gateway: reachable, licensed, fits in RAM"
+                   ).set_defaults(func=cmd_ollama)
 
     gate = sub.add_parser("gate", help="may this game be called COMPLETE?")
     gate.add_argument("--game", default="game01")

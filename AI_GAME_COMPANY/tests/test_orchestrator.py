@@ -181,7 +181,8 @@ class StateTests(unittest.TestCase):
 
 
 class HardwareTests(unittest.TestCase):
-    def _profile(self, ram_free: float, nvidia: bool) -> HardwareProfile:
+    def _profile(self, ram_free: float, nvidia: bool,
+                 models: list[dict] | None = None) -> HardwareProfile:
         return HardwareProfile(raw={
             "hardware": {
                 "cpu": "test cpu", "ramTotalGb": 16.0, "ramFreeGb": ram_free,
@@ -189,7 +190,7 @@ class HardwareTests(unittest.TestCase):
                 "nvidiaSmi": {"available": nvidia},
             },
             "tools": {"codex": {"installed": True, "status": "FOUND_BUT_NOT_RUNNABLE"}},
-            "ollamaApi": {"reachable": True, "models": []},
+            "ollamaApi": {"reachable": True, "models": models or []},
             "unity": {"status": "OK", "matchingEditorPath": "C:/Unity.exe"},
         })
 
@@ -217,6 +218,49 @@ class HardwareTests(unittest.TestCase):
     def test_local_llm_limited_without_gpu(self):
         verdicts = {v.capability: v for v in self._profile(6.0, False).verdicts()}
         self.assertEqual(verdicts["local_llm"].status, "LIMITED")
+
+    # ---- a pulled model is not automatically a usable one ----
+
+    def test_model_bigger_than_total_ram_cannot_run_at_all(self):
+        # The real case: an 18 GB pull landed on a 16 GB machine.
+        fit, why = self._profile(9.0, False).model_fit(17.33)
+        self.assertEqual(fit, "NOT_VIABLE")
+        self.assertIn("total RAM", why)
+
+    def test_model_bigger_than_the_free_budget_would_swap(self):
+        fit, why = self._profile(9.0, False).model_fit(12.0)
+        self.assertEqual(fit, "NOT_VIABLE")
+        self.assertIn("swap", why)
+
+    def test_fitting_model_is_limited_on_cpu_only(self):
+        self.assertEqual(self._profile(9.0, False).model_fit(6.0)[0], "LIMITED")
+
+    def test_fitting_model_is_viable_with_a_dedicated_gpu(self):
+        self.assertEqual(self._profile(9.0, True).model_fit(6.0)[0], "VIABLE")
+
+    def test_unrecorded_size_is_unknown_not_assumed_fine(self):
+        self.assertEqual(self._profile(9.0, False).model_fit(0)[0], "UNKNOWN")
+
+    def test_only_oversized_models_installed_downgrades_the_verdict(self):
+        profile = self._profile(9.0, False, models=[
+            {"name": "gemma4:26b", "sizeGb": 17.33},
+        ])
+        verdict = {v.capability: v for v in profile.verdicts()}["local_llm"]
+        # Previously this read "models already present: gemma4:26b", which
+        # presented an unloadable model as capability.
+        self.assertEqual(verdict.status, "NOT_VIABLE")
+        self.assertIn("gemma4:26b", verdict.recommendation)
+        self.assertIn("NOT_VIABLE", verdict.recommendation)
+
+    def test_one_usable_model_keeps_the_verdict(self):
+        profile = self._profile(9.0, False, models=[
+            {"name": "gemma4:26b", "sizeGb": 17.33},
+            {"name": "qwen2.5:3b", "sizeGb": 2.0},
+        ])
+        verdict = {v.capability: v for v in profile.verdicts()}["local_llm"]
+        self.assertEqual(verdict.status, "LIMITED")
+        # Still names the one that cannot run, rather than hiding it.
+        self.assertIn("gemma4:26b", verdict.recommendation)
 
     def test_real_profile_parses_if_present(self):
         path = REPO_ROOT / "AI_GAME_COMPANY" / "config" / "HARDWARE_PROFILE.json"

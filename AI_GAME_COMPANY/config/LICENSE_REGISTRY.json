@@ -1,10 +1,13 @@
 {
   "_comment": "AI GAME COMPANY license registry (master prompt section 8). Every AI model, asset, sound, texture and 3D model used by any game is registered here. Section 38: an entry with status UNKNOWN must never ship inside a released APK.",
   "_version": 1,
-  "_lastUpdated": "2026-08-27",
-  "_statusValues": ["APPROVED", "REJECTED", "UNKNOWN"],
+  "_lastUpdated": "2026-08-31",
+  "_statusValues": [
+    "APPROVED",
+    "REJECTED",
+    "UNKNOWN"
+  ],
   "_rule_code_vs_weights": "Section 8: an open-source CODE license does not imply the same license for MODEL WEIGHTS. The two are verified separately and get separate entries.",
-
   "entries": [
     {
       "id": "unity-engine",
@@ -18,7 +21,9 @@
       "redistribution_rules": "Runtime redistributed inside the built APK, as the license intends. Editor is not redistributed.",
       "verified_at": "2026-08-27",
       "verified_by": "claude-code",
-      "games": ["game01"],
+      "games": [
+        "game01"
+      ],
       "status": "APPROVED",
       "notes": "Enabled built-in modules: androidjni, audio, particlesystem, physics2d, ui. Compliance with the user's Unity licence TIER (Personal vs Pro revenue thresholds) is the account holder's responsibility, not something this registry can verify."
     },
@@ -34,7 +39,9 @@
       "redistribution_rules": "Ships inside the APK as a Unity built-in resource.",
       "verified_at": "2026-08-27",
       "verified_by": "claude-code",
-      "games": ["game01"],
+      "games": [
+        "game01"
+      ],
       "status": "APPROVED",
       "notes": "Currently the only font in the project. Any replacement font must get its own entry before shipping."
     },
@@ -50,7 +57,9 @@
       "redistribution_rules": "Compiled into the APK.",
       "verified_at": "2026-08-27",
       "verified_by": "claude-code",
-      "games": ["game01"],
+      "games": [
+        "game01"
+      ],
       "status": "APPROVED",
       "notes": "Unlit is used deliberately because the generated scene contains no Light."
     },
@@ -66,7 +75,9 @@
       "redistribution_rules": "unrestricted - no third-party input",
       "verified_at": "2026-08-27",
       "verified_by": "claude-code",
-      "games": ["game01"],
+      "games": [
+        "game01"
+      ],
       "status": "APPROVED",
       "notes": "Placeholder art. Section 26 priority 6. Slated for replacement, which will need a new entry."
     },
@@ -82,7 +93,9 @@
       "redistribution_rules": "unrestricted - no third-party input",
       "verified_at": "2026-08-27",
       "verified_by": "claude-code",
-      "games": ["game01"],
+      "games": [
+        "game01"
+      ],
       "status": "APPROVED",
       "notes": "Section 28 priority 3 (procedural SFX). Placeholder standing in for real audio."
     },
@@ -98,7 +111,9 @@
       "redistribution_rules": "unrestricted",
       "verified_at": "2026-08-27",
       "verified_by": "claude-code",
-      "games": ["game01"],
+      "games": [
+        "game01"
+      ],
       "status": "APPROVED",
       "notes": "Section 38: this is a primitive placeholder, NOT a rigged humanoid character. It must never be reported as a finished 3D character."
     },
@@ -114,7 +129,9 @@
       "redistribution_rules": "Public domain dedication - no restrictions. Ships inside the APK.",
       "verified_at": "2026-08-31",
       "verified_by": "claude-code, by reading the licence file shipped inside the archive",
-      "games": ["game01"],
+      "games": [
+        "game01"
+      ],
       "status": "APPROVED",
       "notes": "Evidence: AI_GAME_COMPANY/asset_staging/platformerGraphicsDeluxe_Updated/LICENSE_license.txt states \"License (CC0) http://creativecommons.org/publicdomain/zero/1.0/ You may use these graphics in personal and commercial projects. Credit (Kenney or www.kenney.nl) would be nice but is not mandatory.\" 344 images. Used for ground / obstacle / coin - see config/art-mapping.json."
     },
@@ -181,13 +198,28 @@
       "games": [],
       "status": "UNKNOWN",
       "notes": "These are the visual basis for the shared main character across Game01-Game10, so this entry matters. They are currently SOURCE ONLY - nothing derived from them ships in any APK today (the shipped character is the primitive placeholder above). Before any derived model, texture or sprite goes into a release build, the user must confirm provenance: self-created, commissioned with commercial rights, or licensed. Section 38 forbids shipping UNKNOWN-licence assets. Section 43 and the standing instruction forbid deleting or replacing these source files."
+    },
+    {
+      "id": "gemma4:26b",
+      "name": "Gemma 4 26B (Q4_K_M) - pulled into local Ollama",
+      "type": "ai_model",
+      "source": "ollama pull gemma4:26b - recorded in HARDWARE_PROFILE.json ollamaApi.models",
+      "version": "25.2B parameters, Q4_K_M, 17.33 GB of weights, pulled 2026-08-31",
+      "license": "NOT VERIFIED",
+      "commercial_use": null,
+      "attribution_required": null,
+      "redistribution_rules": "unknown",
+      "verified_at": null,
+      "verified_by": null,
+      "games": [],
+      "status": "UNKNOWN",
+      "notes": "Present on the machine but NOT usable, for two independent reasons. (1) Licence: unread. Gemma releases have historically shipped under Google's own Gemma Terms of Use plus a Prohibited Use Policy rather than a plain OSI licence, and section 8 says weights are licensed separately from code - so the actual terms for THIS model ID must be read before any output of it is used. Family resemblance is not a licence. (2) Size: 17.33 GB of weights against 15.71 GB of total RAM on a machine with no dedicated GPU. It exceeds the whole machine and cannot be loaded, whatever else is closed - 'orchestrator ollama' reports this. Recommended action: remove it (ollama rm gemma4:26b) to reclaim ~17 GB, and pull a 7B-class Q4 model instead, after checking THAT model ID's licence. OllamaClient.generate() refuses this ID today because it is not APPROVED here."
     }
   ],
-
   "pending_verification": [
     {
       "id": "local-llm-models",
-      "reason": "Section 4: model IDs are not yet known - they come from HARDWARE_PROFILE.json ollamaApi.models once detect-environment.ps1 runs on the PC. Each specific model ID gets its own entry; 'it is a Qwen' or 'it is a DeepSeek' is explicitly NOT sufficient to assume a licence."
+      "reason": "detect-environment.ps1 has now run, so the model IDs are known rather than hypothetical: gemma4:26b is the only one installed and has its own UNKNOWN entry above. Still pending is a model that actually fits this machine - a 7B-class Q4 (about 6 GB) is the largest tier 'orchestrator doctor' reports as runnable. Whichever ID is chosen needs its own entry before use; 'it is a Qwen' or 'it is a DeepSeek' is explicitly NOT sufficient to assume a licence."
     },
     {
       "id": "local-image-model",
