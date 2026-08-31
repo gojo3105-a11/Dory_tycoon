@@ -103,6 +103,70 @@
       "notes": "Section 38: this is a primitive placeholder, NOT a rigged humanoid character. It must never be reported as a finished 3D character."
     },
     {
+      "id": "kenney-platformer-graphics-deluxe",
+      "name": "Platformer graphics (Deluxe) by Kenney Vleugels",
+      "type": "2d_art_pack",
+      "source": "platformerGraphicsDeluxe_Updated.zip - downloaded by the user, staged via AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1",
+      "version": "archive sha256:0B4A16FF5B04C89047DCC9D9C363E538BCA475DBA85FF706DC9CA2E6AE901CF2",
+      "license": "CC0 1.0 Universal (Creative Commons Zero)",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "Public domain dedication - no restrictions. Ships inside the APK.",
+      "verified_at": "2026-08-31",
+      "verified_by": "claude-code, by reading the licence file shipped inside the archive",
+      "games": ["game01"],
+      "status": "APPROVED",
+      "notes": "Evidence: AI_GAME_COMPANY/asset_staging/platformerGraphicsDeluxe_Updated/LICENSE_license.txt states \"License (CC0) http://creativecommons.org/publicdomain/zero/1.0/ You may use these graphics in personal and commercial projects. Credit (Kenney or www.kenney.nl) would be nice but is not mandatory.\" 344 images. Used for ground / obstacle / coin - see config/art-mapping.json."
+    },
+    {
+      "id": "kenney-background-elements-remastered",
+      "name": "Background Elements Remastered by Kenney",
+      "type": "2d_art_pack",
+      "source": "kenney_background-elements-remastered.zip - downloaded by the user, staged via fetch-cc0-assets.ps1",
+      "version": "archive sha256:9C904F0B7C52A15AEB2CBF454DE641620CFB9025B1611A0A21BD8C46992F4568",
+      "license": "CC0 1.0 Universal (Creative Commons Zero)",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "Public domain dedication - no restrictions.",
+      "verified_at": "2026-08-31",
+      "verified_by": "claude-code, by reading the licence file shipped inside the archive",
+      "games": [],
+      "status": "APPROVED",
+      "notes": "Evidence: LICENSE_License.txt states \"License: (Creative Commons Zero, CC0) ... free to use in personal, educational and commercial projects ... crediting Kenney (this is not mandatory)\". Creation date 26-02-2019, 162 images. Not wired into a game yet - parallax background is the next art task."
+    },
+    {
+      "id": "kenney-background-elements",
+      "name": "Background Elements by Kenney",
+      "type": "2d_art_pack",
+      "source": "kenney_backgroundElements.zip - downloaded by the user, staged via fetch-cc0-assets.ps1",
+      "version": "archive sha256:31FFECEC57BD51263F68E96E288AD06AC28EB1DFB41EDB06B006A1B42CC10E41",
+      "license": "CC0 1.0 Universal (Creative Commons Zero)",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "Public domain dedication - no restrictions.",
+      "verified_at": "2026-08-31",
+      "verified_by": "claude-code, via fetch-cc0-assets.ps1 licence capture (licenseAssertsCC0 true)",
+      "games": [],
+      "status": "APPROVED",
+      "notes": "125 images. The older sibling of the Remastered pack above. Only ONE of the two should actually be used in a given game - mixing Kenney style variants looks worse than picking one, so this is the spare."
+    },
+    {
+      "id": "kenney-ui-pack",
+      "name": "UI Pack (2.0) by Kenney",
+      "type": "2d_art_pack",
+      "source": "kenney_ui-pack.zip - downloaded by the user, staged via fetch-cc0-assets.ps1",
+      "version": "archive sha256:A8A14A234911EB648C062622915C93E79E94E97CB7F9F375A70F6617F1174318",
+      "license": "CC0 1.0 Universal (Creative Commons Zero)",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "Public domain dedication - no restrictions.",
+      "verified_at": "2026-08-31",
+      "verified_by": "claude-code, by reading the licence file shipped inside the archive",
+      "games": [],
+      "status": "APPROVED",
+      "notes": "Evidence: LICENSE_License.txt, UI Pack (2.0), creation date 12-06-2024, same CC0 wording. 870 images. Not wired in yet - the UI is currently Unity default buttons, so this is a queued win."
+    },
+    {
       "id": "user-character-reference-images",
       "name": "Hedgehog mascot reference images (15 files)",
       "type": "reference_image",
@@ -121,22 +185,6 @@
   ],
 
   "pending_verification": [
-    {
-      "id": "kenney-platformer-art-deluxe",
-      "type": "2d_art_pack",
-      "candidateFor": "Runner ground / obstacle / coin sprites - replaces the solid-colour placeholders that are currently the game's entire visual identity",
-      "expectedLicense": "CC0",
-      "reason": "Secondary sources describe Kenney's asset packs as CC0 public domain with commercial use allowed and attribution not required. That is NOT sufficient under section 8. Claude Code cannot verify it directly: its container's egress proxy blocks kenney.nl, itch.io, opengameart.org and creativecommons.org.",
-      "verificationPlan": "Run AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1 on the PC. It downloads the archive, records its SHA-256, and commits the licence file shipped INSIDE the archive - the licence distributed with the exact bytes the game would use, which is stronger evidence than any web page. Status moves to APPROVED only after that captured text is read."
-    },
-    {
-      "id": "kenney-background-elements",
-      "type": "2d_art_pack",
-      "candidateFor": "Parallax background layers. The game currently has no background at all beyond a flat camera clear colour, so this is the single largest visual gap.",
-      "expectedLicense": "CC0",
-      "reason": "Same as above - unverified until the shipped licence file is captured.",
-      "verificationPlan": "Same as above."
-    },
     {
       "id": "local-llm-models",
       "reason": "Section 4: model IDs are not yet known - they come from HARDWARE_PROFILE.json ollamaApi.models once detect-environment.ps1 runs on the PC. Each specific model ID gets its own entry; 'it is a Qwen' or 'it is a DeepSeek' is explicitly NOT sufficient to assume a licence."
