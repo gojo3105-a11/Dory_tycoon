@@ -1,5 +1,5 @@
 ﻿# node capability probe
-# captured: 2026-08-31 20:50:35
+# captured: 2026-08-31 21:15:34
 ----------------------------------------------------------------------
 resolved path: C:\Program Files\nodejs\node.exe
 

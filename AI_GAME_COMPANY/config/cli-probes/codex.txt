@@ -1,5 +1,5 @@
 ﻿# codex capability probe
-# captured: 2026-08-31 20:50:35
+# captured: 2026-08-31 21:15:35
 ----------------------------------------------------------------------
 resolved path: C:\Users\VASCO-PC03\AppData\Roaming\npm\codex.ps1
 
