@@ -1,0 +1,69 @@
+﻿{
+    "generatedAt":  "2026-08-31 20:57:56",
+    "generatedBy":  "AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1",
+    "outputPath":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\config\\ASSET_FETCH_REPORT.json",
+    "incomingDir":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\asset_staging\\_incoming",
+    "note":  "Nothing here is APPROVED yet. Licence text and inventory are captured for review; Assets/ is untouched. Section 8 / section 38.",
+    "results":  [
+                    {
+                        "id":  "kenney_background-elements-remastered",
+                        "archiveName":  "kenney_background-elements-remastered.zip",
+                        "archiveSizeMb":  0.99,
+                        "archiveSha256":  "9C904F0B7C52A15AEB2CBF454DE641620CFB9025B1611A0A21BD8C46992F4568",
+                        "sourceUrl":  "",
+                        "status":  "LICENSE_CAPTURED_PENDING_REVIEW",
+                        "licenseFiles":  [
+                                             "LICENSE_License.txt"
+                                         ],
+                        "licenseAssertsCC0":  true,
+                        "imageCount":  162,
+                        "inventoryPath":  "AI_GAME_COMPANY/asset_staging/kenney_background-elements-remastered/INVENTORY.txt",
+                        "detail":  "Licence captured and mechanically asserts CC0. Still requires review before the registry is set to APPROVED."
+                    },
+                    {
+                        "id":  "kenney_backgroundElements",
+                        "archiveName":  "kenney_backgroundElements.zip",
+                        "archiveSizeMb":  1.01,
+                        "archiveSha256":  "31FFECEC57BD51263F68E96E288AD06AC28EB1DFB41EDB06B006A1B42CC10E41",
+                        "sourceUrl":  "",
+                        "status":  "LICENSE_CAPTURED_PENDING_REVIEW",
+                        "licenseFiles":  [
+                                             "LICENSE_License.txt"
+                                         ],
+                        "licenseAssertsCC0":  true,
+                        "imageCount":  125,
+                        "inventoryPath":  "AI_GAME_COMPANY/asset_staging/kenney_backgroundElements/INVENTORY.txt",
+                        "detail":  "Licence captured and mechanically asserts CC0. Still requires review before the registry is set to APPROVED."
+                    },
+                    {
+                        "id":  "kenney_ui-pack",
+                        "archiveName":  "kenney_ui-pack.zip",
+                        "archiveSizeMb":  1.17,
+                        "archiveSha256":  "A8A14A234911EB648C062622915C93E79E94E97CB7F9F375A70F6617F1174318",
+                        "sourceUrl":  "",
+                        "status":  "LICENSE_CAPTURED_PENDING_REVIEW",
+                        "licenseFiles":  [
+                                             "LICENSE_License.txt"
+                                         ],
+                        "licenseAssertsCC0":  true,
+                        "imageCount":  870,
+                        "inventoryPath":  "AI_GAME_COMPANY/asset_staging/kenney_ui-pack/INVENTORY.txt",
+                        "detail":  "Licence captured and mechanically asserts CC0. Still requires review before the registry is set to APPROVED."
+                    },
+                    {
+                        "id":  "platformerGraphicsDeluxe_Updated",
+                        "archiveName":  "platformerGraphicsDeluxe_Updated.zip",
+                        "archiveSizeMb":  2.09,
+                        "archiveSha256":  "0B4A16FF5B04C89047DCC9D9C363E538BCA475DBA85FF706DC9CA2E6AE901CF2",
+                        "sourceUrl":  "",
+                        "status":  "LICENSE_CAPTURED_PENDING_REVIEW",
+                        "licenseFiles":  [
+                                             "LICENSE_license.txt"
+                                         ],
+                        "licenseAssertsCC0":  true,
+                        "imageCount":  344,
+                        "inventoryPath":  "AI_GAME_COMPANY/asset_staging/platformerGraphicsDeluxe_Updated/INVENTORY.txt",
+                        "detail":  "Licence captured and mechanically asserts CC0. Still requires review before the registry is set to APPROVED."
+                    }
+                ]
+}

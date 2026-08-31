@@ -1,0 +1,16 @@
+﻿# python capability probe
+# captured: 2026-08-31 21:15:33
+----------------------------------------------------------------------
+resolved path: C:\Users\VASCO-PC03\AppData\Local\Microsoft\WindowsApps\python.exe
+
+### --version  (exit: )
+
+[stderr] Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+
+
+### --version  (exit: )
+
+[stderr] Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+
+
+

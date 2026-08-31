@@ -1,0 +1,14 @@
+﻿# claude capability probe
+# captured: 2026-08-31 21:15:35
+----------------------------------------------------------------------
+resolved path: C:\Users\VASCO-PC03\AppData\Roaming\npm\claude.ps1
+
+### --version  (exit: )
+
+[stderr] %1은(는) 올바른 Win32 응용 프로그램이 아닙니다 오류로 인해 이 명령을 실행할 수 없습니다.
+
+### --help  (exit: )
+
+[stderr] %1은(는) 올바른 Win32 응용 프로그램이 아닙니다 오류로 인해 이 명령을 실행할 수 없습니다.
+
+

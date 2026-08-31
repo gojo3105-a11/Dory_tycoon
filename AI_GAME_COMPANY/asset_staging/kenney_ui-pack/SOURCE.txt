@@ -1,0 +1,7 @@
+﻿id:            kenney_ui-pack
+archiveName:   kenney_ui-pack.zip
+archiveSha256: A8A14A234911EB648C062622915C93E79E94E97CB7F9F375A70F6617F1174318
+sourceUrl:     manually downloaded into _incoming/
+fetchedAt:     2026-08-31 20:57:42
+fetchedBy:     AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1
+extractedTo:   C:\Users\VASCO-~1\AppData\Local\Temp\ai_game_company_assets\kenney_ui-pack  (NOT committed - only licence + inventory are)

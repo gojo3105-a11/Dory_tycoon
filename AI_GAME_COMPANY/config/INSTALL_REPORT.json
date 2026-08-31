@@ -1,0 +1,139 @@
+﻿{
+    "generatedAt":  "2026-08-31 20:50:30",
+    "generatedBy":  "AI_GAME_COMPANY/tools/install-missing-tools.ps1",
+    "dryRun":  false,
+    "machineName":  "DESKTOP-A7IU1E9",
+    "logPath":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\logs\\install-20260831-204429.log",
+    "outputPath":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\config\\INSTALL_REPORT.json",
+    "policy":  {
+                   "allow_auto_install_free_tools":  true,
+                   "allow_paid_api":  false,
+                   "allow_auto_purchase":  false
+               },
+    "packageManager":  {
+                           "winget":  true
+                       },
+    "autoAcceptedAgreements":  [
+                                   "winget source agreements (--accept-source-agreements)",
+                                   "winget package agreements for the free OSS packages listed in results (--accept-package-agreements)"
+                               ],
+    "results":  [
+                    {
+                        "id":  "git",
+                        "display":  "Git",
+                        "expected":  "available on PATH",
+                        "actual":  "present",
+                        "status":  "ALREADY_INSTALLED",
+                        "method":  "winget",
+                        "packageId":  "Git.Git",
+                        "why":  "Required for the whole report/sync loop.",
+                        "detail":  null
+                    },
+                    {
+                        "id":  "python",
+                        "display":  "Python 3",
+                        "expected":  "available on PATH",
+                        "actual":  "present",
+                        "status":  "ALREADY_INSTALLED",
+                        "method":  "winget",
+                        "packageId":  "Python.Python.3.12",
+                        "why":  "The orchestrator (section 13) is Python.",
+                        "detail":  null
+                    },
+                    {
+                        "id":  "node",
+                        "display":  "Node.js LTS",
+                        "expected":  "available on PATH",
+                        "actual":  "present",
+                        "status":  "ALREADY_INSTALLED",
+                        "method":  "winget",
+                        "packageId":  "OpenJS.NodeJS.LTS",
+                        "why":  "Needed to install the Codex and Claude Code CLIs via npm.",
+                        "detail":  null
+                    },
+                    {
+                        "id":  "ollama",
+                        "display":  "Ollama (server only)",
+                        "expected":  "available on PATH",
+                        "actual":  "present",
+                        "status":  "INSTALLED",
+                        "method":  "winget",
+                        "packageId":  "Ollama.Ollama",
+                        "why":  "Local LLM gateway (section 4). The SERVER is free; MODELS are NOT auto-pulled - each model ID needs its own licence check (sections 4, 8).",
+                        "detail":  "winget exit 0"
+                    },
+                    {
+                        "id":  "blender",
+                        "display":  "Blender",
+                        "expected":  "available on PATH",
+                        "actual":  "still missing",
+                        "status":  "FAILED",
+                        "method":  "winget",
+                        "packageId":  "BlenderFoundation.Blender",
+                        "why":  "3D post-processing via background Python scripts (section 11).",
+                        "detail":  "winget exit 0 A new terminal (or admin rights) may be required."
+                    },
+                    {
+                        "id":  "codex",
+                        "display":  "Codex CLI",
+                        "expected":  "available on PATH",
+                        "actual":  "present",
+                        "status":  "INSTALLED",
+                        "method":  "npm",
+                        "packageId":  "@openai/codex",
+                        "why":  "Independent code review (section 3). Installing is free; signing in is a HUMAN_GATE (section 37).",
+                        "detail":  "Installed. Sign-in is still required and is a HUMAN_GATE (section 37)."
+                    },
+                    {
+                        "id":  "claude",
+                        "display":  "Claude Code CLI",
+                        "expected":  "available on PATH",
+                        "actual":  "present",
+                        "status":  "ALREADY_INSTALLED",
+                        "method":  "npm",
+                        "packageId":  "@anthropic-ai/claude-code",
+                        "why":  "Section 2 requires reading its real --help to decide whether headless subprocess calls are even supported. Signing in is a HUMAN_GATE.",
+                        "detail":  "Installed. Login state is a HUMAN_GATE - not checked or performed here."
+                    },
+                    {
+                        "id":  "unity",
+                        "display":  "Unity Editor",
+                        "expected":  "available on PATH",
+                        "actual":  "not installed",
+                        "status":  "HUMAN_GATE",
+                        "method":  "none",
+                        "packageId":  null,
+                        "why":  "NEVER auto-installed. Licence tier plus section 19: the verified APK Baseline depends on the exact installed editor version, and an automatic install/upgrade could break the only pipeline currently known to work.",
+                        "detail":  "NEVER auto-installed. Licence tier plus section 19: the verified APK Baseline depends on the exact installed editor version, and an automatic install/upgrade could break the only pipeline currently known to work."
+                    },
+                    {
+                        "id":  "ollama_models",
+                        "display":  "Ollama models",
+                        "expected":  "available on PATH",
+                        "actual":  "not installed",
+                        "status":  "LICENSE_CHECK_REQUIRED",
+                        "method":  "none",
+                        "packageId":  null,
+                        "why":  "NEVER auto-pulled. Sections 4 and 8: each specific model ID\u0027s licence must be verified and marked APPROVED in LICENSE_REGISTRY.json first. \u0027It is a Qwen\u0027 or \u0027it is a DeepSeek\u0027 is explicitly not sufficient.",
+                        "detail":  "NEVER auto-pulled. Sections 4 and 8: each specific model ID\u0027s licence must be verified and marked APPROVED in LICENSE_REGISTRY.json first. \u0027It is a Qwen\u0027 or \u0027it is a DeepSeek\u0027 is explicitly not sufficient."
+                    },
+                    {
+                        "id":  "comfyui",
+                        "display":  "ComfyUI + image models",
+                        "expected":  "available on PATH",
+                        "actual":  "not installed",
+                        "status":  "LICENSE_CHECK_REQUIRED",
+                        "method":  "none",
+                        "packageId":  null,
+                        "why":  "NEVER auto-installed. Section 9: the exact model repository licence must be read before installation.",
+                        "detail":  "NEVER auto-installed. Section 9: the exact model repository licence must be read before installation."
+                    }
+                ],
+    "humanGatesRemaining":  [
+                                "codex",
+                                "claude"
+                            ],
+    "paidActionsBlocked":  [
+
+                           ]
+}
