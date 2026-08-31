@@ -1,0 +1,147 @@
+﻿{
+    "generatedAt":  "2026-08-31 20:50:38",
+    "generatedBy":  "AI_GAME_COMPANY/tools/detect-environment.ps1",
+    "repoPath":  "C:\\Dory_tycoon",
+    "machineName":  "DESKTOP-A7IU1E9",
+    "hardware":  {
+                     "os":  "Microsoft Windows 11 Pro 10.0.26200",
+                     "osArchitecture":  "64비트",
+                     "cpu":  "12th Gen Intel(R) Core(TM) i5-1235U",
+                     "cpuCores":  10,
+                     "cpuThreads":  12,
+                     "ramTotalGb":  15.71,
+                     "ramFreeGb":  5.91,
+                     "systemDriveFreeGb":  123.43,
+                     "gpus":  [
+                                  {
+                                      "name":  "Intel(R) Iris(R) Xe Graphics",
+                                      "driverVersion":  "30.0.101.2079",
+                                      "adapterRamGbHint":  1
+                                  }
+                              ],
+                     "nvidiaSmi":  {
+                                       "available":  false,
+                                       "raw":  null
+                                   }
+                 },
+    "tools":  {
+                  "python":  {
+                                 "name":  "python",
+                                 "installed":  true,
+                                 "path":  "C:\\Users\\VASCO-PC03\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe",
+                                 "version":  null,
+                                 "status":  "OK",
+                                 "notes":  [
+
+                                           ]
+                             },
+                  "git":  {
+                              "name":  "git",
+                              "installed":  true,
+                              "path":  "C:\\Program Files\\Git\\cmd\\git.exe",
+                              "version":  "git version 2.55.0.windows.5",
+                              "status":  "OK",
+                              "notes":  [
+
+                                        ]
+                          },
+                  "node":  {
+                               "name":  "node",
+                               "installed":  true,
+                               "path":  "C:\\Program Files\\nodejs\\node.exe",
+                               "version":  "v24.19.0",
+                               "status":  "OK",
+                               "notes":  [
+
+                                         ]
+                           },
+                  "claude":  {
+                                 "name":  "claude",
+                                 "installed":  true,
+                                 "path":  "C:\\Users\\VASCO-PC03\\AppData\\Roaming\\npm\\claude.ps1",
+                                 "version":  null,
+                                 "status":  "FOUND_BUT_NOT_RUNNABLE",
+                                 "notes":  [
+
+                                           ]
+                             },
+                  "codex":  {
+                                "name":  "codex",
+                                "installed":  true,
+                                "path":  "C:\\Users\\VASCO-PC03\\AppData\\Roaming\\npm\\codex.ps1",
+                                "version":  null,
+                                "status":  "FOUND_BUT_NOT_RUNNABLE",
+                                "notes":  [
+
+                                          ]
+                            },
+                  "ollama":  {
+                                 "name":  "ollama",
+                                 "installed":  true,
+                                 "path":  "C:\\Users\\VASCO-PC03\\AppData\\Local\\Programs\\Ollama\\ollama.exe",
+                                 "version":  "ollama version is 0.33.2",
+                                 "status":  "OK",
+                                 "notes":  [
+
+                                           ]
+                             },
+                  "blender":  {
+                                  "name":  "blender",
+                                  "installed":  false,
+                                  "path":  null,
+                                  "version":  null,
+                                  "status":  "NOT_FOUND",
+                                  "notes":  [
+
+                                            ]
+                              },
+                  "adb":  {
+                              "name":  "adb",
+                              "installed":  false,
+                              "path":  null,
+                              "version":  null,
+                              "status":  "NOT_FOUND",
+                              "notes":  [
+
+                                        ]
+                          }
+              },
+    "ollamaApi":  {
+                      "url":  "http://localhost:11434",
+                      "reachable":  true,
+                      "models":  [
+
+                                 ],
+                      "loadedModels":  [
+
+                                       ],
+                      "error":  null,
+                      "responseMs":  2154
+                  },
+    "unity":  {
+                  "requiredByProject":  "6000.5.9f1",
+                  "installedEditors":  [
+                                           {
+                                               "version":  "6000.5.9f1",
+                                               "path":  "C:\\Program Files\\Unity\\Hub\\Editor\\6000.5.9f1\\Editor\\Unity.exe"
+                                           }
+                                       ],
+                  "matchingEditorPath":  "C:\\Program Files\\Unity\\Hub\\Editor\\6000.5.9f1\\Editor\\Unity.exe",
+                  "status":  "OK"
+              },
+    "android":  {
+                    "sdkPath":  "C:\\Program Files\\Unity\\Hub\\Editor\\6000.5.9f1\\Editor\\Data\\PlaybackEngines\\AndroidPlayer\\SDK",
+                    "sdkExists":  true,
+                    "jdkPath":  "C:\\Program Files\\Unity\\Hub\\Editor\\6000.5.9f1\\Editor\\Data\\PlaybackEngines\\AndroidPlayer\\OpenJDK",
+                    "jdkExists":  true
+                },
+    "paidApiKeysPresent":  {
+                               "OPENAI_API_KEY":  false,
+                               "ANTHROPIC_API_KEY":  false,
+                               "GOOGLE_API_KEY":  false,
+                               "REPLICATE_API_TOKEN":  false,
+                               "FAL_KEY":  false,
+                               "STABILITY_API_KEY":  false
+                           },
+    "note":  "Raw CLI help text is in cli-probes/. Per master prompt 41 STEP 5, adapters must only use commands that appear there."
+}
