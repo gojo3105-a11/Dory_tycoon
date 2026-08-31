@@ -19,6 +19,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from company.orchestrator.codex_runner import CodexRunner  # noqa: E402
 from company.orchestrator.hardware import HardwareProfile  # noqa: E402
 from company.orchestrator.ollama_client import (  # noqa: E402
     NonLocalEndpointRefused, OllamaClient,
@@ -150,6 +151,33 @@ def cmd_ollama(_args: argparse.Namespace) -> int:
     return exit_code
 
 
+def cmd_codex(args: argparse.Namespace) -> int:
+    """Is the independent reviewer usable? Section 3.
+
+    Deliberately does not decide whether Codex is signed in: ~/.codex/auth.json
+    is on the policy's secrets_never_touched list, and initial_codex_login is a
+    HUMAN_GATE. --doctor shows the CLI's own answer instead.
+    """
+    policy = _load_policy()
+    runner = CodexRunner(repo_root=REPO_ROOT, policy=policy)
+
+    print("=== CODEX ===")
+    print(runner.status_summary())
+
+    if not args.doctor:
+        print("\n  run with --doctor for the CLI's own auth/config diagnosis")
+        return 0
+
+    print("\n=== codex doctor (raw, not interpreted) ===")
+    try:
+        result = runner.doctor()
+    except Exception as exc:  # noqa: BLE001 - reported, not swallowed
+        print(f"  could not run: {exc}")
+        return 1
+    print(result.stdout or result.stderr or "  (no output)")
+    return 0 if result.ok else 1
+
+
 def cmd_status(_args: argparse.Namespace) -> int:
     state = CompanyState.load(STATE_PATH)
 
@@ -270,6 +298,11 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status", help="state and queue, reconciled with disk").set_defaults(func=cmd_status)
     sub.add_parser("ollama", help="local model gateway: reachable, licensed, fits in RAM"
                    ).set_defaults(func=cmd_ollama)
+
+    codex = sub.add_parser("codex", help="independent reviewer: available, policy, login gate")
+    codex.add_argument("--doctor", action="store_true",
+                       help="also run 'codex doctor' and print its raw output")
+    codex.set_defaults(func=cmd_codex)
 
     gate = sub.add_parser("gate", help="may this game be called COMPLETE?")
     gate.add_argument("--game", default="game01")

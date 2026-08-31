@@ -1,0 +1,270 @@
+"""Tests for the Codex review adapter.
+
+Run:  python3 AI_GAME_COMPANY/tests/test_codex_runner.py
+
+No Codex binary is needed: the runner is injected. What these check is that
+the command is built only from flags the probe actually captured, that the
+cost guards hold, and - most of all - that a review which did not really run
+can never be reported as a clean one.
+"""
+
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from company.orchestrator.codex_runner import (  # noqa: E402
+    CodexLimited, CodexRunner, CodexUnavailable, ReviewNotJson, ReviewNotRun,
+)
+from company.orchestrator.policy import Policy, PolicyViolation  # noqa: E402
+
+PROBE = Path(__file__).resolve().parents[1] / "config" / "cli-probes" / "codex.txt"
+
+SCHEMA = {"type": "object", "properties": {"findings": {"type": "array"}}}
+
+
+class FakeCodex:
+    """Answers a codex invocation, and can write the output file like the real one."""
+
+    def __init__(self, exit_code: int = 0, stdout: str = "", stderr: str = "",
+                 writes: str | None = "no issues found"):
+        self.exit_code = exit_code
+        self.stdout = stdout
+        self.stderr = stderr
+        self.writes = writes
+        self.calls: list[list[str]] = []
+        self.envs: list[dict] = []
+
+    def __call__(self, args, env):
+        self.calls.append(args)
+        self.envs.append(env)
+
+        if "--version" in args:
+            return 0, "codex-cli 0.151.0", ""
+
+        if self.writes is not None and "--output-last-message" in args:
+            target = Path(args[args.index("--output-last-message") + 1])
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(self.writes, encoding="utf-8")
+
+        return self.exit_code, self.stdout, self.stderr
+
+
+def policy_with(**overrides) -> Policy:
+    raw = {
+        "use_codex_subscription": True,
+        "allow_openai_api_billing": False,
+        "blocked_env_keys": ["OPENAI_API_KEY", "ANTHROPIC_API_KEY"],
+        "on_codex_limit": {"fallback_order": ["local_ai_review"]},
+    }
+    raw.update(overrides)
+    return Policy(raw=raw)
+
+
+class RunnerTestCase(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def make(self, fake: FakeCodex, policy: Policy | None = None) -> CodexRunner:
+        return CodexRunner(repo_root=self.root, policy=policy or policy_with(),
+                           runner=fake)
+
+
+class CommandBuildingTests(RunnerTestCase):
+    """Only flags present in the captured probe may be used."""
+
+    def test_uses_only_flags_the_probe_captured(self):
+        if not PROBE.is_file():
+            self.skipTest("no codex probe committed")
+        probe_text = PROBE.read_text(encoding="utf-8-sig")
+        exec_section = probe_text.split("### codex exec --help", 1)[-1]
+
+        fake = FakeCodex()
+        runner = self.make(fake)
+        runner.review("check this")
+
+        args = [a for a in fake.calls[-1] if a.startswith("--")]
+        for flag in args:
+            self.assertIn(flag, exec_section,
+                          f"{flag} is not in the captured codex exec --help")
+
+    def test_does_not_pass_ask_for_approval(self):
+        # It exists on top-level `codex` but NOT on `codex exec`. Passing it
+        # would fail every run - the reason STEP 5 requires a real probe.
+        fake = FakeCodex()
+        self.make(fake).review("hi")
+        self.assertNotIn("--ask-for-approval", fake.calls[-1])
+        self.assertNotIn("-a", fake.calls[-1])
+
+    def test_defaults_to_a_read_only_sandbox(self):
+        fake = FakeCodex()
+        self.make(fake).review("hi")
+        args = fake.calls[-1]
+        self.assertEqual(args[args.index("--sandbox") + 1], "read-only")
+
+    def test_never_uses_a_dangerous_bypass_flag(self):
+        fake = FakeCodex()
+        self.make(fake).review("hi")
+        self.assertFalse([a for a in fake.calls[-1] if "dangerously" in a])
+
+    def test_prompt_is_last_because_exec_takes_a_positional(self):
+        fake = FakeCodex()
+        self.make(fake).review("review the diff")
+        self.assertEqual(fake.calls[-1][-1], "review the diff")
+
+    def test_review_subcommand_is_opt_in(self):
+        fake = FakeCodex()
+        runner = self.make(fake)
+        runner.review("hi")
+        self.assertNotIn("review", fake.calls[-1])
+        runner.review("hi", use_review_subcommand=True)
+        self.assertEqual(fake.calls[-1][1:3], ["exec", "review"])
+
+    def test_schema_file_is_written_and_passed(self):
+        fake = FakeCodex(writes='{"findings": []}')
+        runner = self.make(fake)
+        runner.review("hi", schema=SCHEMA)
+        args = fake.calls[-1]
+        schema_path = Path(args[args.index("--output-schema") + 1])
+        self.assertTrue(schema_path.is_file())
+        self.assertEqual(json.loads(schema_path.read_text())["type"], "object")
+
+
+class CostGuardTests(RunnerTestCase):
+    def test_blocked_api_keys_are_stripped_from_the_child_env(self):
+        # Section 7: the key being present is not permission to bill it.
+        fake = FakeCodex()
+        runner = self.make(fake)
+        env = runner.child_env({"OPENAI_API_KEY": "sk-real", "PATH": "/usr/bin"})
+        self.assertNotIn("OPENAI_API_KEY", env)
+        self.assertEqual(env["PATH"], "/usr/bin")
+
+    def test_keys_survive_only_when_billing_is_explicitly_allowed(self):
+        runner = self.make(FakeCodex(), policy_with(allow_openai_api_billing=True))
+        env = runner.child_env({"OPENAI_API_KEY": "sk-real"})
+        self.assertEqual(env["OPENAI_API_KEY"], "sk-real")
+
+    def test_stripped_keys_reports_names_only(self):
+        runner = self.make(FakeCodex())
+        names = runner.stripped_keys({"OPENAI_API_KEY": "sk-secret-value"})
+        self.assertEqual(names, ["OPENAI_API_KEY"])
+        self.assertNotIn("sk-secret-value", " ".join(names))
+
+    def test_review_is_blocked_when_the_subscription_is_not_allowed(self):
+        runner = self.make(FakeCodex(), policy_with(use_codex_subscription=False))
+        with self.assertRaises(PolicyViolation):
+            runner.review("hi")
+
+    def test_a_blocked_policy_sends_no_command_at_all(self):
+        fake = FakeCodex()
+        runner = self.make(fake, policy_with(use_codex_subscription=False))
+        with self.assertRaises(PolicyViolation):
+            runner.review("hi")
+        self.assertEqual(fake.calls, [])
+
+    def test_quota_exhaustion_degrades_instead_of_escalating(self):
+        fake = FakeCodex(exit_code=1, stderr="Error: usage limit reached (429)")
+        with self.assertRaises(CodexLimited) as ctx:
+            self.make(fake).review("hi")
+        self.assertIn("local_ai_review", str(ctx.exception))
+        self.assertIn("forbids escalating", str(ctx.exception))
+
+
+class HonestResultTests(RunnerTestCase):
+    def test_exit_zero_with_no_output_is_not_a_pass(self):
+        # The section 38 case: silence must never become "no issues found".
+        fake = FakeCodex(writes=None)
+        with self.assertRaises(ReviewNotRun) as ctx:
+            self.make(fake).review("hi")
+        self.assertIn("not a clean review", str(ctx.exception))
+
+    def test_empty_output_file_is_not_a_pass(self):
+        fake = FakeCodex(writes="   \n  ")
+        with self.assertRaises(ReviewNotRun):
+            self.make(fake).review("hi")
+
+    def test_failure_carries_the_raw_output(self):
+        fake = FakeCodex(exit_code=2, stderr="panic: something broke")
+        with self.assertRaises(ReviewNotRun) as ctx:
+            self.make(fake).review("hi")
+        self.assertIn("panic: something broke", str(ctx.exception))
+
+    def test_auth_failure_names_the_human_gate(self):
+        fake = FakeCodex(exit_code=1, stderr="Error: not logged in")
+        with self.assertRaises(ReviewNotRun) as ctx:
+            self.make(fake).review("hi")
+        self.assertIn("HUMAN_GATE", str(ctx.exception))
+
+    def test_a_real_review_comes_back(self):
+        fake = FakeCodex(writes="Found 2 issues in PlayerController.cs")
+        result = self.make(fake).review("hi")
+        self.assertTrue(result.ok)
+        self.assertIn("PlayerController", result.last_message)
+        self.assertTrue(result.output_path.is_file())
+
+    def test_missing_binary_is_unavailable_not_a_pass(self):
+        def explode(args, env):
+            raise OSError("No such file or directory: 'codex'")
+        with self.assertRaises(CodexUnavailable):
+            self.make(explode).review("hi")
+
+    def test_is_available_reports_rather_than_raises(self):
+        def explode(args, env):
+            raise OSError("missing")
+        ok, detail = self.make(explode).is_available()
+        self.assertFalse(ok)
+        self.assertIn("missing", detail)
+
+
+class JsonReviewTests(RunnerTestCase):
+    def test_parses_a_schema_conforming_answer(self):
+        fake = FakeCodex(writes='{"findings": ["a", "b"]}')
+        data = self.make(fake).review_json("hi", SCHEMA)
+        self.assertEqual(data["findings"], ["a", "b"])
+
+    def test_unwraps_a_fenced_code_block(self):
+        fake = FakeCodex(writes='```json\n{"findings": []}\n```')
+        self.assertEqual(self.make(fake).review_json("hi", SCHEMA), {"findings": []})
+
+    def test_unparseable_output_is_not_treated_as_zero_findings(self):
+        fake = FakeCodex(writes="I could not complete the review.")
+        with self.assertRaises(ReviewNotJson) as ctx:
+            self.make(fake).review_json("hi", SCHEMA)
+        self.assertIn("Not treating", str(ctx.exception))
+
+
+class StatusTests(RunnerTestCase):
+    def test_summary_defers_login_to_a_human_instead_of_guessing(self):
+        summary = self.make(FakeCodex()).status_summary()
+        self.assertIn("HUMAN_GATE", summary)
+        self.assertIn("secrets_never_touched", summary)
+        # It must not claim a login state it has no way to know.
+        self.assertNotIn("logged in", summary)
+
+    def test_summary_names_stripped_keys_without_printing_values(self):
+        import os
+        os.environ["OPENAI_API_KEY"] = "sk-should-never-appear"
+        try:
+            summary = self.make(FakeCodex()).status_summary()
+        finally:
+            del os.environ["OPENAI_API_KEY"]
+        self.assertIn("OPENAI_API_KEY", summary)
+        self.assertNotIn("sk-should-never-appear", summary)
+
+    def test_doctor_output_is_returned_raw_not_interpreted(self):
+        fake = FakeCodex(stdout="auth: ok\nconfig: ok")
+        result = self.make(fake).doctor()
+        self.assertIn("auth: ok", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
