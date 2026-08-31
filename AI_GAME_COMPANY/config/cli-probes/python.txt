@@ -1,16 +1,14 @@
 ﻿# python capability probe
-# captured: 2026-08-31 21:15:33
+# captured: 2026-09-01 01:14:29
 ----------------------------------------------------------------------
-resolved path: C:\Users\VASCO-PC03\AppData\Local\Microsoft\WindowsApps\python.exe
+resolved path: C:\Users\VASCO-PC03\AppData\Local\Programs\Python\Python312\python.exe
 
 ### --version  (exit: )
-
-[stderr] Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+Python 3.12.10
 
 
 ### --version  (exit: )
-
-[stderr] Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+Python 3.12.10
 
 
 

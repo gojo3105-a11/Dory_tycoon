@@ -1,5 +1,5 @@
 ﻿{
-    "generatedAt":  "2026-08-31 21:15:37",
+    "generatedAt":  "2026-09-01 01:14:38",
     "generatedBy":  "AI_GAME_COMPANY/tools/detect-environment.ps1",
     "repoPath":  "C:\\Dory_tycoon",
     "machineName":  "DESKTOP-A7IU1E9",
@@ -10,8 +10,8 @@
                      "cpuCores":  10,
                      "cpuThreads":  12,
                      "ramTotalGb":  15.71,
-                     "ramFreeGb":  8.99,
-                     "systemDriveFreeGb":  96.47,
+                     "ramFreeGb":  7.86,
+                     "systemDriveFreeGb":  96.85,
                      "gpus":  [
                                   {
                                       "name":  "Intel(R) Iris(R) Xe Graphics",
@@ -28,8 +28,8 @@
                   "python":  {
                                  "name":  "python",
                                  "installed":  true,
-                                 "path":  "C:\\Users\\VASCO-PC03\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe",
-                                 "version":  null,
+                                 "path":  "C:\\Users\\VASCO-PC03\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+                                 "version":  "Python 3.12.10",
                                  "status":  "OK",
                                  "notes":  [
 
@@ -58,21 +58,21 @@
                   "claude":  {
                                  "name":  "claude",
                                  "installed":  true,
-                                 "path":  "C:\\Users\\VASCO-PC03\\AppData\\Roaming\\npm\\claude.ps1",
-                                 "version":  null,
-                                 "status":  "FOUND_BUT_NOT_RUNNABLE",
+                                 "path":  "C:\\Users\\VASCO-PC03\\AppData\\Roaming\\npm\\claude.cmd",
+                                 "version":  "2.1.247 (Claude Code)",
+                                 "status":  "OK",
                                  "notes":  [
-
+                                               "Using .cmd shim instead of the .ps1 one (directly launchable)."
                                            ]
                              },
                   "codex":  {
                                 "name":  "codex",
                                 "installed":  true,
-                                "path":  "C:\\Users\\VASCO-PC03\\AppData\\Roaming\\npm\\codex.ps1",
-                                "version":  null,
-                                "status":  "FOUND_BUT_NOT_RUNNABLE",
+                                "path":  "C:\\Users\\VASCO-PC03\\AppData\\Roaming\\npm\\codex.cmd",
+                                "version":  "codex-cli 0.151.0",
+                                "status":  "OK",
                                 "notes":  [
-
+                                              "Using .cmd shim instead of the .ps1 one (directly launchable)."
                                           ]
                             },
                   "ollama":  {
@@ -87,20 +87,20 @@
                              },
                   "blender":  {
                                   "name":  "blender",
-                                  "installed":  false,
-                                  "path":  null,
-                                  "version":  null,
-                                  "status":  "NOT_FOUND",
+                                  "installed":  true,
+                                  "path":  "C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe",
+                                  "version":  "Blender 5.2.1 LTS",
+                                  "status":  "OK",
                                   "notes":  [
 
                                             ]
                               },
                   "adb":  {
                               "name":  "adb",
-                              "installed":  false,
-                              "path":  null,
-                              "version":  null,
-                              "status":  "NOT_FOUND",
+                              "installed":  true,
+                              "path":  "C:\\Program Files\\Unity\\Hub\\Editor\\6000.5.9f1\\Editor\\Data\\PlaybackEngines\\AndroidPlayer\\SDK\\platform-tools\\adb.exe",
+                              "version":  "Android Debug Bridge version 1.0.41",
+                              "status":  "OK",
                               "notes":  [
 
                                         ]
@@ -122,7 +122,7 @@
 
                                        ],
                       "error":  null,
-                      "responseMs":  2064
+                      "responseMs":  2083
                   },
     "unity":  {
                   "requiredByProject":  "6000.5.9f1",

@@ -1,4 +1,20 @@
-﻿# adb (not found on PATH)
-# captured: 2026-08-31 21:15:35
+﻿# adb capability probe
+# captured: 2026-09-01 01:14:36
 ----------------------------------------------------------------------
-Tried: adb
+resolved path: C:\Program Files\Unity\Hub\Editor\6000.5.9f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools\adb.exe
+
+### version  (exit: )
+Android Debug Bridge version 1.0.41
+Version 36.0.0-13206524
+Installed as C:\Program Files\Unity\Hub\Editor\6000.5.9f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools\adb.exe
+Running on Windows 10.0.26200
+
+
+### --version  (exit: )
+Android Debug Bridge version 1.0.41
+Version 36.0.0-13206524
+Installed as C:\Program Files\Unity\Hub\Editor\6000.5.9f1\Editor\Data\PlaybackEngines\AndroidPlayer\SDK\platform-tools\adb.exe
+Running on Windows 10.0.26200
+
+
+
