@@ -1,9 +1,9 @@
 ﻿{
-    "generatedAt":  "2026-08-31 20:50:30",
+    "generatedAt":  "2026-09-01 00:58:48",
     "generatedBy":  "AI_GAME_COMPANY/tools/install-missing-tools.ps1",
     "dryRun":  false,
     "machineName":  "DESKTOP-A7IU1E9",
-    "logPath":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\logs\\install-20260831-204429.log",
+    "logPath":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\logs\\install-20260901-005755.log",
     "outputPath":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\config\\INSTALL_REPORT.json",
     "policy":  {
                    "allow_auto_install_free_tools":  true,
@@ -34,11 +34,11 @@
                         "display":  "Python 3",
                         "expected":  "available on PATH",
                         "actual":  "present",
-                        "status":  "ALREADY_INSTALLED",
+                        "status":  "INSTALLED",
                         "method":  "winget",
                         "packageId":  "Python.Python.3.12",
                         "why":  "The orchestrator (section 13) is Python.",
-                        "detail":  null
+                        "detail":  "winget exit 0"
                     },
                     {
                         "id":  "node",
@@ -56,33 +56,33 @@
                         "display":  "Ollama (server only)",
                         "expected":  "available on PATH",
                         "actual":  "present",
-                        "status":  "INSTALLED",
+                        "status":  "ALREADY_INSTALLED",
                         "method":  "winget",
                         "packageId":  "Ollama.Ollama",
                         "why":  "Local LLM gateway (section 4). The SERVER is free; MODELS are NOT auto-pulled - each model ID needs its own licence check (sections 4, 8).",
-                        "detail":  "winget exit 0"
+                        "detail":  null
                     },
                     {
                         "id":  "blender",
                         "display":  "Blender",
                         "expected":  "available on PATH",
-                        "actual":  "still missing",
-                        "status":  "FAILED",
+                        "actual":  "present",
+                        "status":  "ALREADY_INSTALLED",
                         "method":  "winget",
                         "packageId":  "BlenderFoundation.Blender",
                         "why":  "3D post-processing via background Python scripts (section 11).",
-                        "detail":  "winget exit 0 A new terminal (or admin rights) may be required."
+                        "detail":  null
                     },
                     {
                         "id":  "codex",
                         "display":  "Codex CLI",
                         "expected":  "available on PATH",
                         "actual":  "present",
-                        "status":  "INSTALLED",
+                        "status":  "ALREADY_INSTALLED",
                         "method":  "npm",
                         "packageId":  "@openai/codex",
                         "why":  "Independent code review (section 3). Installing is free; signing in is a HUMAN_GATE (section 37).",
-                        "detail":  "Installed. Sign-in is still required and is a HUMAN_GATE (section 37)."
+                        "detail":  "Installed. Login state is a HUMAN_GATE - not checked or performed here."
                     },
                     {
                         "id":  "claude",
