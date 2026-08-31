@@ -1,0 +1,40 @@
+﻿{
+    "generatedAt":  "2026-08-31 20:40:31",
+    "generatedBy":  "AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1",
+    "outputPath":  "C:\\Dory_tycoon\\AI_GAME_COMPANY\\config\\ASSET_FETCH_REPORT.json",
+    "note":  "Nothing here is APPROVED yet. Licence text and inventory are captured for review; Assets/ is untouched. Section 8 / section 38.",
+    "results":  [
+                    {
+                        "id":  null,
+                        "name":  null,
+                        "sourceUrl":  null,
+                        "expectedLicense":  null,
+                        "intendedUse":  null,
+                        "status":  "FETCH_FAILED",
+                        "archiveSha256":  null,
+                        "licenseFiles":  [
+
+                                         ],
+                        "licenseAssertsCC0":  false,
+                        "imageCount":  0,
+                        "inventoryPath":  null,
+                        "detail":  "\u0027Uri\u0027 매개 변수에 대한 인수의 유효성을 검사할 수 없습니다. 인수가 null이거나 비어 있습니다. null이거나 비어 있지 않은 인수를 제공하고 명령을 다시 시도하십시오."
+                    },
+                    {
+                        "id":  null,
+                        "name":  null,
+                        "sourceUrl":  null,
+                        "expectedLicense":  null,
+                        "intendedUse":  null,
+                        "status":  "FETCH_FAILED",
+                        "archiveSha256":  null,
+                        "licenseFiles":  [
+
+                                         ],
+                        "licenseAssertsCC0":  false,
+                        "imageCount":  0,
+                        "inventoryPath":  null,
+                        "detail":  "\u0027Uri\u0027 매개 변수에 대한 인수의 유효성을 검사할 수 없습니다. 인수가 null이거나 비어 있습니다. null이거나 비어 있지 않은 인수를 제공하고 명령을 다시 시도하십시오."
+                    }
+                ]
+}
