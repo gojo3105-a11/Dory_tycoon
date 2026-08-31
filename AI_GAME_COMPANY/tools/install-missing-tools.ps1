@@ -101,9 +101,30 @@ function Update-SessionPath {
 
 function Test-ToolPresent {
     param([string[]]$Commands)
+
     foreach ($command in $Commands) {
-        if (Get-Command $command -ErrorAction SilentlyContinue) { return $true }
+        $found = Get-Command $command -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $found) { continue }
+
+        $source = $found.Source
+        if (-not $source) { return $true }
+
+        # Windows ships "app execution aliases" under WindowsApps: stubs that
+        # exist and run but only print "Python was not found; run without
+        # arguments to install from the Microsoft Store". Counting one as an
+        # install is why real Python was reported ALREADY_INSTALLED and never
+        # actually installed.
+        if ($source -like "*\WindowsApps\*") {
+            $probe = Invoke-External -Exe $source -Arguments @("--version") -TimeoutSeconds 20
+            if ("$($probe.output)" -match 'was not found|Microsoft Store|App execution alias') {
+                Write-Log "Ignoring Microsoft Store alias stub: $source"
+                continue
+            }
+        }
+
+        return $true
     }
+
     return $false
 }
 

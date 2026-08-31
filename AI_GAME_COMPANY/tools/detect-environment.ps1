@@ -177,14 +177,35 @@ function Get-ToolInfo {
         notes     = @()
     }
 
+    # Try EVERY candidate and keep the first that reports a real version,
+    # rather than the first that merely exists on PATH.
+    #
+    # Windows ships "app execution aliases" under WindowsApps: stubs that exist,
+    # are executable, and only print "Python was not found; run without
+    # arguments to install from the Microsoft Store". Taking the first PATH hit
+    # reported python as installed and runnable when no Python existed at all -
+    # and the installer then skipped it as ALREADY_INSTALLED.
     $resolvedPath = $null
+    $stubsSkipped = @()
+
     foreach ($command in $Commands) {
         $found = Get-Command $command -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($found) {
-            $resolvedPath = $found.Source
-            if (-not $resolvedPath) { $resolvedPath = $found.Name }
-            break
+        if (-not $found) { continue }
+
+        $candidate = $found.Source
+        if (-not $candidate) { $candidate = $found.Name }
+
+        if ($candidate -like "*\WindowsApps\*") {
+            $stubCheck = Invoke-Probe -FilePath $candidate -Arguments $VersionArgs -TimeoutSeconds 15
+            $combined = "$($stubCheck.output) $($stubCheck.error)"
+            if ($combined -match 'was not found|Microsoft Store|App execution alias') {
+                $stubsSkipped += $candidate
+                continue
+            }
         }
+
+        $resolvedPath = $candidate
+        break
     }
 
     # Several tools install correctly but never add themselves to PATH -
@@ -202,12 +223,20 @@ function Get-ToolInfo {
     if (-not $resolvedPath) {
         $tried = "PATH: $($Commands -join ', ')"
         if ($ExtraPaths.Count -gt 0) { $tried += "`r`nPaths: $($ExtraPaths -join ', ')" }
+        if ($stubsSkipped.Count -gt 0) {
+            $tried += "`r`nSkipped Microsoft Store alias stub(s): $($stubsSkipped -join ', ')"
+            $info.status = "STORE_ALIAS_STUB_ONLY"
+            $info.notes += "Only a Microsoft Store app-execution-alias stub was on PATH; not a real install."
+        }
         Save-Probe -Name $Name -Title "$Name (not found)" -Body $tried
         return [pscustomobject]$info
     }
 
     $info.installed = $true
     $info.path = $resolvedPath
+    if ($stubsSkipped.Count -gt 0) {
+        $info.notes += "Ignored Store alias stub(s) ahead of this on PATH: $($stubsSkipped -join ', ')"
+    }
 
     $probeText = New-Object System.Text.StringBuilder
     [void]$probeText.AppendLine("resolved path: $($info.path)")
