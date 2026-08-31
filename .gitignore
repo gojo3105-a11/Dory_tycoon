@@ -75,3 +75,11 @@ keystore.properties
 android-signing.env
 .env
 Secrets/
+
+# AI_GAME_COMPANY orchestrator runtime artifacts
+__pycache__/
+*.py[cod]
+AI_GAME_COMPANY/company/queue/*.db
+AI_GAME_COMPANY/company/state/company_state.json
+AI_GAME_COMPANY/logs/
+AI_GAME_COMPANY/asset_staging/_incoming/
