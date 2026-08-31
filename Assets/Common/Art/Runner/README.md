@@ -40,5 +40,11 @@ Inspector에서 개별 조정한 값을 재임포트 때마다 되돌리지 않�
 출처가 확실하지 않은 이미지를 그냥 복사해 넣지 말 것. 마스터 프롬프트 §38이
 `License UNKNOWN Asset 출시`를 명시적으로 금지한다.
 
-권장 절차는 `AI_GAME_COMPANY/tools/fetch-cc0-assets.ps1`을 쓰는 것이다 — 팩에
-동봉된 라이선스 파일을 증거로 함께 커밋한다.
+권장 절차:
+
+1. 브라우저로 아트 팩 zip을 받아서 `AI_GAME_COMPANY/asset_staging/_incoming/`에 넣는다
+2. `.\AI_GAME_COMPANY\tools\fetch-cc0-assets.ps1 -Commit` 실행 —
+   zip 안에 동봉된 라이선스 파일 + 아카이브 SHA-256 + 이미지 목록을 증거로 커밋한다
+   (`Assets/`는 건드리지 않는다)
+3. 라이선스 텍스트 검토 후 레지스트리를 `APPROVED`로 올리고, 인벤토리에서 고른 파일을
+   위 표의 이름으로 여기에 복사한다
