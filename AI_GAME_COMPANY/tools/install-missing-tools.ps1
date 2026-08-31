@@ -100,7 +100,7 @@ function Update-SessionPath {
 }
 
 function Test-ToolPresent {
-    param([string[]]$Commands)
+    param([string[]]$Commands, [string[]]$Paths = @())
 
     foreach ($command in $Commands) {
         $found = Get-Command $command -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -123,6 +123,18 @@ function Test-ToolPresent {
         }
 
         return $true
+    }
+
+    # Not on PATH is not the same as not installed. Blender is the standing
+    # example: winget exits 0 and the tool is reported FAILED because nothing
+    # ever put it on PATH.
+    foreach ($pattern in $Paths) {
+        $match = Get-Item -Path $pattern -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending | Select-Object -First 1
+        if ($match) {
+            Write-Log "Found off-PATH install: $($match.FullName)"
+            return $true
+        }
     }
 
     return $false
@@ -207,6 +219,13 @@ $tools = @(
     },
     [ordered]@{
         id = "blender"; display = "Blender"; probe = @("blender")
+        # Blender's installer never adds itself to PATH, so a PATH-only check
+        # reported FAILED right after winget exited 0. Same globs as
+        # detect-environment.ps1 uses.
+        probePaths = @(
+            "C:\Program Files\Blender Foundation\Blender*\blender.exe",
+            "$env:LOCALAPPDATA\Programs\Blender Foundation\Blender*\blender.exe"
+        )
         method = "winget"; packageId = "BlenderFoundation.Blender"
         autoInstall = $true; gate = $null
         why = "3D post-processing via background Python scripts (section 11)."
@@ -267,7 +286,9 @@ foreach ($tool in $tools) {
 
     $present = $false
     if ($tool.probe.Count -gt 0) {
-        $present = Test-ToolPresent -Commands $tool.probe
+        $probePaths = @()
+        if ($tool.probePaths) { $probePaths = $tool.probePaths }
+        $present = Test-ToolPresent -Commands $tool.probe -Paths $probePaths
     }
 
     if ($present) {
@@ -361,7 +382,9 @@ foreach ($tool in $tools) {
     }
 
     Update-SessionPath
-    $nowPresent = Test-ToolPresent -Commands $tool.probe
+    $nowPathList = @()
+    if ($tool.probePaths) { $nowPathList = $tool.probePaths }
+    $nowPresent = Test-ToolPresent -Commands $tool.probe -Paths $nowPathList
 
     if ($nowPresent) {
         $record.actual = "present"

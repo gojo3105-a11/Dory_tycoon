@@ -114,14 +114,20 @@ function Invoke-Probe {
         }
         if ($Arguments -and $Arguments.Count -gt 0) { $startArgs.ArgumentList = $Arguments }
 
-        # npm installs its global CLIs as shims. Start-Process can launch a
-        # .cmd shim but NOT a .ps1 one - it has no associated executable
-        # handler - which is why 'claude' and 'codex' first came back as
-        # FOUND_BUT_NOT_RUNNABLE. Route those through cmd.exe instead.
+        # npm installs its global CLIs as three sibling shims: an
+        # extension-less sh script, a .cmd, and a .ps1. Start-Process cannot
+        # launch the .ps1 (no executable handler), which is why 'claude' and
+        # 'codex' first came back as FOUND_BUT_NOT_RUNNABLE.
+        #
+        # Routing through 'cmd /c codex' did not fix it either: cmd.exe tries
+        # the bare filename before applying PATHEXT, finds npm's extension-less
+        # sh script, and fails with "%1 is not a valid Win32 application".
+        # So run the .ps1 with PowerShell itself, by full path.
         if ($FilePath -match '\.ps1$') {
-            $startArgs.FilePath = "$env:ComSpec"
-            $shimName = [System.IO.Path]::GetFileNameWithoutExtension($FilePath)
-            $startArgs.ArgumentList = @("/c", $shimName) + $Arguments
+            $startArgs.FilePath = "powershell.exe"
+            $startArgs.ArgumentList = @(
+                "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $FilePath
+            ) + $Arguments
         }
 
         $process = Start-Process @startArgs
@@ -201,6 +207,22 @@ function Get-ToolInfo {
             if ($combined -match 'was not found|Microsoft Store|App execution alias') {
                 $stubsSkipped += $candidate
                 continue
+            }
+        }
+
+        # Prefer a sibling .cmd over a .ps1 shim. Both work now, but the path
+        # recorded here is what the orchestrator's adapters will invoke later,
+        # and a .cmd can be launched directly by anything - Python's
+        # subprocess included - while a .ps1 needs a PowerShell wrapper.
+        if ($candidate -match '\.ps1$') {
+            $shimBase = $candidate.Substring(0, $candidate.Length - 4)
+            foreach ($extension in @(".cmd", ".exe", ".bat")) {
+                $sibling = "$shimBase$extension"
+                if (Test-Path -LiteralPath $sibling) {
+                    $info.notes += "Using $extension shim instead of the .ps1 one (directly launchable)."
+                    $candidate = $sibling
+                    break
+                }
             }
         }
 
