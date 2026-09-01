@@ -69,14 +69,39 @@ namespace GameFactory.Editor
             Rigidbody2D rb = go.AddComponent<Rigidbody2D>();
             rb.freezeRotation = true;
 
+            // The visual and the collider must occupy the same space. The 3D
+            // primitive placeholder put its Body at y=+0.5 and Head at y=+1.05,
+            // so the character was drawn ABOVE a 0.9x0.9 box centred on the
+            // origin - coins were collected by an invisible box under the
+            // character's feet, which is what "the coin pickup position is
+            // wrong" was. A centred sprite removes the offset entirely.
+            Sprite playerSprite = FindLicensedSprite("player");
+            Vector2 bodySize;
+
+            if (playerSprite != null)
+            {
+                SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = playerSprite;
+                sr.sortingOrder = 10;
+                bodySize = SpriteWorldSize(playerSprite, Vector2.one * 0.9f);
+            }
+            else
+            {
+                // No licensed art yet: keep the primitive placeholder rather
+                // than shipping an invisible player.
+                InstantiateMainCharacterVisual(go.transform);
+                bodySize = Vector2.one * 0.9f;
+            }
+
             BoxCollider2D col = go.AddComponent<BoxCollider2D>();
-            col.size = Vector2.one * 0.9f;
+            // Slightly narrower than the art so shoulders do not clip obstacles
+            // the player visually cleared; full height, so the ground check and
+            // the feet agree.
+            col.size = new Vector2(bodySize.x * 0.7f, bodySize.y);
 
             Transform groundCheck = new GameObject("GroundCheck").transform;
             groundCheck.SetParent(go.transform);
-            groundCheck.localPosition = new Vector3(0f, -0.5f, 0f);
-
-            InstantiateMainCharacterVisual(go.transform);
+            groundCheck.localPosition = new Vector3(0f, -bodySize.y * 0.5f, 0f);
 
             GameObject magnetGO = new GameObject("CoinMagnet");
             magnetGO.transform.SetParent(go.transform, false);
@@ -146,9 +171,11 @@ namespace GameFactory.Editor
 
             BoxCollider2D col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            // Pickup stays slightly smaller than the art so a near miss reads
-            // as a miss rather than a surprise grab.
-            col.size = SpriteWorldSize(sr.sprite, Vector2.one) * 0.6f;
+            // 0.6 was too tight: Kenney's coin fills most of its frame, so a
+            // trigger at 60% of the art meant grazing a coin and not getting
+            // it. In a runner the player has no time to aim, so pickup should
+            // be forgiving - just inside the art, not well inside it.
+            col.size = SpriteWorldSize(sr.sprite, Vector2.one) * 0.9f;
 
             go.AddComponent<Coin>();
 
@@ -179,11 +206,21 @@ namespace GameFactory.Editor
         /// generates the solid-colour placeholder. Callers get a Sprite either
         /// way and do not need to care which they got.
         /// </summary>
+        /// <summary>
+        /// The licensed sprite for this name, or null. Separate from
+        /// ResolveSprite because the player needs to know whether real art
+        /// exists before deciding how to build itself, and must not have a
+        /// solid-colour placeholder generated as a side effect of asking.
+        /// </summary>
+        private static Sprite FindLicensedSprite(string canonicalName)
+        {
+            return AssetDatabase.LoadAssetAtPath<Sprite>($"{SharedArtFolder}/{canonicalName}.png");
+        }
+
         private static Sprite ResolveSprite(string canonicalName, string assetFolder, string placeholderFileName,
             Color placeholderColor, int placeholderSize = SpriteSize)
         {
-            string artPath = $"{SharedArtFolder}/{canonicalName}.png";
-            Sprite licensed = AssetDatabase.LoadAssetAtPath<Sprite>(artPath);
+            Sprite licensed = FindLicensedSprite(canonicalName);
             if (licensed != null) return licensed;
 
             string placeholderPath = CreateSolidSprite(assetFolder, placeholderFileName, placeholderColor, placeholderSize);

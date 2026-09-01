@@ -1,8 +1,7 @@
 {
   "_comment": "Which file from which APPROVED pack becomes which sprite in the game. apply-art-mapping.ps1 reads this, and refuses to copy from any pack whose LICENSE_REGISTRY.json status is not APPROVED - the section 8 gate enforced in code, not just in prose.",
   "_version": 1,
-  "_lastUpdated": "2026-08-31",
-
+  "_lastUpdated": "2026-09-02",
   "targets": [
     {
       "target": "Assets/Common/Art/Runner/ground.png",
@@ -24,17 +23,26 @@
       "archiveName": "platformerGraphicsDeluxe_Updated.zip",
       "sourceFile": "Items/coinGold.png",
       "why": "Gold over silver/bronze for maximum contrast against the stone ground and dark background."
+    },
+    {
+      "target": "Assets/Common/Art/UI/button.png",
+      "packId": "kenney-ui-pack",
+      "archiveName": "kenney_ui-pack.zip",
+      "sourceFile": "PNG/Blue/Default/button_rectangle_depth_flat.png",
+      "why": "Buttons were an Image with NO sprite at all - a hard-cornered solid rectangle, which reads as unfinished next to the Kenney art around it. The depth_flat variant has a bottom lip that makes a button look pressable, and being flat it survives being 9-sliced and tinted. Rectangle over round because the labels are words (Restart, Home, Shop), not icons."
     }
   ],
-
   "deliberatelyNotMapped": [
     {
       "target": "Assets/Common/Art/Runner/gravity_zone.png",
       "decision": "keep the procedural placeholder",
       "why": "The gravity zone is a translucent gameplay REGION marker, not a physical object. A flat translucent purple tint communicates 'the rules are different in here' better than any of the pack's illustrated sprites would, and it tiles cleanly at any size. Substituting art here would be change for its own sake."
+    },
+    {
+      "target": "Assets/Common/Art/Runner/player.png",
+      "why": "The main character is 도리, defined by the user's own reference images in Assets/Common/Character/SourceImage/. A Kenney character sprite was briefly mapped here and then removed on the user's instruction: the shared character across Game01-Game10 must be theirs, not a stock alien. PrefabGenerator already uses this path when a sprite exists, so dropping a 도리 sprite in is all that is needed - no code change."
     }
   ],
-
   "queued": [
     {
       "what": "parallax background layers",
