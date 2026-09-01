@@ -196,6 +196,50 @@ foreach ($source in $freshSources) {
                 $trimmed -match 'NullReferenceException|MissingReferenceException|MissingComponentException|UnassignedReferenceException') {
             if (-not $exceptions.Contains($trimmed)) { $exceptions.Add($trimmed) }
         }
+        elseif ($trimmed -match 'did not succeed|BUILD FAILED|Build completed with a result of .Failed|\[BuildAndroid\].*(Missing|Unknown|failed)') {
+            if (-not $buildFailures.Contains($trimmed)) { $buildFailures.Add($trimmed) }
+        }
+    }
+}
+
+# A build can fail without producing a single line the patterns above match.
+# The first local build died at BuildAndroid's -gameId entry guard: no
+# 'error CS', no exception, no Gradle output - so the report said 0 errors
+# while nothing had been built. The sentinels wait-for-unity.ps1 writes, and
+# the summary BuildAndroid writes, are the facts that actually say whether a
+# step succeeded.
+$stepOutcomes = New-Object System.Collections.Generic.List[string]
+$buildFailures = New-Object System.Collections.Generic.List[string]
+
+foreach ($root in @($RepoPath, $CiWorkspacePath)) {
+    if (-not $root) { continue }
+    $logDir = Join-Path $root "Logs"
+    if (-not (Test-Path $logDir)) { continue }
+    $label = if ($root -eq $RepoPath) { "RepoPath" } else { "CiWorkspacePath" }
+
+    foreach ($sentinel in (Get-ChildItem (Join-Path $logDir "*.exitcode") -ErrorAction SilentlyContinue)) {
+        $code = (Get-Content $sentinel.FullName -Raw -ErrorAction SilentlyContinue)
+        if ($null -ne $code) { $code = $code.Trim() }
+        $verdict = if ($code -eq "0") { "OK" } else { "FAILED" }
+        # No timestamp here on purpose: these strings feed the findings hash,
+        # and an age that changes every run would make an unchanged report look
+        # changed and commit on every scheduled sync.
+        $stepOutcomes.Add("[$label] $($sentinel.BaseName): exit $code ($verdict)")
+    }
+
+    $buildReport = Join-Path $logDir "unity-build-report.log"
+    if (Test-Path $buildReport) {
+        $stepOutcomes.Add("[$label] unity-build-report.log:")
+        foreach ($line in (Get-Content $buildReport -ErrorAction SilentlyContinue)) {
+            $trimmed = $line.Trim()
+            if (-not $trimmed) { continue }
+            if ($trimmed -match '^(Result|Errors|Size):') {
+                $stepOutcomes.Add("    $trimmed")
+            }
+            elseif ($trimmed -match '^\[Error\]') {
+                if (-not $buildFailures.Contains($trimmed)) { $buildFailures.Add($trimmed) }
+            }
+        }
     }
 }
 
@@ -228,6 +272,8 @@ $findings = New-Object System.Text.StringBuilder
 [void]$findings.Append((Format-Section "Compile errors" $compileErrors))
 [void]$findings.Append((Format-Section "Obsolete API warnings (CS0618)" $obsoleteWarnings))
 [void]$findings.Append((Format-Section "Runtime exceptions" $exceptions))
+[void]$findings.Append((Format-Section "Build failures" $buildFailures))
+[void]$findings.Append((Format-Section "Pipeline step outcomes" $stepOutcomes))
 
 $findingsText = $findings.ToString()
 $findingsHash = Get-TextHash $findingsText
@@ -287,7 +333,7 @@ $reportDir = Split-Path $reportPath -Parent
 if (-not (Test-Path $reportDir)) { New-Item -ItemType Directory -Path $reportDir -Force | Out-Null }
 Set-Content -Path $reportPath -Value $report.ToString() -Encoding UTF8
 
-Write-Host "$($compileErrors.Count) compile error(s), $($obsoleteWarnings.Count) CS0618 warning(s), $($exceptions.Count) runtime exception(s)"
+Write-Host "$($compileErrors.Count) compile error(s), $($obsoleteWarnings.Count) CS0618 warning(s), $($exceptions.Count) runtime exception(s), $($buildFailures.Count) build failure(s)"
 Write-Host "Report: $reportPath"
 
 if (-not $Commit) {
@@ -321,7 +367,7 @@ if ($isTracked -and $previousHash -eq $findingsHash) {
 }
 
 Invoke-Git @("add", $reportRelativePath) | Out-Null
-Invoke-Git @("commit", "-m", "chore: update Unity error report ($($compileErrors.Count) compile error(s))") | Out-Null
+Invoke-Git @("commit", "-m", "chore: update Unity error report ($($compileErrors.Count) compile error(s), $($buildFailures.Count) build failure(s))") | Out-Null
 
 if ($NoPush) {
     Write-Host "Report committed; the caller will push it."
