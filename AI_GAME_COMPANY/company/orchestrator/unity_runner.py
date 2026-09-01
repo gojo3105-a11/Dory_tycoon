@@ -118,7 +118,8 @@ class UnityRunner:
 
     # ---- execution -------------------------------------------------------
 
-    def _run_powershell(self, script_text: str) -> tuple[int, str, str, Path]:
+    def _run_powershell(self, script_text: str,
+                        timeout_minutes: int | None = None) -> tuple[int, str, str, Path]:
         scripts_dir = self.repo_root / "AI_GAME_COMPANY" / "logs" / "unity-invocations"
         scripts_dir.mkdir(parents=True, exist_ok=True)
         stamp = time.strftime("%Y%m%d-%H%M%S")
@@ -131,12 +132,18 @@ class UnityRunner:
             code, out, err = self.runner(script_path, script_text)
             return code, out, err, script_path
 
+        # Must match what the generated script gave wait-for-unity.ps1, plus
+        # slack. Using self.timeout_minutes here regardless meant the build step
+        # allowed the inner script 60 minutes while killing the outer process at
+        # 32 - so a cold Gradle cache produced an uncaught TimeoutExpired and
+        # left Unity running detached.
+        budget = timeout_minutes or self.timeout_minutes
         completed = subprocess.run(
             ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass",
              "-File", str(script_path)],
             capture_output=True, text=True,
             cwd=str(self.repo_root),
-            timeout=self.timeout_minutes * 60 + 120,
+            timeout=budget * 60 + 120,
         )
         return completed.returncode, completed.stdout, completed.stderr, script_path
 
@@ -145,7 +152,25 @@ class UnityRunner:
               timeout_minutes: int | None = None) -> UnityResult:
         args = self.unity_args(entry, log_name, extra)
         script = self.build_wrapper_script(sentinel, args, timeout_minutes)
-        code, out, err, script_path = self._run_powershell(script)
+
+        try:
+            code, out, err, script_path = self._run_powershell(script, timeout_minutes)
+        except subprocess.TimeoutExpired as exc:
+            # A timeout is a failed step, not a crash. Say plainly that Unity
+            # was launched detached and may still be running, because killing
+            # powershell.exe does not kill it - that is the whole reason
+            # wait-for-unity.ps1 waits on a sentinel instead of a process.
+            minutes = timeout_minutes or self.timeout_minutes
+            return UnityResult(
+                step=step, exit_code=None, ok=False,
+                log_path=self.repo_root / "Logs" / f"{log_name}.log",
+                detail=(
+                    f"{step} timed out after {minutes} min. Unity was started "
+                    "detached, so it may still be running - check Task Manager "
+                    f"and Logs/{log_name}.log before re-running."
+                ),
+                stderr=str(exc),
+            )
 
         return UnityResult(
             step=step,
