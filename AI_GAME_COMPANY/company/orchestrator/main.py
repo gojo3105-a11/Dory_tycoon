@@ -30,6 +30,7 @@ from company.orchestrator.report_generator import (  # noqa: E402
 )
 from company.orchestrator.state import CompanyState  # noqa: E402
 from company.orchestrator.tasks import TaskQueue  # noqa: E402
+from company.orchestrator.unity_runner import UnityRunner  # noqa: E402
 
 COMPANY_ROOT = Path(__file__).resolve().parents[2]
 REPO_ROOT = COMPANY_ROOT.parent
@@ -227,6 +228,56 @@ def cmd_status(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_build(args: argparse.Namespace) -> int:
+    """Run generate -> validate -> build locally, bypassing GitHub Actions.
+
+    The self-hosted runner is one way to reach Unity, not the only one. When it
+    is down, this drives the same wait-for-unity.ps1 invocations the working
+    workflow uses, on the same machine, so a broken runner stops being a reason
+    to have no APK.
+    """
+    policy = _load_policy()
+
+    unity_path = args.unity_path or UnityRunner.unity_path_from_profile(
+        CONFIG_DIR / "HARDWARE_PROFILE.json"
+    )
+    if not unity_path:
+        print("ERROR: no Unity editor path.")
+        print("  Run AI_GAME_COMPANY/tools/detect-environment.ps1, or pass --unity-path.")
+        print("  Section 38: the editor is not assumed to be anywhere without evidence.")
+        return 2
+
+    print(f"=== LOCAL BUILD: {args.game} ===")
+    print(f"  Unity: {unity_path}")
+    print("  This takes a while - Gradle on a cold cache is the slow part.\n")
+
+    runner = UnityRunner(repo_root=REPO_ROOT, policy=policy, unity_path=unity_path)
+    results, apk = runner.run_pipeline(args.game)
+
+    for result in results:
+        mark = "[ OK ]" if result.ok else "[FAIL]"
+        print(f"  {mark} {result.step:9} exit={result.exit_code}")
+        if result.log_path:
+            print(f"         log: {result.log_path}")
+        if result.detail:
+            print(f"         {result.detail}")
+        if not result.ok and result.stderr.strip():
+            print(f"         stderr: {result.stderr.strip()[:400]}")
+
+    # Section 18/32: exit code AND build report AND a real file on disk. The
+    # pipeline already applied all three; this only reports which way it went.
+    if apk is None:
+        print("\nBUILD_FAILED - no verified APK.")
+        print("  Section 38: this is not reported as a success.")
+        return 1
+
+    print(f"\nAPK: {apk}")
+    print(f"  size: {apk.stat().st_size / (1024 * 1024):.2f} MB")
+    print("\nNext: run scripts/dev/report-build-status.ps1 -Commit so this is "
+          "readable from the repository.")
+    return 0
+
+
 def _narrative_path(game_id: str) -> Path:
     return COMPANY_ROOT / "games" / game_id / "narrative.json"
 
@@ -303,6 +354,12 @@ def main(argv: list[str] | None = None) -> int:
     codex.add_argument("--doctor", action="store_true",
                        help="also run 'codex doctor' and print its raw output")
     codex.set_defaults(func=cmd_codex)
+
+    build = sub.add_parser("build", help="run generate/validate/build locally, no CI")
+    build.add_argument("--game", default="game01")
+    build.add_argument("--unity-path", default=None,
+                       help="Unity.exe path; defaults to the one in HARDWARE_PROFILE.json")
+    build.set_defaults(func=cmd_build)
 
     gate = sub.add_parser("gate", help="may this game be called COMPLETE?")
     gate.add_argument("--game", default="game01")
