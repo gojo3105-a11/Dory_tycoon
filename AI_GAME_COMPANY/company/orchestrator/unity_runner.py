@@ -62,8 +62,26 @@ class UnityRunner:
     repo_root: Path
     policy: Policy
     timeout_minutes: int = 30
+    # wait-for-unity.ps1 launches $env:UNITY_PATH. On the self-hosted runner
+    # that is a machine environment variable, which is why the workflow never
+    # sets it - and why a local run from an ordinary shell would launch nothing
+    # at all. Passing it explicitly makes a local build self-sufficient instead
+    # of depending on how the machine happens to be configured.
+    unity_path: str | None = None
     # Injectable so the command construction can be tested without Windows.
     runner: object = field(default=None, repr=False)
+
+    @staticmethod
+    def unity_path_from_profile(profile_path: Path) -> str | None:
+        """The editor path detect-environment.ps1 already verified."""
+        if not profile_path.is_file():
+            return None
+        import json
+        profile = json.loads(profile_path.read_text(encoding="utf-8-sig"))
+        unity = profile.get("unity") or {}
+        if unity.get("status") != "OK":
+            return None
+        return unity.get("matchingEditorPath") or None
 
     # ---- invocation building ---------------------------------------------
 
@@ -84,8 +102,12 @@ class UnityRunner:
         """The generated .ps1 that calls wait-for-unity.ps1."""
         quoted = ", ".join(ps_quote(a) for a in unity_args)
         timeout = timeout_minutes or self.timeout_minutes
+        unity_line = ""
+        if self.unity_path:
+            unity_line = f"$env:UNITY_PATH = {ps_quote(self.unity_path)}\r\n"
         return (
             "$ErrorActionPreference = 'Stop'\r\n"
+            f"{unity_line}"
             f"Set-Location {ps_quote(self.repo_root)}\r\n"
             f"& {ps_quote(self.repo_root / WAIT_SCRIPT)} "
             f"-SentinelName {ps_quote(sentinel_name)} "

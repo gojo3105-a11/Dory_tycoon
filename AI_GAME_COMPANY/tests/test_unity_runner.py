@@ -89,6 +89,34 @@ class InvocationTests(unittest.TestCase):
         # Calling Unity.exe directly is the bug this design exists to avoid.
         self.assertNotIn("Unity.exe", script)
 
+    def test_unity_path_is_exported_when_given(self):
+        """wait-for-unity.ps1 launches $env:UNITY_PATH, so a local run needs it.
+
+        On the self-hosted runner UNITY_PATH is a machine environment variable,
+        which is why the workflow never sets it - and why a local build from an
+        ordinary shell would launch nothing at all.
+        """
+        runner = UnityRunner(repo_root=self.root, policy=Policy.load(REAL_POLICY),
+                             runner=self.fake,
+                             unity_path=r"C:\Program Files\Unity\Hub\Editor\6000.5.9f1\Editor\Unity.exe")
+        runner.generate("game01")
+        script = self.fake.scripts[0]
+        self.assertIn("$env:UNITY_PATH = ", script)
+        self.assertIn("6000.5.9f1", script)
+        # Quoted, because the path contains spaces.
+        self.assertIn("'C:\\Program Files", script)
+
+    def test_no_unity_path_line_when_not_given(self):
+        # CI behaviour must not change: there the machine variable is correct.
+        self.runner.generate("game01")
+        self.assertNotIn("UNITY_PATH", self.fake.scripts[0])
+
+    def test_script_with_a_unity_path_is_still_ascii(self):
+        runner = UnityRunner(repo_root=self.root, policy=Policy.load(REAL_POLICY),
+                             runner=self.fake, unity_path=r"C:\Unity\Unity.exe")
+        runner.build_android("game01")
+        self.fake.scripts[0].encode("ascii")
+
     def test_build_gets_the_longer_timeout(self):
         self.runner.build_android("game01")
         self.assertIn("-TimeoutMinutes 60", self.fake.scripts[0])
@@ -187,6 +215,38 @@ class BuildVerificationTests(unittest.TestCase):
         build = [r for r in results if r.step == "build"][0]
         self.assertFalse(build.ok)
         self.assertIn("BUILD_FAILED", build.detail)
+
+
+class UnityPathFromProfileTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self.tmp.name) / "HARDWARE_PROFILE.json"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _write(self, unity: dict):
+        import json
+        self.path.write_text(json.dumps({"unity": unity}), encoding="utf-8")
+
+    def test_reads_the_verified_editor_path(self):
+        self._write({"status": "OK", "matchingEditorPath": "C:/Unity.exe"})
+        self.assertEqual(UnityRunner.unity_path_from_profile(self.path), "C:/Unity.exe")
+
+    def test_a_non_ok_unity_status_yields_nothing(self):
+        # A mismatched editor version breaks the working APK pipeline
+        # (section 19), so a bad status must not hand back a path anyway.
+        self._write({"status": "VERSION_MISMATCH", "matchingEditorPath": "C:/Unity.exe"})
+        self.assertIsNone(UnityRunner.unity_path_from_profile(self.path))
+
+    def test_missing_profile_yields_nothing(self):
+        self.assertIsNone(
+            UnityRunner.unity_path_from_profile(self.path.parent / "absent.json")
+        )
+
+    def test_ok_status_but_no_path_yields_nothing(self):
+        self._write({"status": "OK"})
+        self.assertIsNone(UnityRunner.unity_path_from_profile(self.path))
 
 
 if __name__ == "__main__":
