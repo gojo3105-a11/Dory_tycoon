@@ -58,7 +58,11 @@ param(
     [int]$MaxPerSection = 60,
     [int]$MaxLogAgeHours = 24,
     [switch]$Commit,
-    [switch]$NoPush
+    [switch]$NoPush,
+    # Heartbeat window. Even with identical findings the report is refreshed
+    # once it is this old, so a silent repository means "not running" rather
+    # than an unreadable mix of that and "nothing changed".
+    [double]$MaxReportAgeHours = 6
 )
 
 $ErrorActionPreference = "Stop"
@@ -66,6 +70,7 @@ $ErrorActionPreference = "Stop"
 $reportRelativePath = "Reports/errors/latest.txt"
 $reportPath = Join-Path $RepoPath ($reportRelativePath -replace '/', '\')
 $hashPrefix = "Findings-Hash: "
+$generatedPrefix = "Generated: "
 
 # Reads a file another process may hold open for writing (Editor.log).
 function Read-SharedFile([string]$path, [int]$tail) {
@@ -234,7 +239,7 @@ $report = New-Object System.Text.StringBuilder
 [void]$report.AppendLine("This is how Claude Code, which has no Unity and no access to the build PC,")
 [void]$report.AppendLine("reads this project's compile errors: through the repository.")
 [void]$report.AppendLine()
-[void]$report.AppendLine("Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+[void]$report.AppendLine("$generatedPrefix$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 [void]$report.AppendLine("$hashPrefix$findingsHash")
 [void]$report.AppendLine()
 
@@ -263,9 +268,19 @@ else {
 [void]$report.Append($findingsText)
 
 $previousHash = $null
+$previousGenerated = $null
 if (Test-Path $reportPath) {
-    $previousHashLine = Get-Content $reportPath | Where-Object { $_.StartsWith($hashPrefix) } | Select-Object -First 1
+    $existingLines = Get-Content $reportPath
+    $previousHashLine = $existingLines | Where-Object { $_.StartsWith($hashPrefix) } | Select-Object -First 1
     if ($previousHashLine) { $previousHash = $previousHashLine.Substring($hashPrefix.Length).Trim() }
+
+    $generatedLine = $existingLines | Where-Object { $_.StartsWith($generatedPrefix) } | Select-Object -First 1
+    if ($generatedLine) {
+        $parsed = [datetime]::MinValue
+        if ([datetime]::TryParse($generatedLine.Substring($generatedPrefix.Length).Trim(), [ref]$parsed)) {
+            $previousGenerated = $parsed
+        }
+    }
 }
 
 $reportDir = Split-Path $reportPath -Parent
@@ -286,10 +301,23 @@ catch { $isTracked = $false }
 
 if ($isTracked -and $previousHash -eq $findingsHash) {
     # Nothing new to say - don't spam the history with an identical report
-    # every time the scheduled sync runs.
-    Invoke-Git @("checkout", "--", $reportRelativePath) | Out-Null
-    Write-Host "Findings unchanged since the last report; nothing committed."
-    exit 0
+    # every time the scheduled sync runs. But an unchanged report that is also
+    # never refreshed is indistinguishable from a report that stopped being
+    # generated at all, which is how a broken pipeline hid for 17 hours. Past
+    # the heartbeat window it is refreshed anyway.
+    $ageHours = $null
+    if ($previousGenerated) {
+        $ageHours = [Math]::Round(((Get-Date) - $previousGenerated).TotalHours, 1)
+    }
+
+    if ($previousGenerated -and $ageHours -lt $MaxReportAgeHours) {
+        Invoke-Git @("checkout", "--", $reportRelativePath) | Out-Null
+        Write-Host "Findings unchanged since the last report (${ageHours}h old); nothing committed."
+        exit 0
+    }
+
+    $why = if ($null -eq $ageHours) { "no readable timestamp" } else { "${ageHours}h old" }
+    Write-Host "Findings unchanged but the committed report is stale ($why); refreshing it as a heartbeat."
 }
 
 Invoke-Git @("add", $reportRelativePath) | Out-Null
