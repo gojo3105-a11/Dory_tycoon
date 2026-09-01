@@ -75,7 +75,11 @@ namespace GameFactory.Editor
             // origin - coins were collected by an invisible box under the
             // character's feet, which is what "the coin pickup position is
             // wrong" was. A centred sprite removes the offset entirely.
-            Sprite playerSprite = FindLicensedSprite("player");
+            // Priority: a cut-out PNG the user dropped in, then the procedural
+            // 도리 built from their reference images, then the 3D primitive.
+            // Dropping player.png in later overrides this with no code change,
+            // and the generator never writes to that path.
+            Sprite playerSprite = FindLicensedSprite("player") ?? DoriSpriteGenerator.EnsureSprite();
             Vector2 bodySize;
 
             if (playerSprite != null)
