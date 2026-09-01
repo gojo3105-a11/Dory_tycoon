@@ -117,6 +117,56 @@ class InvocationTests(unittest.TestCase):
         runner.build_android("game01")
         self.fake.scripts[0].encode("ascii")
 
+    def test_build_timeout_reaches_the_subprocess_too(self):
+        """The inner and outer budgets must agree.
+
+        build_android gives wait-for-unity.ps1 60 minutes, but the subprocess
+        budget was computed from timeout_minutes (30) regardless, so a build
+        past ~32 minutes died with an uncaught TimeoutExpired while Unity kept
+        running detached.
+        """
+        seen = []
+        runner = UnityRunner(
+            repo_root=self.root, policy=Policy.load(REAL_POLICY),
+            runner=lambda path, text: (0, "", ""),
+        )
+        original = runner._run_powershell
+
+        def spy(script_text, timeout_minutes=None):
+            seen.append(timeout_minutes)
+            return original(script_text, timeout_minutes)
+
+        runner._run_powershell = spy
+        runner.build_android("game01")
+        self.assertEqual(seen, [60])
+
+    def test_a_timeout_is_a_failed_step_not_a_crash(self):
+        import subprocess
+
+        def explode(path, text):
+            raise subprocess.TimeoutExpired(cmd="powershell", timeout=1920)
+
+        runner = UnityRunner(repo_root=self.root, policy=Policy.load(REAL_POLICY),
+                             runner=explode)
+        result = runner.build_android("game01")
+        self.assertFalse(result.ok)
+        self.assertIsNone(result.exit_code)
+        self.assertIn("timed out after 60 min", result.detail)
+        # Must warn that Unity survives the kill - the orphan problem.
+        self.assertIn("may still be running", result.detail)
+
+    def test_a_timeout_stops_the_pipeline_without_an_apk(self):
+        import subprocess
+
+        def explode(path, text):
+            raise subprocess.TimeoutExpired(cmd="powershell", timeout=60)
+
+        runner = UnityRunner(repo_root=self.root, policy=Policy.load(REAL_POLICY),
+                             runner=explode)
+        results, apk = runner.run_pipeline("game01")
+        self.assertIsNone(apk)
+        self.assertFalse(results[0].ok)
+
     def test_build_gets_the_longer_timeout(self):
         self.runner.build_android("game01")
         self.assertIn("-TimeoutMinutes 60", self.fake.scripts[0])
