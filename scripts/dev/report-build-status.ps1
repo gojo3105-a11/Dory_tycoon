@@ -32,7 +32,11 @@ param(
     [string]$Branch = "claude/delete-current-content-mgn4xm",
     [string]$OriginRemote = "origin",
     [switch]$Commit,
-    [switch]$NoPush
+    [switch]$NoPush,
+    # Heartbeat window. Even with identical findings the report is refreshed
+    # once it is this old, so a silent repository means "not running" rather
+    # than an unreadable mix of that and "nothing changed".
+    [double]$MaxReportAgeHours = 6
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,6 +44,7 @@ $ErrorActionPreference = "Stop"
 $reportRelativePath = "Reports/build-status/latest.txt"
 $reportPath = Join-Path $RepoPath ($reportRelativePath -replace '/', '\')
 $hashPrefix = "Findings-Hash: "
+$generatedPrefix = "Generated: "
 
 function Invoke-Git {
     param([Parameter(Mandatory = $true)][string[]]$Arguments, [int]$Retries = 0)
@@ -142,15 +147,25 @@ $report = New-Object System.Text.StringBuilder
 [void]$report.AppendLine("Scans Builds/<gameId>/ on this machine for real .apk/.aab files, since")
 [void]$report.AppendLine("Claude Code has no GitHub Actions API access to check artifacts directly.")
 [void]$report.AppendLine()
-[void]$report.AppendLine("Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
+[void]$report.AppendLine("$generatedPrefix$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
 [void]$report.AppendLine("$hashPrefix$findingsHash")
 [void]$report.AppendLine()
 [void]$report.Append($findingsText)
 
 $previousHash = $null
+$previousGenerated = $null
 if (Test-Path $reportPath) {
-    $previousHashLine = Get-Content $reportPath | Where-Object { $_.StartsWith($hashPrefix) } | Select-Object -First 1
+    $existingLines = Get-Content $reportPath
+    $previousHashLine = $existingLines | Where-Object { $_.StartsWith($hashPrefix) } | Select-Object -First 1
     if ($previousHashLine) { $previousHash = $previousHashLine.Substring($hashPrefix.Length).Trim() }
+
+    $generatedLine = $existingLines | Where-Object { $_.StartsWith($generatedPrefix) } | Select-Object -First 1
+    if ($generatedLine) {
+        $parsed = [datetime]::MinValue
+        if ([datetime]::TryParse($generatedLine.Substring($generatedPrefix.Length).Trim(), [ref]$parsed)) {
+            $previousGenerated = $parsed
+        }
+    }
 }
 
 $reportDir = Split-Path $reportPath -Parent
@@ -170,9 +185,23 @@ try { Invoke-Git @("ls-files", "--error-unmatch", $reportRelativePath) | Out-Nul
 catch { $isTracked = $false }
 
 if ($isTracked -and $previousHash -eq $findingsHash) {
-    Invoke-Git @("checkout", "--", $reportRelativePath) | Out-Null
-    Write-Host "Findings unchanged since the last report; nothing committed."
-    exit 0
+    # Skipping the commit keeps noise down, but it also makes "ran, nothing
+    # changed" look exactly like "never ran" to anyone reading the repository -
+    # which is how a broken pipeline went unnoticed for 17 hours once. So a
+    # stale report is refreshed anyway, purely as a heartbeat.
+    $ageHours = $null
+    if ($previousGenerated) {
+        $ageHours = [Math]::Round(((Get-Date) - $previousGenerated).TotalHours, 1)
+    }
+
+    if ($previousGenerated -and $ageHours -lt $MaxReportAgeHours) {
+        Invoke-Git @("checkout", "--", $reportRelativePath) | Out-Null
+        Write-Host "Findings unchanged since the last report (${ageHours}h old); nothing committed."
+        exit 0
+    }
+
+    $why = if ($null -eq $ageHours) { "no readable timestamp" } else { "${ageHours}h old" }
+    Write-Host "Findings unchanged but the committed report is stale ($why); refreshing it as a heartbeat."
 }
 
 Invoke-Git @("add", $reportRelativePath) | Out-Null
