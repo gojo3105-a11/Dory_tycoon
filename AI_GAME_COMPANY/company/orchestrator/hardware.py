@@ -246,13 +246,31 @@ class HardwareProfile:
             ))
         else:
             results.append(Verdict(
-                "local_image_generation", "NOT_VIABLE",
+                "local_image_generation", "LIMITED",
                 f"no dedicated GPU (found: {', '.join(self.gpu_names) or 'none'}). "
-                f"Diffusion models want roughly {MIN_VRAM_GB_FOR_IMAGE_GEN:.0f} GB of VRAM; "
-                "on integrated graphics this falls back to CPU at minutes per image",
-                "use the APPROVED CC0 art packs instead - section 26 ranks licensed "
-                "existing assets above AI generation anyway",
+                f"Diffusion wants roughly {MIN_VRAM_GB_FOR_IMAGE_GEN:.0f} GB of VRAM "
+                "and CUDA, so the standard stack will not run - but CPU and Intel "
+                "iGPU paths (OpenVINO, DirectML) do work, at tens of seconds to "
+                "minutes per 512px image. Slow for bulk work, fine for a handful "
+                "of sprites",
+                "not needed for the current art: sections 26 ranks licensed assets "
+                "above generation, and the character comes from background removal "
+                "of the user's own reference, which is CPU work - see the "
+                "image_background_removal verdict",
             ))
+
+        # --- background removal (segmentation, not generation) ---
+        # Kept separate because conflating the two was actively misleading:
+        # "no GPU" was reported as if no image work at all were possible, while
+        # the thing actually needed - separating a finished character from its
+        # background - is a small model that runs on the CPU in about a second.
+        results.append(Verdict(
+            "image_background_removal", "VIABLE",
+            "u2net via rembg is a CPU segmentation model, about a second per "
+            "image, and needs no GPU at all",
+            "AI_GAME_COMPANY/tools/cutout-character.py - this is how the 도리 "
+            "sprite was produced from the user's reference images",
+        ))
 
         # --- image to 3D ---
         results.append(Verdict(

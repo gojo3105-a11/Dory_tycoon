@@ -216,6 +216,85 @@
       "games": [],
       "status": "UNKNOWN",
       "notes": "Present on the machine but NOT usable, for two independent reasons. (1) Licence: unread. Gemma releases have historically shipped under Google's own Gemma Terms of Use plus a Prohibited Use Policy rather than a plain OSI licence, and section 8 says weights are licensed separately from code - so the actual terms for THIS model ID must be read before any output of it is used. Family resemblance is not a licence. (2) Size: 17.33 GB of weights against 15.71 GB of total RAM on a machine with no dedicated GPU. It exceeds the whole machine and cannot be loaded, whatever else is closed - 'orchestrator ollama' reports this. Recommended action: remove it (ollama rm gemma4:26b) to reclaim ~17 GB, and pull a 7B-class Q4 model instead, after checking THAT model ID's licence. OllamaClient.generate() refuses this ID today because it is not APPROVED here."
+    },
+    {
+      "id": "u2net",
+      "name": "U^2-Net salient object detection weights (via rembg)",
+      "type": "ai_model",
+      "model_ids": [
+        "u2net"
+      ],
+      "source": "downloaded by rembg on first run to ~/.u2net/u2net.onnx (176 MB)",
+      "version": "u2net.onnx as shipped by rembg 2.x",
+      "license": "Apache-2.0",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "Apache-2.0 permits redistribution; the weights are not committed to this repo",
+      "verified_at": "2026-09-02",
+      "verified_by": "Claude Code - U^2-Net is published under Apache-2.0 and rembg ships it under that licence",
+      "games": [
+        "game01"
+      ],
+      "status": "APPROVED",
+      "notes": "Segmentation, NOT generation. This is what makes a real 도리 sprite possible on a machine with no dedicated GPU: the reference images already contain the finished character, so it only has to be separated from its background - about a second per image on the CPU. Section 8 wants weights licensed separately from code, so this entry is separate from the rembg entry below. Output is a derivative of the USER'S reference image, whose own licence is covered by user-character-reference-images above."
+    },
+    {
+      "id": "rembg",
+      "name": "rembg (background removal library)",
+      "type": "tool",
+      "source": "pip install rembg[cpu]",
+      "version": "2.x",
+      "license": "MIT",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "MIT; used as a build-time tool, not shipped in the APK",
+      "verified_at": "2026-09-02",
+      "verified_by": "Claude Code",
+      "games": [
+        "game01"
+      ],
+      "status": "APPROVED",
+      "notes": "Build-time only - nothing from it ends up in the APK, only the PNG it produces. Driven by AI_GAME_COMPANY/tools/cutout-character.py."
+    },
+    {
+      "id": "stable-diffusion-v1-5",
+      "name": "Stable Diffusion v1.5 (weights)",
+      "type": "ai_model",
+      "model_ids": [
+        "stable-diffusion-v1-5/stable-diffusion-v1-5",
+        "runwayml/stable-diffusion-v1-5"
+      ],
+      "source": "Hugging Face, downloaded by diffusers to ~/.cache/huggingface",
+      "version": "v1-5, fp32 on CPU",
+      "license": "CreativeML OpenRAIL-M",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "OpenRAIL-M permits redistribution of the weights and of derivatives if the same use-based restrictions are passed on. The weights are NOT committed to this repo; only generated PNGs are.",
+      "verified_at": "2026-09-02",
+      "verified_by": "Claude Code - OpenRAIL-M explicitly permits commercial use; its restrictions are use-based (no illegal, harassing or deceptive output), none of which a hedgehog runner engages",
+      "games": [
+        "game01"
+      ],
+      "status": "APPROVED",
+      "notes": "Runs on the CPU in this container - minutes per 512px image, no GPU. Section 9 wanted the exact repository licence read before installation, and this is that check. Two limits recorded honestly rather than discovered later: (1) the model has never seen 도리, so txt2img produces A hedgehog, not THE one - a fixed seed is what makes a set of frames consistent with each other. (2) img2img preserves identity far better but cannot reliably rotate a front view into a side profile. Whether any output is usable is a human call under section 30. Alternatives considered and rejected: SD-Turbo and SDXL-Turbo are FASTER but ship under Stability's non-commercial research licence, so they are unusable here; FLUX.1-schnell is Apache-2.0 and would be preferable on licence grounds, but at 12B parameters it does not fit this machine's memory for CPU inference."
+    },
+    {
+      "id": "diffusers",
+      "name": "Hugging Face diffusers / transformers / accelerate (code)",
+      "type": "tool",
+      "source": "pip",
+      "version": "current",
+      "license": "Apache-2.0",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "Apache-2.0; build-time tool, not shipped in the APK",
+      "verified_at": "2026-09-02",
+      "verified_by": "Claude Code",
+      "games": [
+        "game01"
+      ],
+      "status": "APPROVED",
+      "notes": "Section 8: the inference CODE is Apache-2.0, which says nothing about the WEIGHTS it loads - those are the separate stable-diffusion-v1-5 entry above. Driven by AI_GAME_COMPANY/tools/generate-sprite.py."
     }
   ],
   "pending_verification": [

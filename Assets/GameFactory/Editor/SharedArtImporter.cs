@@ -33,6 +33,29 @@ namespace GameFactory.Editor
                 { "button", new Vector4(4f, 8f, 4f, 4f) },
             };
 
+        /// <summary>
+        /// Per-file pixels-per-unit, where the default 64 would be wrong.
+        ///
+        /// 64 suits the Kenney pack, whose tiles are 70px and chunky. The
+        /// player is a background-removed render downscaled to 136x192; at 64
+        /// it would be 2.1 x 3.0 world units - three times too tall. At 128 it
+        /// is 1.06 x 1.50, a little wider than a 1.09-unit ground tile and half
+        /// again as tall, which is the proportion the reference shows.
+        /// </summary>
+        private static readonly System.Collections.Generic.Dictionary<string, float> PixelsPerUnitOverrides =
+            new System.Collections.Generic.Dictionary<string, float>
+            {
+                { "player", 128f },
+            };
+
+        /// <summary>
+        /// Files that are smooth artwork rather than pixel art. Point sampling
+        /// is right for crisp tile edges but turns a downscaled photoreal
+        /// render jagged, so those get bilinear.
+        /// </summary>
+        private static readonly System.Collections.Generic.HashSet<string> BilinearFiles =
+            new System.Collections.Generic.HashSet<string> { "player" };
+
         private void OnPreprocessTexture()
         {
             if (!assetPath.StartsWith(SharedArtRoot)) return;
@@ -43,10 +66,14 @@ namespace GameFactory.Editor
             // reimport would silently revert any deliberate per-asset tweak.
             if (!importer.importSettingsMissing) return;
 
+            string fileName = System.IO.Path.GetFileNameWithoutExtension(assetPath);
+
             importer.textureType = TextureImporterType.Sprite;
             importer.spriteImportMode = SpriteImportMode.Single;
-            importer.spritePixelsPerUnit = 64f;
-            importer.filterMode = FilterMode.Point;
+            importer.spritePixelsPerUnit =
+                PixelsPerUnitOverrides.TryGetValue(fileName, out float ppu) ? ppu : 64f;
+            importer.filterMode =
+                BilinearFiles.Contains(fileName) ? FilterMode.Bilinear : FilterMode.Point;
             importer.mipmapEnabled = false;
             importer.alphaIsTransparency = true;
             importer.textureCompression = TextureImporterCompression.Uncompressed;
@@ -56,13 +83,9 @@ namespace GameFactory.Editor
             settings.spriteMeshType = SpriteMeshType.FullRect;
             importer.SetTextureSettings(settings);
 
-            if (assetPath.StartsWith(UiArtRoot))
+            if (assetPath.StartsWith(UiArtRoot) && UiBorders.TryGetValue(fileName, out Vector4 border))
             {
-                string name = System.IO.Path.GetFileNameWithoutExtension(assetPath);
-                if (UiBorders.TryGetValue(name, out Vector4 border))
-                {
-                    importer.spriteBorder = border;
-                }
+                importer.spriteBorder = border;
             }
         }
     }
