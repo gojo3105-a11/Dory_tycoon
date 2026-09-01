@@ -31,6 +31,33 @@ LLM_TIERS = [
 # falls back to CPU, where a single image is minutes-to-tens-of-minutes.
 MIN_VRAM_GB_FOR_IMAGE_GEN = 6.0
 
+# Published working-set sizes for image models, so a request for a specific one
+# gets an arithmetic answer instead of an opinion. Sizes are the quantisation a
+# CPU-only machine would realistically use, and they include the TEXT ENCODER,
+# which is what people forget: Qwen-Image's encoder is 8.3B on top of a 20.4B
+# transformer, so quoting the transformer alone understates it badly.
+#
+# (model id, GB working set, note)
+IMAGE_MODEL_SIZES = [
+    ("qwen-image", 14.0 + 4.5,
+     "20.4B DiT at GGUF Q4_K_M (~14 GB) plus the 8.3B Qwen2.5-VL text encoder"),
+    ("qwen-image-q2", 8.0 + 4.5,
+     "20.4B DiT at GGUF Q2_K (~8 GB, degraded) plus the text encoder"),
+    ("sdxl", 7.0, "2.6B UNet at fp16, plus two CLIP encoders"),
+    ("sd-1.5", 4.0, "860M UNet at fp32 on CPU, plus CLIP"),
+    ("sd-1.5-ipadapter", 7.8,
+     "SD 1.5 at fp32 (~4.2 GB) plus the 632M OpenCLIP-ViT-H image encoder "
+     "IP-Adapter needs (~2.5 GB) and peak activations (~1 GB)"),
+    ("sd-1.5-ipadapter-bf16", 4.0,
+     "the same stack at bfloat16, which halves the weights - the configuration "
+     "that actually fits a CPU-only machine"),
+]
+
+# A diffusion transformer runs its full parameter count at EVERY sampling step,
+# so CPU inference scales with parameters x steps. This is the rough boundary
+# past which a single image stops being minutes and becomes hours.
+CPU_PARAMS_B_PER_IMAGE_LIMIT = 3.0
+
 
 @dataclass(frozen=True)
 class Verdict:
@@ -178,6 +205,42 @@ class HardwareProfile:
                 "CPU-only here, so expect slow responses"
             )
         return "VIABLE", f"{size_gb:.1f} GB fits the {budget:.1f} GB budget"
+
+    def image_model_fit(self, model_id: str) -> tuple[str, str]:
+        """Can this named image model run here? Arithmetic, not opinion.
+
+        Separate from model_fit() because image models have a second wall the
+        LLM tiers do not: a diffusion transformer runs its whole parameter
+        count at every sampling step, so a model can fit in memory and still
+        take hours per image on a CPU. Both are checked.
+        """
+        entry = next((e for e in IMAGE_MODEL_SIZES if e[0] == model_id), None)
+        if entry is None:
+            known = ", ".join(e[0] for e in IMAGE_MODEL_SIZES)
+            return "UNKNOWN", f"no recorded size for '{model_id}'. Known: {known}"
+
+        _, size_gb, note = entry
+        budget = self.ram_free_gb - 2.0
+
+        if size_gb >= self.ram_total_gb:
+            return "NOT_VIABLE", (
+                f"{note}: about {size_gb:.1f} GB against {self.ram_total_gb:.1f} GB "
+                "of total RAM, and with no dedicated VRAM that RAM is all there is. "
+                "Larger than the whole machine"
+            )
+        if size_gb > budget:
+            return "NOT_VIABLE", (
+                f"{note}: about {size_gb:.1f} GB against a {budget:.1f} GB budget "
+                f"({self.ram_free_gb:.1f} GB free minus 2 GB headroom). It would "
+                "swap to disk rather than run"
+            )
+
+        if not self.has_dedicated_gpu:
+            return "LIMITED", (
+                f"{note}: about {size_gb:.1f} GB fits the {budget:.1f} GB budget, "
+                "but inference is CPU-only, so expect minutes per image"
+            )
+        return "VIABLE", f"{note}: about {size_gb:.1f} GB fits"
 
     def verdicts(self) -> list[Verdict]:
         results: list[Verdict] = []

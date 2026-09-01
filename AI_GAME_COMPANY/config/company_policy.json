@@ -19,7 +19,6 @@
   "never_auto_install": [
     "unity",
     "ollama_models",
-    "comfyui",
     "image_to_3d_models",
     "any_paid_software"
   ],
@@ -74,5 +73,6 @@
   },
   "_retry_note": "Section 31: after 5 attempts go to NEEDS_HUMAN_REVIEW. If the same error hash repeats, stop burning retries and move to root-cause analysis instead.",
   "allow_local_image_generation": true,
-  "_allow_local_image_generation_note": "Set true on 2026-09-02 because the user explicitly asked for a free image generation AI to be integrated. This is LOCAL only - it does not relax allow_cloud_ai_generation, which stays false, and no API is called. image_generation_models left never_auto_install for the same reason: the user asked. The section 8/9 gate still applies and was satisfied first - stable-diffusion-v1-5 is APPROVED in LICENSE_REGISTRY.json under CreativeML OpenRAIL-M, which permits commercial use, and the non-commercial Turbo variants were rejected on those grounds."
+  "_allow_local_image_generation_note": "Set true on 2026-09-02 because the user explicitly asked for a free image generation AI to be integrated. This is LOCAL only - it does not relax allow_cloud_ai_generation, which stays false, and no API is called. image_generation_models left never_auto_install for the same reason: the user asked. The section 8/9 gate still applies and was satisfied first - stable-diffusion-v1-5 is APPROVED in LICENSE_REGISTRY.json under CreativeML OpenRAIL-M, which permits commercial use, and the non-commercial Turbo variants were rejected on those grounds.",
+  "_comfyui_note": "comfyui left never_auto_install on 2026-09-02 because the user asked for it explicitly. GPL-3.0, build-time only, never bundled into the APK. It does NOT make Qwen-Image runnable here - see the qwen-image entry in LICENSE_REGISTRY.json and HardwareProfile.image_model_fit()."
 }

@@ -114,31 +114,45 @@ Write-Host ""
 $outDir = Join-Path $RepoPath "AI_GAME_COMPANY\generated\dori"
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
-# Two approaches, because which one works is an empirical question, not one to
-# guess at. img2img starts from the real sprite and keeps Dori's identity far
-# better; txt2img is free to build a true side profile but has never seen the
-# character. Generating both and comparing is the point.
+# Which approach works is an empirical question, not one to guess at, so this
+# generates all of them and lets the pictures decide.
+$reference = "Assets\Common\Art\Runner\player.png"
+$runPose = "side view profile, facing right, running, legs mid-stride"
+
+# IP-Adapter first and with three scales, because ip-scale is the one dial
+# that decides this: too high and the model refuses to leave the front-facing
+# reference pose, too low and it stops being Dori. Sweeping beats guessing.
+# img2img and plain txt2img are kept as controls - if IP-Adapter wins, that is
+# worth seeing against something.
 $runs = @(
     @{
-        name = "i2i-strength055"
-        args = @("img2img", "--init", "Assets\Common\Art\Runner\player.png",
-                 "--pose", "side view, facing right, running, legs mid-stride",
-                 "--strength", "0.55", "--count", "2",
-                 "--out", (Join-Path $outDir "i2i-055.png"))
+        name = "ip-scale050"
+        args = @("txt2img", "--ip-image", $reference, "--ip-scale", "0.50",
+                 "--pose", $runPose, "--count", "2",
+                 "--out", (Join-Path $outDir "ip-050.png"))
     },
     @{
-        name = "i2i-strength070"
-        args = @("img2img", "--init", "Assets\Common\Art\Runner\player.png",
-                 "--pose", "side view, facing right, running, legs mid-stride",
-                 "--strength", "0.70", "--count", "2",
-                 "--out", (Join-Path $outDir "i2i-070.png"))
+        name = "ip-scale070"
+        args = @("txt2img", "--ip-image", $reference, "--ip-scale", "0.70",
+                 "--pose", $runPose, "--count", "2",
+                 "--out", (Join-Path $outDir "ip-070.png"))
     },
     @{
-        name = "t2i-run"
-        args = @("txt2img",
-                 "--pose", "side view profile, facing right, running, legs mid-stride",
-                 "--count", "3",
-                 "--out", (Join-Path $outDir "t2i-run.png"))
+        name = "ip-scale085"
+        args = @("txt2img", "--ip-image", $reference, "--ip-scale", "0.85",
+                 "--pose", $runPose, "--count", "2",
+                 "--out", (Join-Path $outDir "ip-085.png"))
+    },
+    @{
+        name = "i2i-control"
+        args = @("img2img", "--init", $reference,
+                 "--pose", $runPose, "--strength", "0.65", "--count", "2",
+                 "--out", (Join-Path $outDir "i2i-065.png"))
+    },
+    @{
+        name = "t2i-control"
+        args = @("txt2img", "--pose", $runPose, "--count", "2",
+                 "--out", (Join-Path $outDir "t2i.png"))
     }
 )
 
