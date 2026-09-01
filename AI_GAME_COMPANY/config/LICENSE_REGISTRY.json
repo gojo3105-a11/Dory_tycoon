@@ -331,6 +331,46 @@
       "games": [],
       "status": "APPROVED",
       "notes": "Model-agnostic: ComfyUI is a graph runner, so it is usable on this machine even though Qwen-Image is not. Pairing it with a model that fits (SD 1.5) works; pairing it with Qwen-Image does not, and that is a memory fact rather than a ComfyUI limitation."
+    },
+    {
+      "id": "ip-adapter",
+      "name": "IP-Adapter (image prompt adapter, h94/IP-Adapter)",
+      "type": "ai_model",
+      "model_ids": [
+        "h94/IP-Adapter",
+        "ip-adapter-plus_sd15.bin"
+      ],
+      "source": "Hugging Face h94/IP-Adapter",
+      "version": "ip-adapter-plus_sd15 + OpenCLIP-ViT-H image encoder (632M)",
+      "license": "Apache-2.0",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "Apache-2.0; weights not committed to this repo",
+      "verified_at": "2026-09-02",
+      "verified_by": "Claude Code - Apache-2.0 confirmed on the model repository",
+      "games": [
+        "game01"
+      ],
+      "status": "APPROVED",
+      "notes": "The piece that makes generating 도리 possible rather than generating a hedgehog. It conditions on the reference PICTURE, so the pose is free while the character is constrained. The 'plus' variant uses patch embeddings from OpenCLIP-ViT-H rather than one global embedding, which stays closer to the reference. Its image encoder is what pushes the float32 stack to ~7.8 GB and forces bfloat16 on this machine - see HardwareProfile.image_model_fit('sd-1.5-ipadapter')."
+    },
+    {
+      "id": "comfyui-ipadapter-plus",
+      "name": "ComfyUI_IPAdapter_plus (custom node)",
+      "type": "tool",
+      "source": "https://github.com/cubiq/ComfyUI_IPAdapter_plus",
+      "version": "current",
+      "license": "MIT",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "MIT; build-time tool, never bundled in the APK",
+      "verified_at": "2026-09-02",
+      "verified_by": "Claude Code",
+      "games": [
+        "game01"
+      ],
+      "status": "APPROVED",
+      "notes": "Exposes IP-Adapter as ComfyUI nodes. Code only - the weights are the separate ip-adapter entry, per section 8."
     }
   ],
   "pending_verification": [

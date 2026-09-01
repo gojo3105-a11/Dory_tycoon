@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Installs ComfyUI with the SD 1.5 + IP-Adapter stack and a ready 도리 workflow.
+  Installs ComfyUI with the SD 1.5 + IP-Adapter stack and a ready Dori workflow.
 
 .DESCRIPTION
   ComfyUI is the interactive half. generate-sprite.py is the scripted half:
