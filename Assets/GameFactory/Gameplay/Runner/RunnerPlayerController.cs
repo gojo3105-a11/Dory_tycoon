@@ -29,6 +29,14 @@ namespace GameFactory.Gameplay.Runner
 
         private static AudioClip jumpClip;
 
+        /// <summary>Read by the visual-only RunnerCharacterMotion. Physics stays private.</summary>
+        public bool IsGrounded => isGrounded;
+
+        public bool IsDead => isDead;
+
+        /// <summary>Vertical speed, for squash and stretch. Zero before Awake.</summary>
+        public float VerticalVelocity => body != null ? body.linearVelocity.y : 0f;
+
         /// <summary>Applies GameSpec-driven tuning. Called at runtime by RunnerGameInitializer.</summary>
         public void Configure(float speed, float jump, bool useGravitySwitch)
         {

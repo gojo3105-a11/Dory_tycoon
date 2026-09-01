@@ -82,11 +82,22 @@ namespace GameFactory.Editor
             Sprite playerSprite = FindLicensedSprite("player") ?? DoriSpriteGenerator.EnsureSprite();
             Vector2 bodySize;
 
+            RunnerCharacterMotion motion = null;
+
             if (playerSprite != null)
             {
-                SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+                // The sprite goes on a CHILD, not the root. RunnerCharacterMotion
+                // scales and rotates whatever it is on, and on the root that
+                // would scale the BoxCollider2D too - the hitbox would breathe
+                // in and out while running.
+                GameObject visual = new GameObject("Visual");
+                visual.transform.SetParent(go.transform, false);
+
+                SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
                 sr.sprite = playerSprite;
                 sr.sortingOrder = 10;
+
+                motion = visual.AddComponent<RunnerCharacterMotion>();
                 bodySize = SpriteWorldSize(playerSprite, Vector2.one * 0.9f);
             }
             else
@@ -113,6 +124,9 @@ namespace GameFactory.Editor
 
             RunnerPlayerController controller = go.AddComponent<RunnerPlayerController>();
             controller.SetGroundCheck(groundCheck, 1 << groundLayer);
+            // Structural wiring at edit time, so the visual never has to search
+            // for its controller at runtime.
+            if (motion != null) motion.SetController(controller);
 
             if (spec.mechanics.gravitySwitch) go.AddComponent<GravitySwitchVfx>();
 
