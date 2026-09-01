@@ -45,6 +45,12 @@ IMAGE_MODEL_SIZES = [
      "20.4B DiT at GGUF Q2_K (~8 GB, degraded) plus the text encoder"),
     ("sdxl", 7.0, "2.6B UNet at fp16, plus two CLIP encoders"),
     ("sd-1.5", 4.0, "860M UNet at fp32 on CPU, plus CLIP"),
+    ("sd-1.5-ipadapter", 7.8,
+     "SD 1.5 at fp32 (~4.2 GB) plus the 632M OpenCLIP-ViT-H image encoder "
+     "IP-Adapter needs (~2.5 GB) and peak activations (~1 GB)"),
+    ("sd-1.5-ipadapter-bf16", 4.0,
+     "the same stack at bfloat16, which halves the weights - the configuration "
+     "that actually fits a CPU-only machine"),
 ]
 
 # A diffusion transformer runs its full parameter count at EVERY sampling step,
