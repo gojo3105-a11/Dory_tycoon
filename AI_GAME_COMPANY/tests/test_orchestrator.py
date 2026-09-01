@@ -273,6 +273,33 @@ class HardwareTests(unittest.TestCase):
         # Still names the one that cannot run, rather than hiding it.
         self.assertIn("gemma4:26b", verdict.recommendation)
 
+    # ---- a named image model gets an arithmetic answer, not an opinion ----
+
+    def test_qwen_image_does_not_fit_this_class_of_machine(self):
+        """The user asked for Qwen-Image specifically. Licence is fine
+        (Apache-2.0); memory is not, and the tool should say which."""
+        fit, why = self._profile(9.0, False).image_model_fit("qwen-image")
+        self.assertEqual(fit, "NOT_VIABLE")
+        self.assertIn("total RAM", why)
+        # The text encoder is what people forget - it must be in the number.
+        self.assertIn("text encoder", why)
+
+    def test_quantising_qwen_still_does_not_fit_the_free_budget(self):
+        fit, why = self._profile(9.0, False).image_model_fit("qwen-image-q2")
+        self.assertEqual(fit, "NOT_VIABLE")
+        self.assertIn("swap", why)
+
+    def test_sd15_fits_but_is_limited_on_cpu(self):
+        self.assertEqual(self._profile(9.0, False).image_model_fit("sd-1.5")[0], "LIMITED")
+
+    def test_sd15_is_viable_with_a_real_gpu(self):
+        self.assertEqual(self._profile(9.0, True).image_model_fit("sd-1.5")[0], "VIABLE")
+
+    def test_an_unrecorded_model_is_unknown_not_assumed_fine(self):
+        fit, why = self._profile(9.0, False).image_model_fit("some-model-nobody-sized")
+        self.assertEqual(fit, "UNKNOWN")
+        self.assertIn("Known:", why)
+
     def test_real_profile_parses_if_present(self):
         path = REPO_ROOT / "AI_GAME_COMPANY" / "config" / "HARDWARE_PROFILE.json"
         if not path.exists():

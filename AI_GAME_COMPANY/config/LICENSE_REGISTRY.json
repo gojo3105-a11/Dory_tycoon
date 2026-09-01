@@ -295,6 +295,42 @@
       ],
       "status": "APPROVED",
       "notes": "Section 8: the inference CODE is Apache-2.0, which says nothing about the WEIGHTS it loads - those are the separate stable-diffusion-v1-5 entry above. Driven by AI_GAME_COMPANY/tools/generate-sprite.py."
+    },
+    {
+      "id": "qwen-image",
+      "name": "Qwen-Image (20B MMDiT text-to-image)",
+      "type": "ai_model",
+      "model_ids": [
+        "Qwen/Qwen-Image",
+        "Qwen/Qwen-Image-Edit"
+      ],
+      "source": "Hugging Face",
+      "version": "20.4B DiT + 8.3B Qwen2.5-VL text encoder",
+      "license": "Apache-2.0",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "Apache-2.0 permits redistribution; weights not committed here",
+      "verified_at": "2026-09-02",
+      "verified_by": "Claude Code - Apache-2.0 confirmed via published model documentation",
+      "games": [],
+      "status": "APPROVED_BUT_UNUSABLE_HERE",
+      "notes": "Licence is excellent - Apache-2.0 is more permissive than SD 1.5's OpenRAIL-M, with no use-based restrictions. It is the HARDWARE that rules it out, and the numbers are checked in code by HardwareProfile.image_model_fit('qwen-image') rather than asserted here: about 18.5 GB of working set (14 GB for the DiT at GGUF Q4_K_M plus ~4.5 GB for the 8.3B text encoder) against 15.71 GB of TOTAL system RAM on a machine with no dedicated VRAM. Larger than the whole machine. The Q2_K variant at ~12.5 GB clears total RAM but not the free-RAM budget, and degrades quality. Beyond memory there is a second wall: a diffusion transformer runs its full 20B parameters at EVERY sampling step, so even swapped in, one image on this CPU would take hours rather than minutes. Revisit if a 24 GB+ VRAM machine appears; the licence will not be the obstacle."
+    },
+    {
+      "id": "comfyui",
+      "name": "ComfyUI (node-graph diffusion runner)",
+      "type": "tool",
+      "source": "https://github.com/comfyanonymous/ComfyUI",
+      "version": "current",
+      "license": "GPL-3.0",
+      "commercial_use": true,
+      "attribution_required": false,
+      "redistribution_rules": "GPL-3.0 is copyleft, but that binds distribution of ComfyUI itself. It is a build-time tool here and is never bundled into the APK, so the copyleft obligation does not reach the game.",
+      "verified_at": "2026-09-02",
+      "verified_by": "Claude Code",
+      "games": [],
+      "status": "APPROVED",
+      "notes": "Model-agnostic: ComfyUI is a graph runner, so it is usable on this machine even though Qwen-Image is not. Pairing it with a model that fits (SD 1.5) works; pairing it with Qwen-Image does not, and that is a memory fact rather than a ComfyUI limitation."
     }
   ],
   "pending_verification": [
