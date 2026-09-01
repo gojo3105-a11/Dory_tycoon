@@ -117,6 +117,43 @@ class InvocationTests(unittest.TestCase):
         runner.build_android("game01")
         self.fake.scripts[0].encode("ascii")
 
+    def test_build_flags_match_the_workflow(self):
+        """The workflow is the ground truth - it has produced a real APK.
+
+        This started as -gameSpec, copied from the generate step. But
+        BuildFromCommandLine reads -gameId and exits 1 immediately when it is
+        missing, before BuildPipeline.BuildPlayer runs - so the failure left no
+        unity-build-report.log, and nothing in the compile-error report either.
+        Diffing against the workflow is what caught it, so the test does that.
+        """
+        if not WORKFLOW.is_file():
+            self.skipTest("workflow not present")
+        text = WORKFLOW.read_text(encoding="utf-8")
+        build_step = text.split("BuildAndroid.BuildFromCommandLine", 1)[1].split("- name:", 1)[0]
+
+        args = self.runner.unity_args(ENTRY_BUILD, "unity-build",
+                                      ["-gameId", "game01", "-buildType", "apk"])
+        for flag in ("-gameId", "-buildType"):
+            self.assertIn(flag, build_step, f"{flag} is not in the workflow build step")
+            self.assertIn(flag, args)
+
+        # -gameSpec belongs to generate, not build.
+        self.assertNotIn("-gameSpec", build_step)
+
+    def test_build_android_passes_game_id_not_game_spec(self):
+        self.runner.build_android("game01")
+        script = self.fake.scripts[0]
+        self.assertIn("'-gameId', 'game01'", script)
+        self.assertIn("'-buildType', 'apk'", script)
+        self.assertNotIn("-gameSpec", script)
+
+    def test_generate_still_uses_game_spec(self):
+        # The two steps take different flags; fixing one must not break the other.
+        self.runner.generate("game01")
+        script = self.fake.scripts[0]
+        self.assertIn("'-gameSpec'", script)
+        self.assertNotIn("-gameId", script)
+
     def test_build_timeout_reaches_the_subprocess_too(self):
         """The inner and outer budgets must agree.
 

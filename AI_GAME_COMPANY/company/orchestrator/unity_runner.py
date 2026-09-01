@@ -193,11 +193,18 @@ class UnityRunner:
         return self._step("validate", "validate", ENTRY_VALIDATE, "unity-validate")
 
     def build_android(self, game_id: str) -> UnityResult:
+        # -gameId and -buildType, NOT -gameSpec: BuildFromCommandLine reads
+        # -gameId and exits 1 on the spot when it is missing, before
+        # BuildPipeline.BuildPlayer runs - so the failure leaves no
+        # unity-build-report.log at all, which is how this was found.
+        # These flags are copied from the workflow's Build step, which has
+        # produced a real APK.
+        #
         # 60 minutes because that is what the working workflow allows for the
         # build step; Gradle on a cold cache genuinely takes that long.
         return self._step(
             "build", "build", ENTRY_BUILD, "unity-build",
-            extra=["-gameSpec", f"GameSpecs/{game_id}.json"],
+            extra=["-gameId", game_id, "-buildType", "apk"],
             timeout_minutes=60,
         )
 
