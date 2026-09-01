@@ -20,6 +20,7 @@ namespace GameFactory.Editor
     /// </summary>
     public static class SceneGenerator
     {
+        private const string ButtonSpritePath = "Assets/Common/Art/UI/button.png";
         private const float GroundY = -1f;
         private const float ObstacleY = 0f;
         private const float CoinY = 1f;
@@ -140,7 +141,7 @@ namespace GameFactory.Editor
             buttonRect.sizeDelta = new Vector2(280f, 100f);
             buttonRect.anchoredPosition = new Vector2(0f, -80f);
             Image buttonImage = buttonGO.AddComponent<Image>();
-            buttonImage.color = new Color(0.2f, 0.6f, 0.9f);
+            StyleButton(buttonImage, new Color(0.2f, 0.6f, 0.9f));
             Button restartButton = buttonGO.AddComponent<Button>();
             buttonGO.AddComponent<ButtonPunchFeedback>();
 
@@ -156,7 +157,7 @@ namespace GameFactory.Editor
             homeButtonRect.sizeDelta = new Vector2(280f, 90f);
             homeButtonRect.anchoredPosition = new Vector2(0f, -190f);
             Image homeButtonImage = homeButtonGO.AddComponent<Image>();
-            homeButtonImage.color = new Color(0.55f, 0.55f, 0.6f);
+            StyleButton(homeButtonImage, new Color(0.55f, 0.55f, 0.6f));
             Button homeButton = homeButtonGO.AddComponent<Button>();
             homeButtonGO.AddComponent<ButtonPunchFeedback>();
 
@@ -172,7 +173,7 @@ namespace GameFactory.Editor
             shopButtonRect.sizeDelta = new Vector2(280f, 90f);
             shopButtonRect.anchoredPosition = new Vector2(0f, -300f);
             Image shopButtonImage = shopButtonGO.AddComponent<Image>();
-            shopButtonImage.color = new Color(0.9f, 0.6f, 0.2f);
+            StyleButton(shopButtonImage, new Color(0.9f, 0.6f, 0.2f));
             Button shopButton = shopButtonGO.AddComponent<Button>();
             shopButtonGO.AddComponent<ButtonPunchFeedback>();
 
@@ -237,7 +238,7 @@ namespace GameFactory.Editor
             playButtonRect.sizeDelta = new Vector2(320f, 110f);
             playButtonRect.anchoredPosition = new Vector2(0f, -60f);
             Image playButtonImage = playButtonGO.AddComponent<Image>();
-            playButtonImage.color = new Color(0.2f, 0.75f, 0.35f);
+            StyleButton(playButtonImage, new Color(0.2f, 0.75f, 0.35f));
             Button playButton = playButtonGO.AddComponent<Button>();
             playButtonGO.AddComponent<ButtonPunchFeedback>();
 
@@ -304,7 +305,7 @@ namespace GameFactory.Editor
             buttonRect.sizeDelta = new Vector2(width, 70f);
             buttonRect.anchoredPosition = anchoredPosition;
             Image buttonImage = buttonGO.AddComponent<Image>();
-            buttonImage.color = new Color(0.2f, 0.6f, 0.9f);
+            StyleButton(buttonImage, new Color(0.2f, 0.6f, 0.9f));
             Button button = buttonGO.AddComponent<Button>();
             buttonGO.AddComponent<ButtonPunchFeedback>();
 
@@ -312,6 +313,33 @@ namespace GameFactory.Editor
                 Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
 
             return (button, label);
+        }
+
+        /// <summary>
+        /// Applies the licensed 9-sliced button sprite. Buttons were an Image
+        /// with NO sprite - a hard-cornered solid rectangle that read as
+        /// unfinished next to the Kenney art around it. Sliced so the 4px
+        /// outline and the 8px bottom depth lip keep their thickness at any
+        /// button size; the border itself is set by SharedArtImporter, measured
+        /// from the file rather than guessed.
+        ///
+        /// Falls back to the flat colour when no licensed art is present, so
+        /// generation never produces an invisible button.
+        /// </summary>
+        private static void StyleButton(Image image, Color fallbackColor)
+        {
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(ButtonSpritePath);
+            if (sprite == null)
+            {
+                image.color = fallbackColor;
+                return;
+            }
+
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+            // Tinting multiplies, so the old mid-grey/orange fills would darken
+            // the light-blue art into mud. White keeps the pack's own colour.
+            image.color = Color.white;
         }
 
         private static Text CreateText(Transform parent, string name, string content, int fontSize, TextAnchor alignment,
