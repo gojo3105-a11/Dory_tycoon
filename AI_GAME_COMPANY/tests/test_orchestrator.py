@@ -204,11 +204,22 @@ class HardwareTests(unittest.TestCase):
         self.assertIsNone(tier)
         self.assertIn("no room", why)
 
-    def test_integrated_gpu_blocks_image_generation(self):
+    def test_integrated_gpu_limits_image_generation_without_denying_it(self):
+        # It used to say NOT_VIABLE, which read as "no image work is possible
+        # here" and hid the CPU/iGPU paths that do work.
         verdicts = {v.capability: v for v in self._profile(6.0, False).verdicts()}
-        self.assertEqual(verdicts["local_image_generation"].status, "NOT_VIABLE")
-        # It must also say what to do instead, not just refuse.
-        self.assertIn("CC0", verdicts["local_image_generation"].recommendation)
+        generation = verdicts["local_image_generation"]
+        self.assertEqual(generation.status, "LIMITED")
+        self.assertIn("OpenVINO", generation.reason)
+
+    def test_background_removal_is_viable_without_any_gpu(self):
+        # Segmentation is not generation. Conflating them is what made "no GPU"
+        # sound like "no sprite is possible" - while the character was sitting
+        # in the reference images the whole time.
+        verdicts = {v.capability: v for v in self._profile(6.0, False).verdicts()}
+        removal = verdicts["image_background_removal"]
+        self.assertEqual(removal.status, "VIABLE")
+        self.assertIn("cutout-character.py", removal.recommendation)
 
     def test_installed_but_unrunnable_codex_is_unknown_not_viable(self):
         # Section 41 STEP 5: no verified command list means no adapter.
