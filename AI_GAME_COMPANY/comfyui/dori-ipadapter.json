@@ -1,0 +1,153 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "v1-5-pruned-emaonly.safetensors"
+    },
+    "_meta": {
+      "title": "SD 1.5"
+    }
+  },
+  "2": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "text": "a chubby cute cartoon hedgehog character, cream coloured face and belly, brown auburn spiky quills, reddish brown hair tuft, small rounded ears, large friendly brown eyes, small black nose, navy blue bow tie, side view profile facing right, running, legs mid-stride, full body, centred, plain flat white background, no shadow, game sprite"
+    },
+    "_meta": {
+      "title": "Prompt (pose)"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "1",
+        1
+      ],
+      "text": "text, watermark, signature, multiple characters, cropped, cut off, blurry, low quality, deformed, extra limbs, busy background, glasses"
+    },
+    "_meta": {
+      "title": "Negative"
+    }
+  },
+  "4": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "dori_reference.png",
+      "upload": "image"
+    },
+    "_meta": {
+      "title": "Dori reference"
+    }
+  },
+  "5": {
+    "class_type": "IPAdapterModelLoader",
+    "inputs": {
+      "ipadapter_file": "ip-adapter-plus_sd15.bin"
+    },
+    "_meta": {
+      "title": "IP-Adapter plus"
+    }
+  },
+  "6": {
+    "class_type": "CLIPVisionLoader",
+    "inputs": {
+      "clip_name": "model.safetensors"
+    },
+    "_meta": {
+      "title": "OpenCLIP-ViT-H"
+    }
+  },
+  "7": {
+    "class_type": "IPAdapterAdvanced",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "ipadapter": [
+        "5",
+        0
+      ],
+      "image": [
+        "4",
+        0
+      ],
+      "clip_vision": [
+        "6",
+        0
+      ],
+      "weight": 0.7,
+      "weight_type": "linear",
+      "combine_embeds": "concat",
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "embeds_scaling": "V only"
+    },
+    "_meta": {
+      "title": "IP-Adapter (sweep weight here)"
+    }
+  },
+  "8": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "batch_size": 1
+    }
+  },
+  "9": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "7",
+        0
+      ],
+      "positive": [
+        "2",
+        0
+      ],
+      "negative": [
+        "3",
+        0
+      ],
+      "latent_image": [
+        "8",
+        0
+      ],
+      "seed": 20260902,
+      "steps": 30,
+      "cfg": 8.0,
+      "sampler_name": "euler",
+      "scheduler": "normal",
+      "denoise": 1.0
+    }
+  },
+  "10": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "9",
+        0
+      ],
+      "vae": [
+        "1",
+        2
+      ]
+    }
+  },
+  "11": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "10",
+        0
+      ],
+      "filename_prefix": "dori_run"
+    }
+  }
+}
