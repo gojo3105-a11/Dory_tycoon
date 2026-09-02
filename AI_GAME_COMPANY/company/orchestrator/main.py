@@ -184,6 +184,36 @@ def cmd_codex(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """Write Reports/dashboard.html - which AI can work, and what blocks the rest.
+
+    Reads committed files only, so it produces the same answer on the build PC
+    and in a container that has never seen Unity. It prints what it could NOT
+    read, because a blank section on that page means "no evidence", and
+    someone skimming it would otherwise read blank as fine.
+    """
+    from company.orchestrator import dashboard as dash
+
+    snapshot = dash.collect(REPO_ROOT)
+    path = dash.write(REPO_ROOT)
+
+    print(f"Wrote {path}")
+    counts = {state: sum(1 for a in snapshot.agents if a.state == state)
+              for state in (dash.READY, dash.GATED, dash.BLOCKED, dash.UNKNOWN)}
+    print(f"  {counts[dash.READY]} ready, {counts[dash.GATED]} gated, "
+          f"{counts[dash.BLOCKED]} blocked, {counts[dash.UNKNOWN]} unknown")
+
+    if snapshot.missing:
+        print("\n  could not read (those sections show as 'no evidence', not as OK):")
+        for name in snapshot.missing:
+            print(f"    - {name}")
+
+    if args.open:
+        import webbrowser
+        webbrowser.open(path.as_uri())
+    return 0
+
+
 def _board() -> TaskBoard:
     return TaskBoard.load(CONFIG_DIR / "TASKBOARD.json")
 
@@ -465,6 +495,11 @@ def main(argv: list[str] | None = None) -> int:
     codex.add_argument("--doctor", action="store_true",
                        help="also run 'codex doctor' and print its raw output")
     codex.set_defaults(func=cmd_codex)
+
+    dashboard = sub.add_parser("dashboard", help="write Reports/dashboard.html")
+    dashboard.add_argument("--open", action="store_true",
+                           help="open it in the default browser afterwards")
+    dashboard.set_defaults(func=cmd_dashboard)
 
     team = sub.add_parser("team", help="the shared board Claude and Codex both work from")
     team.add_argument("action", choices=["board", "run"],

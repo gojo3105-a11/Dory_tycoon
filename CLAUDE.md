@@ -158,6 +158,19 @@ git branch -D fork-check
 파일이 없거나 오래되었으면(생성 시각 확인) 그때 사용자에게 요청한다. **"에러 있으면 붙여주세요"나
 "APK 확인해주세요"를 먼저 말하지 말고, 위 방법으로 먼저 확인한다.**
 
+## 연동된 AI 현황 보기 (관제 화면)
+
+```bash
+python -m company.orchestrator.main dashboard --open
+```
+
+`Reports/dashboard.html`을 만든다. 커밋된 파일만 읽으므로 빌드 PC에서든 Unity가 없는
+컨테이너에서든 같은 답을 낸다.
+
+이 화면의 원칙은 하나다: **근거가 없으면 "확인 불가"로 표시하고, 절대 "정상"으로 올려
+읽지 않는다.** 각 AI 줄마다 그 상태를 읽어온 파일을 함께 보여준다. "설치됨"은 근거가
+아니다 - 라이선스 미확인 + RAM 초과로 못 돌아가는 모델도 설치는 되어 있다.
+
 ## Codex와 함께 개발하기 (공유 작업판)
 
 Codex는 리뷰어가 아니라 **공동 개발자**다. `AI_GAME_COMPANY/config/TASKBOARD.json`이

@@ -1,0 +1,416 @@
+<title>Game Factory 관제</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#EBEEF2; --surface:#FFFFFF; --surface-2:#F5F7FA; --sunk:#E3E8EE;
+  --ink:#17222E; --ink-2:#39485A; --muted:#61707F; --line:#D6DEE6;
+  --accent:#12657F; --accent-soft:#DCEDF3;
+  --ok:#0C6F58; --ok-soft:#DCF0E9;
+  --gate:#8E5205; --gate-soft:#FAEBD6;
+  --blocked:#A32B22; --blocked-soft:#F8E2E0;
+  --unknown:#5A6472; --unknown-soft:#E6E9ED;
+  /* Severity slot, overridden per element by the .s-* / .g-* classes below.
+     Defined here so an element that somehow renders without one of those
+     classes gets the neutral colour rather than no colour at all. */
+  --st:var(--unknown); --st-soft:var(--unknown-soft);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1319; --surface:#161D25; --surface-2:#1C242E; --sunk:#111820;
+    --ink:#E7EEF4; --ink-2:#BCC8D4; --muted:#8E9CAB; --line:#2A3542;
+    --accent:#5FBBDA; --accent-soft:#123340;
+    --ok:#43CCA1; --ok-soft:#0F3830;
+    --gate:#E5A94A; --gate-soft:#3A2B12;
+    --blocked:#F5837B; --blocked-soft:#3D1E1C;
+    --unknown:#9AA6B4; --unknown-soft:#232B34;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1319; --surface:#161D25; --surface-2:#1C242E; --sunk:#111820;
+  --ink:#E7EEF4; --ink-2:#BCC8D4; --muted:#8E9CAB; --line:#2A3542;
+  --accent:#5FBBDA; --accent-soft:#123340;
+  --ok:#43CCA1; --ok-soft:#0F3830;
+  --gate:#E5A94A; --gate-soft:#3A2B12;
+  --blocked:#F5837B; --blocked-soft:#3D1E1C;
+  --unknown:#9AA6B4; --unknown-soft:#232B34;
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:'Noto Sans KR','Archivo',-apple-system,'Malgun Gothic',sans-serif;
+  font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px; margin:0 auto; padding:32px 24px 72px;}
+
+h1,h2,h3{font-family:'Archivo','Noto Sans KR',sans-serif; text-wrap:balance; margin:0;}
+h1{font-size:30px; font-weight:700; letter-spacing:-0.015em;}
+h2{font-size:15px; font-weight:700; letter-spacing:0.09em; text-transform:uppercase;
+   color:var(--muted);}
+.mono{font-family:'JetBrains Mono',ui-monospace,'Cascadia Mono',monospace;
+      font-variant-numeric:tabular-nums;}
+
+/* ---- masthead ---- */
+.mast{display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between;
+      gap:16px; padding-bottom:20px; border-bottom:2px solid var(--ink);}
+.mast .sub{color:var(--muted); font-size:14px; margin-top:6px;}
+.stamp{font-size:12.5px; color:var(--muted); text-align:right; line-height:1.7;}
+
+.verdict{
+  margin:24px 0 0; padding:18px 22px; border-radius:3px;
+  background:var(--surface); border:1px solid var(--line);
+  border-left:4px solid var(--accent);
+  display:flex; flex-wrap:wrap; gap:8px 28px; align-items:baseline;
+}
+.verdict b{font-family:'Archivo','Noto Sans KR',sans-serif; font-size:17px;}
+.verdict span{color:var(--ink-2); font-size:14px;}
+
+section{margin-top:44px;}
+.head{display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+      margin-bottom:14px;}
+.head .note{font-size:12.5px; color:var(--muted);}
+
+/* ---- roster ---- */
+.roster{display:flex; flex-direction:column; gap:2px;
+        background:var(--line); border:1px solid var(--line); border-radius:3px;
+        overflow:hidden;}
+.row{background:var(--surface); padding:16px 20px 16px 17px; border-left:3px solid var(--st);
+     display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 20px; align-items:start;}
+.row .who{font-family:'Archivo','Noto Sans KR',sans-serif; font-weight:600; font-size:16px;}
+.row .role{color:var(--muted); font-size:12.5px; letter-spacing:0.04em;}
+.row .detail{grid-column:1/-1; color:var(--ink-2); font-size:14px; margin-top:4px;}
+.row .ev{grid-column:1/-1; margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;
+         align-items:center;}
+.ev .k{font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted);}
+.ev code{font-size:11.5px; padding:2px 7px; border-radius:2px;
+         background:var(--sunk); color:var(--ink-2);}
+.ev .none{font-size:11.5px; color:var(--blocked);}
+
+.pill{display:inline-flex; align-items:center; gap:7px; white-space:nowrap;
+      font-size:12px; font-weight:600; letter-spacing:0.05em;
+      padding:4px 11px; border-radius:2px; background:var(--st-soft); color:var(--st);}
+.pill::before{content:""; width:6px; height:6px; border-radius:50%; background:currentColor;}
+.ver{font-size:12px; color:var(--muted); text-align:right; margin-top:3px;}
+
+.s-ready{--st:var(--ok); --st-soft:var(--ok-soft);}
+.s-gated{--st:var(--gate); --st-soft:var(--gate-soft);}
+.s-blocked{--st:var(--blocked); --st-soft:var(--blocked-soft);}
+.s-unknown{--st:var(--unknown); --st-soft:var(--unknown-soft);}
+
+/* ---- board ---- */
+.board{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px;}
+.lane{background:var(--surface); border:1px solid var(--line); border-radius:3px;
+      padding:18px 20px 20px;}
+.lane > h3{font-size:13px; letter-spacing:0.1em; text-transform:uppercase;
+           color:var(--muted); margin-bottom:14px;
+           display:flex; justify-content:space-between; align-items:baseline;}
+.lane .count{font-size:12px; color:var(--muted); letter-spacing:0;}
+.task{padding:11px 0; border-top:1px solid var(--line);}
+.task:first-of-type{border-top:0; padding-top:0;}
+.task .t{display:flex; gap:10px; align-items:baseline; justify-content:space-between;}
+.task .id{font-size:11.5px; color:var(--muted); letter-spacing:0.05em;}
+.task .title{font-weight:500; font-size:14.5px;}
+/* Wraps rather than scrolls: a clipped path with a hidden scrollbar reads as
+   a broken layout, and only the filename identifies the file anyway. */
+.task .files{margin-top:5px; font-size:11.5px; color:var(--muted); line-height:1.7;}
+.tag{font-size:11px; font-weight:600; letter-spacing:0.05em; padding:2px 8px;
+     border-radius:2px; background:var(--st-soft); color:var(--st); white-space:nowrap;}
+.s-todo{--st:var(--unknown); --st-soft:var(--unknown-soft);}
+.s-in_progress{--st:var(--accent); --st-soft:var(--accent-soft);}
+.s-review{--st:var(--gate); --st-soft:var(--gate-soft);}
+.s-done{--st:var(--ok); --st-soft:var(--ok-soft);}
+.s-blocked-tag{--st:var(--blocked); --st-soft:var(--blocked-soft);}
+
+/* ---- pipeline + facts ---- */
+.grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px;}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:3px;
+       padding:18px 20px 20px;}
+.panel h3{font-size:13px; letter-spacing:0.1em; text-transform:uppercase;
+          color:var(--muted); margin-bottom:14px;}
+.kv{display:flex; justify-content:space-between; gap:16px; padding:8px 0;
+    border-top:1px solid var(--line); font-size:14px;}
+.kv:first-of-type{border-top:0;}
+.kv .k{color:var(--muted);}
+.kv .v{text-align:right; word-break:break-all;}
+.big{font-family:'Archivo',sans-serif; font-size:15px; font-weight:600;}
+
+/* ---- games ---- */
+.games{display:flex; gap:5px; flex-wrap:wrap;}
+.g{flex:1 1 84px; min-width:84px; border:1px solid var(--line); border-radius:2px;
+   background:var(--surface); padding:11px 12px 12px; border-top:3px solid var(--st);}
+.g .n{font-family:'Archivo',sans-serif; font-weight:700; font-size:14px;}
+.g .s{font-size:11px; color:var(--st); margin-top:2px; font-weight:600;}
+.g-done{--st:var(--ok);}
+.g-active{--st:var(--accent);}
+.g-todo{--st:var(--line);}
+.g-todo .s{color:var(--muted); font-weight:400;}
+
+/* ---- log ---- */
+.log{background:var(--surface); border:1px solid var(--line); border-radius:3px;
+     overflow:hidden;}
+.log div{display:grid; grid-template-columns:auto auto minmax(0,1fr); gap:16px;
+         padding:9px 20px; border-top:1px solid var(--line); font-size:13.5px;
+         align-items:baseline;}
+.log div:first-child{border-top:0;}
+.log .sha{color:var(--accent);}
+.log .when{color:var(--muted); font-size:12.5px;}
+.log .what{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+.warn{margin-top:14px; padding:14px 18px; border-radius:3px;
+      background:var(--blocked-soft); border-left:4px solid var(--blocked);
+      color:var(--ink); font-size:13.5px;}
+.warn code{font-size:12.5px;}
+
+footer{margin-top:52px; padding-top:18px; border-top:1px solid var(--line);
+       color:var(--muted); font-size:12.5px; line-height:1.8;}
+footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radius:2px;}
+
+@media (max-width:560px){
+  h1{font-size:24px;}
+  .wrap{padding:24px 16px 56px;}
+  .stamp{text-align:left;}
+  .log div{grid-template-columns:auto minmax(0,1fr); }
+  .log .when{grid-column:1/-1;}
+}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div>
+      <h1>Game Factory 관제</h1>
+      <div class="sub">연동된 AI가 지금 무엇을 할 수 있고, 무엇이 막고 있는가</div>
+    </div>
+    <div class="stamp mono">
+      생성 2026-09-02 06:20<br>
+      DESKTOP-A7IU1E9 · RAM 15.7 GB<br>
+      Unity 6000.5.9f1 · OK
+    </div>
+  </header>
+
+  <div class="verdict">
+    <b>1개 작업 가능</b>
+    <span>2개 대기 · 3개 사용 불가 · 1개 확인 불가</span>
+    <span>설치된 것과 실제로 돌아가는 것은 다릅니다. 아래 각 줄은 그 판단의 근거 파일을 함께 표시합니다.</span>
+  </div>
+  
+
+  <section>
+    <div class="head">
+      <h2>연동된 AI</h2>
+      <span class="note">근거 = 이 상태를 읽어온 파일</span>
+    </div>
+    <div class="roster">
+      <div class="row s-ready">
+        <div>
+          <div class="who">Claude Code</div>
+          <div class="role">설계 · 구현 · 리뷰</div>
+        </div>
+        <div style="text-align:right">
+          <span class="pill">작업 가능</span>
+          <div class="ver mono">2.1.247 (Claude Code)</div>
+        </div>
+        <div class="detail">코드를 직접 작성합니다. 커밋은 사람 승인 후에만 합니다.</div>
+        <div class="ev"><span class="k">근거</span><code>config/HARDWARE_PROFILE.json</code><code>config/company_policy.json</code></div>
+      </div>
+      <div class="row s-gated">
+        <div>
+          <div class="who">Codex CLI</div>
+          <div class="role">공동 개발 · 독립 리뷰</div>
+        </div>
+        <div style="text-align:right">
+          <span class="pill">대기 중</span>
+          <div class="ver mono">codex-cli 0.151.0</div>
+        </div>
+        <div class="detail">작업판에서 작업을 넘겨받아 코드를 직접 씁니다 (workspace-write). 로그인 상태는 여기서 확인하지 않습니다. PC에서 &#x27;orchestrator codex --doctor&#x27; 로 확인하세요.</div>
+        <div class="ev"><span class="k">근거</span><code>config/HARDWARE_PROFILE.json</code><code>config/company_policy.json</code></div>
+      </div>
+      <div class="row s-blocked">
+        <div>
+          <div class="who">Ollama · gemma4:26b</div>
+          <div class="role">로컬 추론</div>
+        </div>
+        <div style="text-align:right">
+          <span class="pill">사용 불가</span>
+          <div class="ver mono">ollama version is 0.33.2</div>
+        </div>
+        <div class="detail">라이선스 UNKNOWN · 17.3 GB 모델 / 전체 RAM 15.7 GB - 적재 불가</div>
+        <div class="ev"><span class="k">근거</span><code>config/HARDWARE_PROFILE.json</code><code>config/LICENSE_REGISTRY.json</code></div>
+      </div>
+      <div class="row s-gated">
+        <div>
+          <div class="who">Stable Diffusion 1.5 + IP-Adapter</div>
+          <div class="role">캐릭터 스프라이트 생성</div>
+        </div>
+        <div style="text-align:right">
+          <span class="pill">대기 중</span>
+          
+        </div>
+        <div class="detail">라이선스 APPROVED. 가중치가 아직 없습니다 - 이 컨테이너에서는 huggingface.co 가 프록시에서 403 이라 받을 수 없고, PC에서 setup-image-generation.ps1 을 실행해야 합니다.</div>
+        <div class="ev"><span class="k">근거</span><code>config/LICENSE_REGISTRY.json</code><code>config/company_policy.json</code></div>
+      </div>
+      <div class="row s-blocked">
+        <div>
+          <div class="who">Qwen-Image</div>
+          <div class="role">고품질 이미지 생성</div>
+        </div>
+        <div style="text-align:right">
+          <span class="pill">사용 불가</span>
+          
+        </div>
+        <div class="detail">라이선스는 통과했지만 약 18.5 GB 가 필요합니다. 이 PC 전체 RAM 은 15.7 GB 입니다.</div>
+        <div class="ev"><span class="k">근거</span><code>config/LICENSE_REGISTRY.json</code></div>
+      </div>
+      <div class="row s-unknown">
+        <div>
+          <div class="who">Blender</div>
+          <div class="role">3D 캐릭터 · 렌더</div>
+        </div>
+        <div style="text-align:right">
+          <span class="pill">확인 불가</span>
+          <div class="ver mono">Blender 5.2.1 LTS</div>
+        </div>
+        <div class="detail">설치는 확인됐지만 이걸 호출하는 코드가 아직 없습니다 (blender_runner.py 미구현).</div>
+        <div class="ev"><span class="k">근거</span><code>config/HARDWARE_PROFILE.json</code></div>
+      </div>
+      <div class="row s-blocked">
+        <div>
+          <div class="who">유료 API (OpenAI · Anthropic · Google 등)</div>
+          <div class="role">사용 안 함</div>
+        </div>
+        <div style="text-align:right">
+          <span class="pill">사용 불가</span>
+          
+        </div>
+        <div class="detail">정책상 차단되어 있고, 환경에 키도 없습니다. 비용이 발생하는 경로가 없습니다.</div>
+        <div class="ev"><span class="k">근거</span><code>config/HARDWARE_PROFILE.json</code><code>config/company_policy.json</code></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>공유 작업판</h2>
+      <span class="note">AI_GAME_COMPANY/config/TASKBOARD.json · 완료는 빌드 통과 후 사람이 정합니다</span>
+    </div>
+    <div class="board">
+      <div class="lane">
+        <h3>Claude<span class="count">2개</span></h3>
+        <div class="task">
+          <div class="t">
+            <span class="title">Casual/Korean UI layout in SceneGenerator</span>
+            <span class="tag s-in_progress">진행 중</span>
+          </div>
+          <div class="id mono">CLAUDE-UI1</div>
+          <div class="files mono">SceneGenerator.cs · UiSpriteGenerator.cs · GameUIController.cs · KoreanFontApplier.cs 외 1개</div>
+        </div>
+        <div class="task">
+          <div class="t">
+            <span class="title">Split distance from coins in the economy</span>
+            <span class="tag s-review">검토 필요</span>
+          </div>
+          <div class="id mono">CLAUDE-ECON</div>
+          <div class="files mono">GameManager.cs · Coin.cs · RunnerDistanceTracker.cs</div>
+        </div>
+      </div>
+      <div class="lane">
+        <h3>Codex<span class="count">3개</span></h3>
+        <div class="task">
+          <div class="t">
+            <span class="title">Map the four Kenney button colours</span>
+            <span class="tag s-todo">대기</span>
+          </div>
+          <div class="id mono">CODEX-ART1</div>
+          <div class="files mono">art-mapping.json · SharedArtImporter.cs</div>
+        </div>
+        <div class="task">
+          <div class="t">
+            <span class="title">PlayMode tests for the distance/coin split</span>
+            <span class="tag s-todo">대기</span>
+          </div>
+          <div class="id mono">CODEX-TEST1</div>
+          <div class="files mono">FactoryRunnerPlayModeTests.cs</div>
+        </div>
+        <div class="task">
+          <div class="t">
+            <span class="title">Give the character arms and legs that move</span>
+            <span class="tag s-todo">대기</span>
+          </div>
+          <div class="id mono">CODEX-ANIM1</div>
+          <div class="files mono">RunnerCharacterMotion.cs</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>파이프라인</h2>
+      <span class="note">디스크의 실제 파일만 셉니다</span>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <h3>검증된 빌드</h3>
+        <div class="kv"><span class="k">game01</span><span class="v"><span class="big">17.24 MB</span><br><span class="mono" style="font-size:11.5px;color:var(--muted)">sha256:6F0E78431668FD15</span></span></div>
+        <div class="kv"><span class="k">빌드 시각</span><span class="v mono">2026-08-27 21:15:14</span></div>
+        <div class="kv"><span class="k">리포트 시각</span>
+          <span class="v mono">2026-08-27 21:36:25</span></div>
+      </div>
+      <div class="panel">
+        <h3>Unity 에러</h3>
+        <div class="kv"><span class="k">컴파일 에러</span><span class="v big" style="color:var(--ok)">0</span></div><div class="kv"><span class="k">Obsolete API 경고</span><span class="v big" style="color:var(--ok)">0</span></div><div class="kv"><span class="k">런타임 예외</span><span class="v big" style="color:var(--ok)">0</span></div>
+        <div class="kv"><span class="k">리포트 시각</span>
+          <span class="v mono">2026-08-29 22:00:28</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>10개 게임</h2>
+      <span class="note">1 / 10 완료 · 리포트와 실제 APK가 둘 다 있어야 완료</span>
+    </div>
+    <div class="games">
+      <div class="g g-done"><div class="n">01</div><div class="s">완료</div></div>
+      <div class="g g-todo"><div class="n">02</div><div class="s">미착수</div></div>
+      <div class="g g-todo"><div class="n">03</div><div class="s">미착수</div></div>
+      <div class="g g-todo"><div class="n">04</div><div class="s">미착수</div></div>
+      <div class="g g-todo"><div class="n">05</div><div class="s">미착수</div></div>
+      <div class="g g-todo"><div class="n">06</div><div class="s">미착수</div></div>
+      <div class="g g-todo"><div class="n">07</div><div class="s">미착수</div></div>
+      <div class="g g-todo"><div class="n">08</div><div class="s">미착수</div></div>
+      <div class="g g-todo"><div class="n">09</div><div class="s">미착수</div></div>
+      <div class="g g-todo"><div class="n">10</div><div class="s">미착수</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><h2>최근 작업</h2></div>
+    <div class="log mono">
+      <div><span class="sha mono">ead6ee8</span><span class="when mono">2026-09-02</span><span class="what">feat: Codex develops alongside Claude, not just reviews</span></div>
+      <div><span class="sha mono">4c16dd4</span><span class="when mono">2026-09-02</span><span class="what">feat: casual Korean UI - title, HUD, pause, game over, shop</span></div>
+      <div><span class="sha mono">976acec</span><span class="when mono">2026-09-02</span><span class="what">feat: generate the panel, card and sky sprites the casual UI needs</span></div>
+      <div><span class="sha mono">6897f63</span><span class="when mono">2026-09-02</span><span class="what">fix: the Korean UI had no font that can draw Hangul</span></div>
+      <div><span class="sha mono">c99709b</span><span class="when mono">2026-09-02</span><span class="what">feat: distance is the score, coins are the currency</span></div>
+      <div><span class="sha mono">c291369</span><span class="when mono">2026-09-01</span><span class="what">fix: ASCII-only in setup-comfyui.ps1, and register the two missing licences</span></div>
+      <div><span class="sha mono">30e71fd</span><span class="when mono">2026-09-01</span><span class="what">feat: ComfyUI with the SD 1.5 + IP-Adapter stack and a ready 도리 graph</span></div>
+      <div><span class="sha mono">45d9eac</span><span class="when mono">2026-09-01</span><span class="what">feat: IP-Adapter - let the model look at 도리 while it draws</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>사람만 할 수 있는 일</h2>
+      <span class="note">이 목록에 없는 것은 자동으로 진행합니다</span>
+    </div>
+    <div class="panel">
+      <div class="kv"><span class="v mono" style="text-align:left">initial_claude_login</span></div><div class="kv"><span class="v mono" style="text-align:left">initial_codex_login</span></div><div class="kv"><span class="v mono" style="text-align:left">terms_acceptance</span></div><div class="kv"><span class="v mono" style="text-align:left">any_payment</span></div><div class="kv"><span class="v mono" style="text-align:left">android_signing_secret</span></div><div class="kv"><span class="v mono" style="text-align:left">google_play_account</span></div><div class="kv"><span class="v mono" style="text-align:left">user_character_image_input</span></div><div class="kv"><span class="v mono" style="text-align:left">3d_character_quality_approval</span></div><div class="kv"><span class="v mono" style="text-align:left">final_release_approval</span></div>
+    </div>
+  </section>
+
+  <footer>
+    이 페이지는 <code>python -m company.orchestrator.main dashboard</code> 로 다시 생성합니다.
+    저장소에 커밋된 파일만 읽으므로 네트워크나 장비를 건드리지 않고, 빌드 PC에서든
+    Unity를 본 적 없는 컨테이너에서든 같은 답을 냅니다.<br>
+    빈 칸은 "이상 없음"이 아니라 "확인된 근거가 없음"입니다.
+  </footer>
+</div>
