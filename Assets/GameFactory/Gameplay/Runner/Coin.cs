@@ -3,11 +3,11 @@ using UnityEngine;
 
 namespace GameFactory.Gameplay.Runner
 {
-    /// <summary>Adds score and returns itself to its pool when the player touches it.</summary>
+    /// <summary>Adds currency and returns itself to its pool when the player touches it.</summary>
     [RequireComponent(typeof(Collider2D))]
     public class Coin : MonoBehaviour
     {
-        [SerializeField] private int scoreValue = 1;
+        [SerializeField] private int coinValue = 1;
         [SerializeField] private string playerTag = "Player";
 
         private bool collected;
@@ -30,7 +30,7 @@ namespace GameFactory.Gameplay.Runner
             if (collected) return;
 
             collected = true;
-            GameManager.Instance.AddScore(scoreValue);
+            GameManager.Instance.AddCoins(coinValue);
 
             if (collectClip == null) collectClip = ProceduralTone.Sine("SFX_Coin", 1200f, 0.1f);
             AudioManager.Instance?.PlaySfx(collectClip);
