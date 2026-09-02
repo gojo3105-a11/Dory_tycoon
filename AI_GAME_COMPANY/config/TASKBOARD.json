@@ -51,7 +51,7 @@
       "id": "CODEX-ART1",
       "title": "Map the four Kenney button colours",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "The UI only has one button sprite (blue). The casual design needs green for the primary action, yellow for the shop, red for close and grey for secondary/disabled. Add the four colour variants from the already-approved kenney-ui-pack to the art mapping, and give each one its 9-slice border in SharedArtImporter so the outline keeps its thickness at any button size.",
       "files": [
         "AI_GAME_COMPANY/config/art-mapping.json",
@@ -68,9 +68,13 @@
       "depends_on": [],
       "notes": [
         "Unity's spriteBorder order is (left, bottom, right, top) - that is why the bottom is 8 and not the top: the depth lip is at the bottom of the sprite.",
-        "Do not copy any image files. apply-art-mapping.ps1 does the copying on the PC, and it refuses any pack that is not APPROVED in LICENSE_REGISTRY.json."
+        "Do not copy any image files. apply-art-mapping.ps1 does the copying on the PC, and it refuses any pack that is not APPROVED in LICENSE_REGISTRY.json.",
+        "Ran 2026-09-02. Codex edited both allowlisted files correctly; the run was reported BLOCKED only because Unity rewrote Packages/packages-lock.json while it worked - see CODEX-BOARD1 defect 1. Committed by hand as 89514dc. Still needs apply-art-mapping.ps1 -Commit to copy the actual PNGs, and a build to compile SharedArtImporter."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "AI_GAME_COMPANY/config/art-mapping.json",
+        "Assets/GameFactory/Editor/SharedArtImporter.cs"
+      ],
       "last_run": ""
     },
     {
