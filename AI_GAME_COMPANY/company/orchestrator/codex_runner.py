@@ -44,6 +44,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import time
 import uuid
@@ -137,6 +138,55 @@ class CodexRunner:
     # without a signed-in Codex on the machine.
     runner: object = field(default=None, repr=False)
 
+    # ---- locating the binary ---------------------------------------------
+
+    @staticmethod
+    def codex_path_from_profile(profile_path: Path) -> str | None:
+        """The codex path detect-environment.ps1 already verified and recorded."""
+        if not profile_path.is_file():
+            return None
+        try:
+            profile = json.loads(profile_path.read_text(encoding="utf-8-sig"))
+        except (json.JSONDecodeError, OSError):
+            return None
+        codex = (profile.get("tools") or {}).get("codex") or {}
+        if codex.get("status") != "OK":
+            return None
+        return codex.get("path") or None
+
+    @staticmethod
+    def resolve_binary(profile_path: Path | None = None) -> str:
+        """A path subprocess can actually launch.
+
+        WHY THIS IS NOT JUST "codex". npm installs a global CLI on Windows as
+        three shims side by side: an extension-less shell script, a .cmd and a
+        .ps1. cmd.exe finds the .cmd because it applies PATHEXT - but
+        subprocess uses CreateProcess, which does NOT, so it picks the
+        extension-less shell script and dies with
+        "[WinError 2] 지정된 파일을 찾을 수 없습니다". The same class of bug
+        already bit detect-environment.ps1's Start-Process calls.
+
+        So: prefer the path detect-environment.ps1 recorded (it resolved the
+        launchable .cmd), then look for the .cmd explicitly, and only then
+        fall back to the bare name for POSIX where it is correct.
+        """
+        if profile_path is not None:
+            recorded = CodexRunner.codex_path_from_profile(profile_path)
+            # Checked for existence: the profile is written on the build PC and
+            # its Windows paths do not exist in a Linux container, where the
+            # bare name below is the right answer.
+            if recorded and Path(recorded).is_file():
+                return recorded
+
+        for candidate in ("codex.cmd", "codex.exe", "codex"):
+            found = shutil.which(candidate)
+            if found:
+                return found
+
+        # Nothing found. Returned rather than raised so is_available() can
+        # report it as a status instead of a traceback.
+        return "codex"
+
     # ---- environment -----------------------------------------------------
 
     def child_env(self, environ: dict[str, str] | None = None) -> dict[str, str]:
@@ -213,7 +263,17 @@ class CodexRunner:
         try:
             code, out, err = self._run([self.binary, "--version"], timeout=60)
         except (OSError, subprocess.SubprocessError) as exc:
-            return False, f"codex --version could not run: {exc}"
+            # Naming the path that was tried is the whole difference between a
+            # fixable report and a shrug: "codex" failing and
+            # "C:\...\codex.cmd" failing mean different things.
+            hint = ""
+            if isinstance(exc, FileNotFoundError) or "WinError 2" in str(exc):
+                hint = (" - nothing launchable at that path. On Windows the bare "
+                        "name cannot work: npm's extension-less shim is not a Win32 "
+                        "executable and subprocess does not apply PATHEXT. Run "
+                        "AI_GAME_COMPANY/tools/detect-environment.ps1 so the .cmd "
+                        "path is recorded in HARDWARE_PROFILE.json.")
+            return False, f"codex --version could not run [tried: {self.binary}]{hint}: {exc}"
         if code != 0:
             return False, f"codex --version exited {code}: {(err or out).strip()[:200]}"
         return True, (out or err).strip()
