@@ -144,6 +144,13 @@ class UnityRunner:
             capture_output=True, text=True,
             cwd=str(self.repo_root),
             timeout=budget * 60 + 120,
+            # Explicit: text=True decodes with the machine's locale encoding,
+            # which is cp949 on the Korean build PC. Unity and Gradle both emit
+            # UTF-8, and a single non-ASCII byte in a compiler error - a Korean
+            # path, a quoted string from the source - would raise
+            # UnicodeDecodeError and lose the entire build log, exactly when
+            # that log is the thing being asked for.
+            encoding="utf-8", errors="replace",
         )
         return completed.returncode, completed.stdout, completed.stderr, script_path
 

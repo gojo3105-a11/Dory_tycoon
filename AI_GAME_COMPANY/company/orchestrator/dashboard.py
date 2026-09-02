@@ -184,6 +184,10 @@ def read_commits(repo_root: Path, limit: int = 8) -> list[dict[str, str]]:
             ["git", "log", f"-{limit}", "--date=short",
              "--pretty=format:%h\x1f%ad\x1f%s"],
             cwd=str(repo_root), capture_output=True, text=True, timeout=20, check=True,
+            # This project's commit subjects contain Korean, so decoding with
+            # the machine's locale (cp949 on the build PC) raises and the whole
+            # dashboard fails to render over a log line.
+            encoding="utf-8", errors="replace",
         )
     except (OSError, subprocess.SubprocessError):
         return []
