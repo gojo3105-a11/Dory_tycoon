@@ -22,7 +22,8 @@
       ],
       "depends_on": [],
       "notes": [
-        "Design reference: https://claude.ai/code/artifact/2c13a317-896d-45cc-98da-b01955e1bc92"
+        "Design reference: https://claude.ai/code/artifact/2c13a317-896d-45cc-98da-b01955e1bc92",
+        "Compiles as of 2026-09-02 (build succeeded, APK produced). Still REVIEW and not done: the acceptance criteria are that every string is Korean and legible ON A DEVICE, and whether Font.CreateDynamicFontFromOSFont finds a Hangul face on Android is the one thing that cannot be checked from here. Install the APK and look."
       ],
       "changed_files": [],
       "last_run": ""
@@ -31,7 +32,7 @@
       "id": "CLAUDE-ECON",
       "title": "Split distance from coins in the economy",
       "owner": "claude",
-      "status": "review",
+      "status": "done",
       "goal": "Score was the coin count and there was no distance metric at all. Score is now distance in metres (RunnerDistanceTracker), coins are the shop currency, and game over pays out coins rather than score.",
       "files": [
         "Assets/GameFactory/Core/GameManager.cs",
@@ -43,7 +44,9 @@
         "A run that collects nothing still scores, because distance accrues."
       ],
       "depends_on": [],
-      "notes": [],
+      "notes": [
+        "Verified 2026-09-02: orchestrator build compiled it and PlayMode reported total=11 failed=0. Five of those eleven are CODEX-TEST1's and exercise this change directly - including that game-over pays out Coins and not Score, which was the whole point."
+      ],
       "changed_files": [],
       "last_run": ""
     },
@@ -69,7 +72,8 @@
       "notes": [
         "Unity's spriteBorder order is (left, bottom, right, top) - that is why the bottom is 8 and not the top: the depth lip is at the bottom of the sprite.",
         "Do not copy any image files. apply-art-mapping.ps1 does the copying on the PC, and it refuses any pack that is not APPROVED in LICENSE_REGISTRY.json.",
-        "Ran 2026-09-02. Codex edited both allowlisted files correctly; the run was reported BLOCKED only because Unity rewrote Packages/packages-lock.json while it worked - see CODEX-BOARD1 defect 1. Committed by hand as 89514dc. Still needs apply-art-mapping.ps1 -Commit to copy the actual PNGs, and a build to compile SharedArtImporter."
+        "Ran 2026-09-02. Codex edited both allowlisted files correctly; the run was reported BLOCKED only because Unity rewrote Packages/packages-lock.json while it worked - see CODEX-BOARD1 defect 1. Committed by hand as 89514dc. Still needs apply-art-mapping.ps1 -Commit to copy the actual PNGs, and a build to compile SharedArtImporter.",
+        "SharedArtImporter compiles as of 2026-09-02. Still REVIEW: the four button PNGs are not on disk yet, so every button in the current APK is still the blue fallback. Needs AI_GAME_COMPANY/tools/apply-art-mapping.ps1 -Commit."
       ],
       "changed_files": [
         "AI_GAME_COMPANY/config/art-mapping.json",
@@ -81,7 +85,7 @@
       "id": "CODEX-TEST1",
       "title": "PlayMode tests for the distance/coin split",
       "owner": "codex",
-      "status": "todo",
+      "status": "done",
       "goal": "GameManager just grew a second currency-like counter and a monotonic SetScore. The existing PlayMode tests only cover AddScore. Add tests that pin the new behaviour so a later refactor cannot quietly put distance back into the currency payout.",
       "files": [
         "Assets/GameFactory/Tests/PlayMode/FactoryRunnerPlayModeTests.cs"
@@ -98,9 +102,12 @@
       "notes": [
         "Read Assets/GameFactory/Core/GameManager.cs and Assets/GameFactory/Core/SaveSystem.cs first - the API is new and is not what the older tests assume.",
         "SaveSystem writes to PlayerPrefs, which persists between tests. Use a game id unique to each test, or clear the keys in SetUp, or the currency assertions will pass once and then drift.",
-        "Follow the arrange/act/assert shape and the [UnityTest] IEnumerator style already used in the file."
+        "Follow the arrange/act/assert shape and the [UnityTest] IEnumerator style already used in the file.",
+        "Ran 2026-09-02. Baseline was 6 [UnityTest] methods and the suite now reports total=11, so Codex added exactly the five behaviours specified. failed=0. Codex also followed the note about PlayerPrefs bleeding between tests and gave each run a unique game id via Guid."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "Assets/GameFactory/Tests/PlayMode/FactoryRunnerPlayModeTests.cs"
+      ],
       "last_run": ""
     },
     {
@@ -191,7 +198,8 @@
         "This page is left open for a long time, so an always-running JS animation is a battery cost with no benefit.",
         "Do not invent numbers. No progress percentages, no utilisation figures - this dashboard's rule is that anything without evidence reads as 확인 불가.",
         "The Gemini roster row goes here rather than in CODEX-GEMINI1 because dashboard.py is in this task's allowlist and not in that one's. Do not edit gemini_client.py from here.",
-        "Reports/dashboard.html is a TRACKED file and is in your allowlist for exactly this reason: you should regenerate it to check your work, and without it listed that correct action would have been reported as going outside the allowlist."
+        "Reports/dashboard.html is a TRACKED file and is in your allowlist for exactly this reason: you should regenerate it to check your work, and without it listed that correct action would have been reported as going outside the allowlist.",
+        "User confirmed 2026-09-02 that the HTML UI's visual direction is 'office' and that Codex builds it. docs/OFFICE_VIEW_SPEC.md is the brief. If the whole page should later be restyled to match, that is a follow-up - do not widen this task to a full redesign, since the information density of the roster and the pipeline sections is what makes the page useful."
       ],
       "changed_files": [],
       "last_run": ""
@@ -275,6 +283,101 @@
         "Read unity_runner.py fully first. It already has the sentinel/exitcode handling, the timeout budget, and _run_powershell - the new step is another _step call, not new plumbing.",
         "wait-for-unity.ps1 reads the editor path from $env:UNITY_PATH, which unity_runner already exports. Only ONE of -SentinelName/-TestResultsPath/-CompileLogPath is required, and the test steps in test.yml pass -TestResultsPath - that is sufficient and is the pattern to follow.",
         "Do not change .github/workflows/test.yml. It works, and it is not in your allowlist."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-START1",
+      "title": "A start button on every waiting task, not one dropdown",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "The control panel can already run a Codex task, but only through a single <select> of task ids. Put the button on the task itself: every waiting row in the 공유 작업판 section gets its own start button, so you press the thing you are looking at instead of matching an id in a dropdown.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "Reports/dashboard.html"
+      ],
+      "acceptance": [
+        "Each task row in the board section gets a start button when the page is SERVED, and none at all in the static file - a control with no server to POST to is worse than an absent one, and there is already a test asserting the static page has no control panel.",
+        "The button posts the SAME action the dropdown does: {action: 'team-run', arg: <task id>} to /run with the token. Reuse the existing start()/watch()/lock() functions in the injected script - do not write a second fetch/poll implementation.",
+        "Label: '작업 시작' for a todo task, '다시 실행' for in_progress, blocked or review. NO button on a done task - there is nothing left to run.",
+        "Only Codex-owned tasks get a button. A claude-owned row gets none, because server.py's valid_arg refuses those and a button that always errors is a lie about what the page can do.",
+        "A task with unmet dependencies renders its button DISABLED with the blocking task ids visible, since run_task refuses it anyway. board.unmet_dependencies() already computes this.",
+        "The existing lock() disables every .btn[data-act] while a job runs, so the new buttons must carry that same attribute shape and be disabled together - two jobs at once would fight over one working tree.",
+        "The dropdown may stay or go, your call, but if it goes the game/build combo and the ghost buttons must keep working.",
+        "Tests: a served page contains a start button per runnable Codex task and none for claude-owned or done tasks; the static page contains none; a task with an unmet dependency renders as disabled.",
+        "Regenerate Reports/dashboard.html and leave it in the working tree - it is in your allowlist for that reason, and it is the only evidence the section still renders."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read dashboard.py fully first. _control_html() builds the panel and holds the script; the board rows are built in render() near the 'lanes' list. The button markup belongs with the rows, the script stays in _control_html - so render() needs to know whether a token is present, which it already does.",
+        "server.py needs NO change and is not in your allowlist. ACTIONS['team-run'] already exists and Runner.valid_arg already checks that the id is a real Codex-owned task, so the endpoint is done.",
+        "Do not add a confirmation dialog. Starting a task is reversible - run_task reverts nothing and commits nothing - and a prompt on every press would be friction for no safety.",
+        "CODEX-OFFICE1 also edits dashboard.py. There is no conflict: only one job runs at a time, so whichever runs second simply builds on the first. Do not try to do that task's work here."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-OLLAMA1",
+      "title": "Choose which Ollama model is in use, without breaking the licence gate",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "ollama_client can list installed models and knows which ids are APPROVED, but nothing can SELECT one - there is no concept of an active model anywhere. Add that, so the model can be changed without editing code, and so the dashboard can say which one is in use.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/ollama_client.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_ollama_client.py"
+      ],
+      "acceptance": [
+        "`orchestrator ollama --list` prints every installed model with three facts per row: licence status from LICENSE_REGISTRY.json, whether it fits this machine's RAM (HardwareProfile.model_fit already computes this), and whether it is the active one.",
+        "`orchestrator ollama --use <model>` sets the active model, persisted somewhere committed and readable - company/state/company_state.json is the existing place for runtime state and already carries ollama_status.",
+        "--use REFUSES a model that is not APPROVED in the registry. Call the existing require_approved(); do not add a second licence check that could drift from it.",
+        "--use REFUSES a model that does not fit in RAM, naming the model size and the machine's total. gemma4:26b is 17.33 GB against 15.71 GB and must be refused on those grounds even if someone later marks it APPROVED - installed, licensed and unloadable are three separate things.",
+        "--use REFUSES a model that is not installed. Do NOT add any way to pull or download one: policy never_auto_install lists ollama_models, and a licence has to be verified per model id first.",
+        "Both refusals exit non-zero and say which of the three checks failed. A refusal that does not say why sends someone to change the wrong thing.",
+        "Tests, with the HTTP layer injected as the existing ones do: --use accepts an approved model that fits; refuses an unapproved one; refuses an oversized one; refuses one that is not installed; and the persisted choice survives a reload."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read ollama_client.py fully first. list_models(), approved_models() and require_approved() already exist and the local-only guard (NonLocalEndpointRefused) must stay - do not widen it.",
+        "hardware.py already has model_fit() and ollama_model_sizes. Use them rather than re-deriving sizes.",
+        "This is the capability only. Wiring it into the web panel is CODEX-AICTL1's job and dashboard.py is not in your allowlist."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-AICTL1",
+      "title": "A control per AI in the panel, and honest silence where there is none",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "The control panel can only drive Codex and Unity. Give each connected AI its own control - and give the ones with no adapter no control at all, stated as such, because a button that cannot work misrepresents what this project can do.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
+        "AI_GAME_COMPANY/company/orchestrator/server.py",
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "AI_GAME_COMPANY/tests/test_server.py",
+        "Reports/dashboard.html"
+      ],
+      "acceptance": [
+        "Controls exist for exactly these, because these have adapters: Codex (already there), Unity build (already there), Ollama model selection (via CODEX-OLLAMA1's orchestrator ollama --use), and local image generation (tools/generate-sprite.py).",
+        "Gemini and Blender get NO button and instead say why - 'gemini_client.py 없음', 'blender_runner.py 없음'. Wire Gemini up only if gemini_client.py exists by then; detect it, do not assume.",
+        "The Ollama row is a picker of INSTALLED models only, with unapproved or oversized ones shown disabled and the reason visible. It must not offer to download anything: policy never_auto_install lists ollama_models.",
+        "SECURITY - server.py's four rules are unchanged and each new action obeys them: bound to 127.0.0.1 only; the browser sends an ACTION NAME and server.py builds argv (shell=False, ids matched against SAFE_ID and checked to really exist); the per-run token and Origin check apply to every new endpoint; one job at a time.",
+        "Every new ACTIONS entry validates its argument the way build/team-run do - a model id must be one the Ollama client actually reports as installed, not any string the browser sends.",
+        "test_server.py gains, per new action: a wrong token refused, a cross-site Origin refused, an unknown action refused, and an injected argument refused. The existing security tests must still pass unchanged.",
+        "Still no controls in the static file, and no confirmation dialogs.",
+        "Regenerate Reports/dashboard.html and leave it in the working tree."
+      ],
+      "depends_on": [
+        "CODEX-OLLAMA1"
+      ],
+      "notes": [
+        "server.py is the most dangerous file in this project - it runs commands for a web page. Read its module docstring before touching it; the four rules are written there with the reasoning.",
+        "Do not add a danger-full-access sandbox, a shell=True call, or any action that takes a command string from the request. If a control seems to need one, stop and say so in your final message.",
+        "CODEX-START1 and CODEX-OFFICE1 also edit dashboard.py. Only one job runs at a time, so whichever runs later just builds on the earlier work - do not attempt their tasks here."
       ],
       "changed_files": [],
       "last_run": ""
