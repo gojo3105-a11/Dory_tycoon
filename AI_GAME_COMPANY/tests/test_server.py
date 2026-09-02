@@ -1,0 +1,257 @@
+"""Tests for the localhost control panel.
+
+Run:  python3 AI_GAME_COMPANY/tests/test_server.py
+
+This is the one file in the project that runs commands on behalf of a web
+page, so most of what follows is adversarial: a wrong token, a foreign
+Origin, a public Host header, an action name that is not on the allowlist, an
+argument with a shell metacharacter in it, a second job while one is running.
+
+A real server is started on an ephemeral port for the request-level tests -
+the guards live in HTTP handling, and asserting on the functions underneath
+them would not prove the endpoint is closed.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import sys
+import tempfile
+import threading
+import unittest
+import urllib.error
+import urllib.request
+from http.server import ThreadingHTTPServer
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from company.orchestrator import server as srv  # noqa: E402
+
+REPO = Path(__file__).resolve().parents[2]
+COMPANY = REPO / "AI_GAME_COMPANY"
+
+
+class BindingTests(unittest.TestCase):
+    def test_bound_to_loopback_and_never_all_interfaces(self):
+        # A regression guard worth its line: changing this to 0.0.0.0 would
+        # publish a run-arbitrary-builds endpoint to the local network.
+        self.assertEqual("127.0.0.1", srv.LOOPBACK)
+        self.assertNotIn("0.0.0.0", srv.LOOPBACK)
+
+    def test_every_action_builds_its_own_argv(self):
+        # Nothing from a request may reach a command line except through the
+        # validated id, so an action that takes no argument must ignore it.
+        for name, action in srv.ACTIONS.items():
+            argv = action.build(REPO, "; rm -rf /")
+            self.assertIsInstance(argv, list, name)
+            if not action.needs:
+                joined = " ".join(argv)
+                self.assertNotIn("rm -rf", joined, name)
+                self.assertNotIn(";", joined, name)
+
+    def test_no_action_runs_through_a_shell(self):
+        # Every argv[0] is a real executable, not a shell invocation.
+        for name, action in srv.ACTIONS.items():
+            first = action.build(REPO, "game01")[0]
+            self.assertNotIn("sh", Path(first).name.split(".")[0].lower()[:2],
+                             f"{name} looks like it shells out")
+
+
+class ArgumentGuardTests(unittest.TestCase):
+    def setUp(self):
+        self.runner = srv.Runner(REPO, COMPANY)
+
+    def guard(self, action_name: str, arg: str):
+        return self.runner.valid_arg(srv.ACTIONS[action_name], arg)
+
+    def test_rejects_shell_metacharacters(self):
+        for bad in ("game01; whoami", "game01 && ls", "../../etc/passwd",
+                    "game01|cat", "$(id)", "game01\nwhoami", ""):
+            ok, why = self.guard("build", bad)
+            self.assertFalse(ok, f"{bad!r} was accepted")
+            self.assertTrue(why)
+
+    def test_rejects_a_game_with_no_spec(self):
+        ok, why = self.guard("build", "game99")
+        self.assertFalse(ok)
+        self.assertIn("game99", why)
+
+    def test_accepts_a_game_that_has_a_spec(self):
+        if not (REPO / "GameSpecs" / "game01.json").is_file():
+            self.skipTest("no game01 spec committed")
+        self.assertEqual((True, ""), self.guard("build", "game01"))
+
+    def test_rejects_a_task_that_is_not_on_the_board(self):
+        ok, why = self.guard("team-run", "NOPE-1")
+        self.assertFalse(ok)
+
+    def test_rejects_a_task_owned_by_claude(self):
+        # Handing Claude's work to Codex is exactly what the board's owner
+        # field exists to prevent; the panel must not route around it.
+        ok, why = self.guard("team-run", "CLAUDE-UI1")
+        self.assertFalse(ok)
+        self.assertIn("Codex", why)
+
+    def test_accepts_a_codex_task(self):
+        board = COMPANY / "config" / "TASKBOARD.json"
+        if not board.is_file():
+            self.skipTest("no board committed")
+        from company.orchestrator.teamwork import TaskBoard
+        codex_ids = [t.id for t in TaskBoard.load(board).tasks if t.owner == "codex"]
+        if not codex_ids:
+            self.skipTest("no codex tasks on the board")
+        self.assertEqual((True, ""), self.guard("team-run", codex_ids[0]))
+
+    def test_an_action_without_an_argument_needs_no_validation(self):
+        self.assertEqual((True, ""), self.guard("git-status", ""))
+
+    def test_unknown_action_is_refused_before_anything_runs(self):
+        job, why = self.runner.start("rm -rf /", "")
+        self.assertIsNone(job)
+        self.assertTrue(why)
+
+
+class LiveServerTests(unittest.TestCase):
+    """Boots a real server so the HTTP guards are what gets tested."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.repo = Path(cls.tmp.name)
+        # A working tree with just enough for collect() and the guards.
+        (cls.repo / "GameSpecs").mkdir()
+        (cls.repo / "GameSpecs" / "game01.json").write_text("{}", encoding="utf-8")
+        (cls.repo / "Reports").mkdir()
+        company = cls.repo / "AI_GAME_COMPANY"
+        (company / "config").mkdir(parents=True)
+        for name in ("HARDWARE_PROFILE.json", "company_policy.json",
+                     "LICENSE_REGISTRY.json", "TASKBOARD.json"):
+            source = COMPANY / "config" / name
+            if source.is_file():
+                shutil.copy(source, company / "config" / name)
+
+        cls.token = "test-token-abcdefghijklmnop"
+        cls.runner = srv.Runner(cls.repo, company)
+        cls.httpd = ThreadingHTTPServer(
+            (srv.LOOPBACK, 0), srv.make_handler(cls.runner, cls.token))
+        cls.port = cls.httpd.server_address[1]
+        cls.thread = threading.Thread(target=cls.httpd.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.httpd.shutdown()
+        cls.httpd.server_close()
+        cls.tmp.cleanup()
+
+    def url(self, path: str) -> str:
+        return f"http://{srv.LOOPBACK}:{self.port}{path}"
+
+    def post(self, payload: dict, headers: dict | None = None):
+        request = urllib.request.Request(
+            self.url("/run"), method="POST",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", **(headers or {})})
+        try:
+            # No proxy: the environment sets HTTPS_PROXY, and urllib would
+            # otherwise try to reach loopback through it.
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(request, timeout=10) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            return exc.code, json.loads(exc.read())
+
+    def get(self, path: str):
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        request = urllib.request.Request(self.url(path))
+        try:
+            with opener.open(request, timeout=20) as response:
+                return response.status, response.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read()
+
+    # ---- the page ----
+
+    def test_serves_a_page_with_the_control_panel(self):
+        status, body = self.get("/")
+        self.assertEqual(200, status)
+        page = body.decode("utf-8")
+        self.assertIn("AI 제어", page)
+        self.assertIn("const TOKEN", page)
+
+    def test_the_static_file_has_no_control_panel(self):
+        # The published/written copy has nothing to POST to. Buttons there
+        # would be controls that silently do nothing.
+        from company.orchestrator import dashboard as dash
+        page = dash.render(dash.collect(self.repo))
+        self.assertNotIn("AI 제어", page)
+        self.assertNotIn("const TOKEN", page)
+        self.assertNotIn("/run", page)
+
+    def test_unknown_path_is_404(self):
+        self.assertEqual(404, self.get("/../../etc/passwd")[0])
+        self.assertEqual(404, self.get("/secrets")[0])
+
+    # ---- POST guards ----
+
+    def test_a_wrong_token_is_refused(self):
+        status, body = self.post({"token": "wrong", "action": "git-status"})
+        self.assertEqual(403, status)
+        self.assertIn("토큰", body["error"])
+
+    def test_a_missing_token_is_refused(self):
+        self.assertEqual(403, self.post({"action": "git-status"})[0])
+
+    def test_a_cross_site_origin_is_refused_even_with_the_right_token(self):
+        # Any page in the browser can reach loopback; the token is what stops
+        # it, and the Origin check refuses it before the token is even read.
+        status, body = self.post({"token": self.token, "action": "git-status"},
+                                 headers={"Origin": "https://evil.example"})
+        self.assertEqual(403, status)
+        self.assertIn("cross-site", body["error"])
+
+    def test_a_foreign_host_header_is_refused(self):
+        status, _ = self.post({"token": self.token, "action": "git-status"},
+                              headers={"Host": "gamefactory.example.com"})
+        self.assertEqual(400, status)
+
+    def test_our_own_origin_is_accepted(self):
+        status, _ = self.post(
+            {"token": self.token, "action": "git-status"},
+            headers={"Origin": f"http://{srv.LOOPBACK}:{self.port}"})
+        self.assertEqual(200, status)
+
+    def test_garbage_json_is_refused(self):
+        request = urllib.request.Request(
+            self.url("/run"), method="POST", data=b"not json",
+            headers={"Content-Type": "application/json"})
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            opener.open(request, timeout=10)
+            self.fail("garbage body was accepted")
+        except urllib.error.HTTPError as exc:
+            self.assertEqual(400, exc.code)
+
+    def test_an_oversized_body_is_refused(self):
+        status, _ = self.post({"token": self.token, "action": "git-status",
+                               "arg": "x" * (srv.MAX_BODY + 100)})
+        self.assertEqual(400, status)
+
+    def test_a_wrong_action_is_refused_with_the_right_token(self):
+        status, body = self.post({"token": self.token, "action": "deploy"})
+        self.assertEqual(409, status)
+
+    def test_log_for_an_unknown_job_is_not_a_success(self):
+        status, body = self.get("/log?job=deadbeef")
+        payload = json.loads(body)
+        self.assertEqual(404, status)
+        # done with a non-zero code, so the page never reads a missing job as
+        # a job that finished cleanly.
+        self.assertTrue(payload["done"])
+        self.assertNotEqual(0, payload["exit_code"])
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

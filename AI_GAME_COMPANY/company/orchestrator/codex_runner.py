@@ -1,4 +1,15 @@
-"""Independent code review through the Codex CLI. Sections 3, 7 and STEP 5.
+"""Codex as reviewer AND as co-developer. Sections 3, 7 and STEP 5.
+
+Two entry points, deliberately separated by two different policy gates:
+
+  review()     read-only. Codex inspects the tree and reports.
+  implement()  workspace-write. Codex edits the tree itself, so that it and
+               Claude can split the work on the shared board (teamwork.py)
+               instead of one of them doing everything and the other only
+               commenting. Requires allow_codex_write ON TOP of the
+               subscription gate - enabling the reviewer must not silently
+               grant write access.
+
 
 Every flag used here was read from config/cli-probes/codex.txt, captured from
 codex-cli 0.151.0 on the build PC. Section 41 STEP 5 forbids writing this
@@ -51,6 +62,14 @@ DOCTOR = "doctor"
 # reports, it does not edit it. The dangerously-bypass-* flags exist in this
 # version and are deliberately never used.
 SANDBOX_READ_ONLY = "read-only"
+
+# Codex as a co-developer rather than a reviewer. Both values come from the
+# captured --help ("[possible values: read-only, workspace-write,
+# danger-full-access]"); danger-full-access is deliberately never used, and
+# neither is --dangerously-bypass-approvals-and-sandbox. workspace-write
+# confines edits to the repository, which is what makes the allowlist check in
+# teamwork.py a second line of defence rather than the only one.
+SANDBOX_WORKSPACE_WRITE = "workspace-write"
 
 # The subscription is a quota, not a bill. Recognising exhaustion is what lets
 # the caller degrade instead of escalating, so these patterns decide a state
@@ -230,14 +249,53 @@ class CodexRunner:
         content or it does not, which is the distinction section 38 turns on.
         """
         self.policy.require("use_codex_subscription", "Codex review")
+        return self._exec(
+            prompt, kind="review", sandbox=SANDBOX_READ_ONLY, schema=schema,
+            subcommand=REVIEW if use_review_subcommand else None,
+            timeout_seconds=timeout_seconds,
+        )
 
+    def implement(self, prompt: str, *, timeout_seconds: int | None = None) -> CodexResult:
+        """Let Codex WRITE code, not just comment on it.
+
+        This is the co-development path: Codex is handed a task from the shared
+        board and edits the working tree itself, with --sandbox workspace-write
+        so its edits cannot leave the repository.
+
+        Two gates before it runs, because this one changes files:
+
+          use_codex_subscription  the same subscription-only rule as review()
+          allow_codex_write       a separate opt-in, so turning the reviewer on
+                                  does not silently also grant write access
+
+        What this deliberately does NOT do is decide whether the work was any
+        good. The caller (teamwork.run_task) checks the diff against the task's
+        file allowlist and runs the Unity pipeline; Codex exiting 0 only means
+        it finished, never that the change is correct.
+        """
+        self.policy.require("use_codex_subscription", "Codex implementation")
+        self.policy.require("allow_codex_write", "Codex writing to the working tree")
+        return self._exec(
+            prompt, kind="implement", sandbox=SANDBOX_WORKSPACE_WRITE,
+            timeout_seconds=timeout_seconds,
+        )
+
+    def _exec(self, prompt: str, *, kind: str, sandbox: str,
+              schema: dict[str, Any] | None = None,
+              subcommand: str | None = None,
+              timeout_seconds: int | None = None) -> CodexResult:
+        """One non-interactive Codex run, with the section 38 rules applied.
+
+        Shared by review() and implement() so the "a run that did not run is
+        not a pass" handling cannot drift apart between the two.
+        """
         available, detail = self.is_available()
         if not available:
             raise CodexUnavailable(detail)
 
         workspace = self._workspace()
         stamp = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
-        output_file = workspace / f"review-{stamp}.txt"
+        output_file = workspace / f"{kind}-{stamp}.txt"
 
         schema_file: Path | None = None
         if schema is not None:
@@ -246,15 +304,17 @@ class CodexRunner:
 
         args = self.exec_args(
             prompt, output_file=output_file, schema_file=schema_file,
-            subcommand=REVIEW if use_review_subcommand else None,
+            sandbox=sandbox, subcommand=subcommand,
         )
 
         try:
             code, out, err = self._run(args, timeout=timeout_seconds)
         except subprocess.TimeoutExpired as exc:
             raise ReviewNotRun(
-                f"codex exec timed out after {timeout_seconds or self.timeout_seconds}s. "
-                "A timeout is not a clean review."
+                f"codex exec ({kind}) timed out after "
+                f"{timeout_seconds or self.timeout_seconds}s. A timeout is not a pass. "
+                "On an implement run the working tree may hold a half-finished edit - "
+                "check 'git status' before doing anything else."
             ) from exc
         except (OSError, subprocess.SubprocessError) as exc:
             raise CodexUnavailable(f"codex exec could not run: {exc}") from exc
@@ -288,15 +348,16 @@ class CodexRunner:
         if code != 0:
             hint = " (looks like a login problem - initial_codex_login is a HUMAN_GATE)" \
                 if _matches(combined, AUTH_PATTERNS) else ""
-            result.detail = f"codex exec exited {code}{hint}"
+            result.detail = f"codex exec ({kind}) exited {code}{hint}"
             raise ReviewNotRun(f"{result.detail}. Output: {combined.strip()[:500]}")
 
         if not last_message:
             # The dangerous case: exit 0 and nothing to show. Reporting that as
-            # "no issues found" is exactly the section 38 failure.
+            # "no issues found" - or, on an implement run, as "task done" - is
+            # exactly the section 38 failure.
             raise ReviewNotRun(
-                f"codex exec exited 0 but wrote no final message to {output_file}. "
-                "An empty result is not a clean review."
+                f"codex exec ({kind}) exited 0 but wrote no final message to "
+                f"{output_file}. An empty result is not a pass."
             )
 
         return result
@@ -329,6 +390,11 @@ class CodexRunner:
         lines = [f"Codex available - {detail}"]
         if not self.policy.allows("use_codex_subscription"):
             lines.append("  BLOCKED: policy use_codex_subscription is not true")
+        lines.append(
+            "  co-development (Codex writes code): "
+            + ("ENABLED" if self.policy.allows("allow_codex_write")
+               else "OFF - policy allow_codex_write is not true, so Codex can only review")
+        )
         stripped = self.stripped_keys()
         if stripped:
             lines.append(

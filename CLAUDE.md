@@ -17,6 +17,34 @@ GameSpec(JSON) → Unity Editor 자동 생성기 → Scene/Prefab/Level/UI 생�
 → Validation → Unity Test → Android Build → APK/AAB
 ```
 
+## 역할 분담 (2026-09-02 사용자 지시, 이후 모든 작업에 적용)
+
+세 가지가 고정 규칙이다. 편해서가 아니라 사용자가 정한 것이므로 지킨다.
+
+1. **모든 코딩은 Codex에게 요청한다.** Claude는 명세를 `AI_GAME_COMPANY/config/TASKBOARD.json`에
+   올리고, 나온 diff를 리뷰하고, 설정/문서를 관리한다. 프로덕션 코드를 직접 쓰지 않는다.
+   정책 키는 `codex_writes_all_code`.
+2. **디자인이 필요하면 Gemini에 요청한다** (무료 등급). 정책 키는 `allow_gemini_design`,
+   키는 `GEMINI_API_KEY` 환경변수. 아래 제약을 반드시 지킨다.
+3. **관제 화면은 AI를 회사 부서별 캐릭터로 보여준다** (`docs/OFFICE_VIEW_SPEC.md`).
+
+**여기서 반드시 알아야 하는 현실 하나:** `codex` CLI는 빌드 PC에만 있고 **Claude Code
+컨테이너에는 없다** (`which codex` → 없음). 그래서 규칙 1을 지키면 Claude는 이 환경에서
+**작업을 큐에 넣는 것까지만** 할 수 있고, PC에서 `orchestrator team run --task <id>`를
+돌려야 실제 코드가 생긴다. 이 지연은 규칙의 대가이지 버그가 아니다 -
+"Codex에게 맡겼다"고 말한 뒤 코드가 저장소에 없으면, 아직 실행되지 않은 것이다.
+
+### Gemini 제약 (코드로 강제할 것, 문서만으로는 부족)
+
+- **별도 환경변수 `GEMINI_API_KEY`.** `GOOGLE_API_KEY`는 `blocked_env_keys`에 그대로 둔다 -
+  이 프로젝트의 다른 코드가 구글 키를 조용히 쓰기 시작하는 일이 없어야 한다.
+- **무료 모델만.** `gemini_free_tier_models`에 없는 모델 id는 어댑터가 거부한다.
+- **429/쿼터 소진 시 절대 승격하지 않는다.** `on_codex_limit`과 같은 방식으로 degrade한다.
+- **키는 절대 커밋/로그/출력하지 않는다.** 존재 여부만 기록한다. 로그인은 HUMAN_GATE
+  (`initial_gemini_login`).
+- Google 공식 요금 페이지(`ai.google.dev`)는 이 환경의 egress 프록시에서 차단된다. 즉
+  무료 등급을 1차 출처로 확인한 것이 아니다 - 그러니 **가정하지 말고 실패하게** 만든다.
+
 ## Development Environment
 
 - Engine: Unity (버전은 `ProjectSettings/ProjectVersion.txt` 참조, 임의 변경 금지)
@@ -157,6 +185,68 @@ git branch -D fork-check
 
 파일이 없거나 오래되었으면(생성 시각 확인) 그때 사용자에게 요청한다. **"에러 있으면 붙여주세요"나
 "APK 확인해주세요"를 먼저 말하지 말고, 위 방법으로 먼저 확인한다.**
+
+## 연동된 AI 현황 보기 / 제어 (관제 화면)
+
+```bash
+python -m company.orchestrator.main dashboard --open   # 읽기용 HTML 파일
+python -m company.orchestrator.main serve              # 제어판 (버튼이 실제로 실행됨)
+```
+
+`dashboard`는 `Reports/dashboard.html`을 만든다. 커밋된 파일만 읽으므로 빌드 PC에서든
+Unity가 없는 컨테이너에서든 같은 답을 낸다. 이미지(게임 아트 / AI 생성물 / 캐릭터 원본)는
+data URI로 파일 안에 박아 넣으므로, 그 한 파일만 있으면 어디서든 보인다.
+
+`serve`는 같은 화면에 실행 버튼을 붙여서 `http://127.0.0.1:8765` 로 띄운다.
+Codex 작업 실행 / 빌드 / Codex 진단 / 변경 파일 확인을 브라우저에서 누를 수 있다.
+**정적 파일 쪽에는 버튼이 아예 안 나온다** - 누를 곳이 없는 버튼은 없는 게 낫다.
+
+`server.py`가 위험한 파일이라 네 가지를 코드로 강제한다:
+
+- **127.0.0.1 전용.** `0.0.0.0`으로 바꾸면 빌드 실행 엔드포인트가 랜에 열린다.
+- **명령은 클라이언트에서 오지 않는다.** 브라우저는 동작 *이름*만 보내고 argv는
+  `server.py`가 만든다. `shell=False`, 그리고 게임/작업 id는 `^[A-Za-z0-9][\w-]{0,63}$`
+  통과 + 실제 파일/작업판 존재 확인을 둘 다 해야 한다.
+- **토큰.** localhost는 경계가 아니다 - 브라우저의 어떤 페이지든 여기로 POST할 수 있어서,
+  실행마다 새로 만드는 랜덤 토큰과 Origin 검사로 막는다.
+- **한 번에 한 작업.** Unity 빌드와 Codex 실행이 같은 작업 트리를 쓴다.
+
+커밋/푸시는 여기서도 하지 않는다.
+
+이 화면의 원칙은 하나다: **근거가 없으면 "확인 불가"로 표시하고, 절대 "정상"으로 올려
+읽지 않는다.** 각 AI 줄마다 그 상태를 읽어온 파일을 함께 보여준다. "설치됨"은 근거가
+아니다 - 라이선스 미확인 + RAM 초과로 못 돌아가는 모델도 설치는 되어 있다.
+
+## Codex와 함께 개발하기 (공유 작업판)
+
+Codex는 리뷰어가 아니라 **공동 개발자**다. `AI_GAME_COMPANY/config/TASKBOARD.json`이
+Claude와 Codex가 함께 보는 작업판이고, 각 작업에는 `owner`(claude/codex)와
+`files`(수정 허용 파일 목록)가 있다.
+
+```bash
+python -m company.orchestrator.main team board                 # 누가 뭘 하는지
+python -m company.orchestrator.main team run --task CODEX-ART1 --dry-run   # 보낼 프롬프트만 확인
+python -m company.orchestrator.main team run --task CODEX-ART1            # Codex가 실제로 코드를 작성
+```
+
+`AI_GAME_COMPANY/` 안에서 실행한다. Codex는 `codex exec --sandbox workspace-write`로
+돌아가므로 편집 범위가 저장소 안으로 제한되고, 실행이 끝나면 `git status` 기준으로
+**실제 변경된 파일이 그 작업의 허용 목록 안인지** 검사한다. 벗어나면 상태가 BLOCKED가
+되고 **아무것도 되돌리지 않는다** — 같은 작업 트리에 다른 쪽의 미커밋 작업이 있을 수
+있어서, 조용히 버리는 쪽이 더 위험하다.
+
+세 가지는 코드로 강제된다 (`company/orchestrator/teamwork.py`):
+
+- **allow_codex_write** 정책이 true여야 쓰기가 열린다. `use_codex_subscription`만으로는
+  리뷰만 가능하다 (게이트가 두 개인 이유: 리뷰어를 켜는 것과 공동 개발자를 켜는 것은
+  다른 결정이다).
+- **커밋/푸시는 절대 하지 않는다.** 작업 트리에 변경만 남기고, 사람이 검토 후 커밋한다.
+- **상태는 DONE이 아니라 REVIEW가 된다.** 여기서 컴파일한 게 없기 때문이다. DONE은
+  `orchestrator build`가 통과한 뒤에 사람이 정한다.
+
+Codex는 이 프로젝트를 기억하지 못한 채 매번 시작하므로, CLAUDE.md의 핵심 규칙
+(linearVelocity, Editor/Runtime 분리, .ps1 ASCII, 커밋 금지 등)이 프롬프트에 자동으로
+붙어서 전달된다 — `teamwork.HOUSE_RULES`가 그 원문이다. 규칙을 바꾸면 거기도 같이 고친다.
 
 ## PowerShell 스크립트 규칙
 
