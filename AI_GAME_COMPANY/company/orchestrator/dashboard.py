@@ -20,7 +20,9 @@ never seen Unity.
 
 from __future__ import annotations
 
+import base64
 import html
+import io
 import json
 import re
 import subprocess
@@ -28,6 +30,20 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+# Optional: only used to shrink the multi-megabyte reference photos. Absent on
+# a machine that never installed it, and the gallery degrades to "too large to
+# embed" rather than failing - a dashboard is not worth a hard dependency.
+try:  # pragma: no cover - availability is the thing being handled
+    from PIL import Image
+except ImportError:
+    Image = None
+
+# Files at or below this go in untouched, which keeps sprite art pixel-exact.
+EMBED_AS_IS_BYTES = 90_000
+# Long edge of a generated thumbnail. 240 is enough to recognise a character
+# pose on a phone without pushing the page past a megabyte.
+THUMB_EDGE = 240
 
 # Status vocabulary. Deliberately four, not three: "not checked" is its own
 # state and must never collapse into either OK or broken.
@@ -69,6 +85,7 @@ class Snapshot:
     error_report_at: str
     games: list[dict[str, Any]]
     commits: list[dict[str, str]]
+    gallery: list[dict[str, Any]]
     missing: list[str]
 
 
@@ -357,6 +374,124 @@ def read_games(repo_root: Path, builds: list[dict[str, str]],
     return games
 
 
+def _data_uri(path: Path) -> tuple[str, str]:
+    """(data URI, note). Embeds so one HTML file works offline and as an Artifact.
+
+    A published Artifact cannot load an image from the user's disk, and a local
+    file opened from Reports/ would need a relative path that breaks the moment
+    the file is copied anywhere. Inlining is what makes the same bytes work in
+    both places.
+    """
+    raw = path.read_bytes()
+    suffix = path.suffix.lower()
+
+    if len(raw) <= EMBED_AS_IS_BYTES and suffix in (".png", ".gif", ".webp"):
+        mime = {"png": "image/png", "gif": "image/gif", "webp": "image/webp"}[suffix[1:]]
+        return f"data:{mime};base64,{base64.b64encode(raw).decode()}", "원본"
+
+    if Image is None:
+        return "", "Pillow 미설치 - 축소할 수 없어 생략"
+
+    try:
+        with Image.open(io.BytesIO(raw)) as image:
+            image = image.convert("RGB")
+            image.thumbnail((THUMB_EDGE, THUMB_EDGE), Image.LANCZOS)
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG", quality=74, optimize=True)
+    except OSError as exc:
+        return "", f"읽을 수 없음 ({exc})"
+
+    encoded = base64.b64encode(buffer.getvalue()).decode()
+    return f"data:image/jpeg;base64,{encoded}", "축소본"
+
+
+def _short_name(name: str, keep: int = 17) -> str:
+    """Trim a filename from the LEFT, so what distinguishes it survives.
+
+    The reference photos are all KakaoTalk_20260826_014200658_NN.png - clipped
+    from the right they render as fifteen identical captions, and the two
+    digits that say which one it is are the part that gets cut.
+    """
+    if len(name) <= keep + 3:
+        return name
+    return "…" + name[-keep:]
+
+
+def _image_items(paths: list[Path], repo_root: Path, pixel_art: bool) -> list[dict[str, Any]]:
+    items = []
+    for path in sorted(paths):
+        try:
+            size = path.stat().st_size
+        except OSError:
+            continue
+
+        dimensions = ""
+        if Image is not None:
+            try:
+                with Image.open(path) as image:
+                    dimensions = f"{image.width}x{image.height}"
+            except OSError:
+                dimensions = ""
+
+        src, note = _data_uri(path)
+        items.append({
+            "name": path.name,
+            "label": _short_name(path.name),
+            "rel": str(path.relative_to(repo_root)).replace("\\", "/"),
+            "src": src,
+            "note": note,
+            "dimensions": dimensions,
+            "kb": size / 1024,
+            "pixel_art": pixel_art,
+        })
+    return items
+
+
+def read_gallery(repo_root: Path) -> list[dict[str, Any]]:
+    """The project's images, grouped by where they come from.
+
+    Three groups on purpose, because they answer different questions: what the
+    game currently draws, what the character is supposed to look like, and
+    what the image model has actually produced. The third being empty is
+    itself the useful fact - it is the whole reason that AI shows as 대기 중.
+    """
+    company = repo_root / "AI_GAME_COMPANY"
+
+    def png(directory: Path, recursive: bool = False) -> list[Path]:
+        if not directory.is_dir():
+            return []
+        pattern = "**/*" if recursive else "*"
+        return [p for p in directory.glob(pattern)
+                if p.is_file() and p.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp")]
+
+    art = png(repo_root / "Assets" / "Common" / "Art", recursive=True)
+    generated_character = png(repo_root / "Assets" / "Common" / "Character" / "Generated")
+    source = png(repo_root / "Assets" / "Common" / "Character" / "SourceImage")
+    ai_made = png(company / "generated", recursive=True)
+
+    return [
+        {
+            "title": "게임에 들어간 아트",
+            "note": "Assets/Common/Art/ · 실제로 화면에 그려지는 스프라이트",
+            "empty": "아직 없습니다. UI 스프라이트는 PC에서 파이프라인을 돌리면 생성됩니다.",
+            "items": _image_items(art + generated_character, repo_root, pixel_art=True),
+        },
+        {
+            "title": "AI가 생성한 이미지",
+            "note": "AI_GAME_COMPANY/generated/ · Stable Diffusion + IP-Adapter 출력",
+            "empty": ("아직 없습니다. 가중치가 없어서 한 장도 만들지 못했습니다 - "
+                      "PC에서 setup-image-generation.ps1 을 실행해야 합니다."),
+            "items": _image_items(ai_made, repo_root, pixel_art=False),
+        },
+        {
+            "title": "캐릭터 원본 (사용자 제공)",
+            "note": "Assets/Common/Character/SourceImage/ · 도리의 기준 이미지. 지우거나 바꾸지 않습니다.",
+            "empty": "원본 이미지가 없습니다.",
+            "items": _image_items(source, repo_root, pixel_art=False),
+        },
+    ]
+
+
 def collect(repo_root: Path) -> Snapshot:
     company_root = repo_root / "AI_GAME_COMPANY"
     config = company_root / "config"
@@ -392,6 +527,7 @@ def collect(repo_root: Path) -> Snapshot:
         error_report_at=error_at,
         games=read_games(repo_root, builds),
         commits=read_commits(repo_root),
+        gallery=read_gallery(repo_root),
         missing=missing,
     )
 
@@ -558,6 +694,65 @@ section{margin-top:44px;}
 .log .when{color:var(--muted); font-size:12.5px;}
 .log .what{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 
+/* ---- gallery ---- */
+.gal{display:grid; grid-template-columns:repeat(auto-fill,minmax(128px,1fr)); gap:10px;}
+.shot{background:var(--surface); border:1px solid var(--line); border-radius:3px;
+      overflow:hidden; display:flex; flex-direction:column;}
+.shot .frame{aspect-ratio:1; display:grid; place-items:center; padding:9px;
+  /* Checkerboard, so a sprite's transparent edge is visible instead of
+     blending into whichever theme the viewer is in. */
+  background-color:var(--sunk);
+  background-image:linear-gradient(45deg,var(--line) 25%,transparent 25%,transparent 75%,var(--line) 75%),
+                   linear-gradient(45deg,var(--line) 25%,transparent 25%,transparent 75%,var(--line) 75%);
+  background-size:14px 14px; background-position:0 0,7px 7px;}
+.shot img{max-width:100%; max-height:100%; display:block;}
+.shot img.px{image-rendering:pixelated;}
+.shot .cap{padding:7px 9px 9px; font-size:11px; line-height:1.55;
+           border-top:1px solid var(--line);}
+/* Both lines clamped to one line each, so every card is exactly the same
+   height and the grid rows line up instead of stair-stepping. */
+.shot .cap b, .shot .cap span{display:block; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap;}
+.shot .cap b{font-weight:500;}
+.shot .cap span{color:var(--muted);}
+.shot .miss{grid-column:1/-1; color:var(--muted); font-size:11px; text-align:center;
+            padding:0 6px;}
+.gal-empty{background:var(--surface); border:1px dashed var(--line); border-radius:3px;
+           padding:20px; color:var(--muted); font-size:13.5px;}
+.gal-wrap + .gal-wrap{margin-top:22px;}
+.gal-wrap > .h{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px;
+               margin-bottom:10px;}
+.gal-wrap > .h b{font-family:'Archivo','Noto Sans KR',sans-serif; font-size:14.5px;}
+.gal-wrap > .h span{font-size:12px; color:var(--muted);}
+
+/* ---- control (served locally only) ---- */
+.ctl{background:var(--surface); border:1px solid var(--line); border-radius:3px;
+     border-left:4px solid var(--accent); padding:18px 20px 20px;}
+.ctl .acts{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+.btn{font-family:'Archivo','Noto Sans KR',sans-serif; font-size:13.5px; font-weight:600;
+     padding:9px 16px; border-radius:2px; cursor:pointer; color:var(--surface);
+     background:var(--accent); border:1px solid var(--accent);}
+.btn:hover{filter:brightness(1.12);}
+.btn.ghost{background:transparent; color:var(--ink); border-color:var(--line);}
+.btn:disabled{opacity:.45; cursor:not-allowed; filter:none;}
+.btn:focus-visible, select:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.combo{display:flex; gap:0; align-items:stretch;}
+.combo select{font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:8px 10px;
+  background:var(--surface-2); color:var(--ink); border:1px solid var(--line);
+  border-right:0; border-radius:2px 0 0 2px; max-width:230px;}
+.combo .btn{border-radius:0 2px 2px 0;}
+.term{margin-top:14px; background:var(--sunk); border:1px solid var(--line); border-radius:2px;
+      padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:12px;
+      line-height:1.65; white-space:pre-wrap; word-break:break-word;
+      max-height:340px; overflow-y:auto; color:var(--ink-2);}
+.term:empty{display:none;}
+.running{display:inline-flex; align-items:center; gap:8px; font-size:12.5px;
+         color:var(--gate); font-weight:600;}
+.running::before{content:""; width:7px; height:7px; border-radius:50%;
+                 background:currentColor; animation:blip 1s ease-in-out infinite;}
+@keyframes blip{50%{opacity:.25;}}
+@media (prefers-reduced-motion: reduce){.running::before{animation:none;}}
+
 .warn{margin-top:14px; padding:14px 18px; border-radius:3px;
       background:var(--blocked-soft); border-left:4px solid var(--blocked);
       color:var(--ink); font-size:13.5px;}
@@ -629,7 +824,150 @@ def _task_row(task: dict[str, Any]) -> str:
         </div>"""
 
 
-def render(snapshot: Snapshot) -> str:
+def _gallery_html(groups: list[dict[str, Any]]) -> str:
+    blocks = []
+    for group in groups:
+        items = group["items"]
+        if not items:
+            body = f'<div class="gal-empty">{e(group["empty"])}</div>'
+        else:
+            shots = []
+            for item in items:
+                if item["src"]:
+                    figure = (f'<img class="{"px" if item["pixel_art"] else ""}" '
+                              f'src="{item["src"]}" alt="{e(item["name"])}" loading="lazy">')
+                else:
+                    figure = f'<div class="miss">{e(item["note"])}</div>'
+                meta = " · ".join(x for x in (item["dimensions"],
+                                              f"{item['kb']:.0f} KB") if x)
+                shots.append(
+                    f'<figure class="shot" style="margin:0">'
+                    f'<div class="frame">{figure}</div>'
+                    f'<figcaption class="cap"><b title="{e(item["rel"])}">'
+                    f'{e(item["label"])}</b>'
+                    f'<span class="mono">{e(meta)}</span></figcaption></figure>')
+            body = f'<div class="gal">{"".join(shots)}</div>'
+
+        count = f'{len(items)}장' if items else "0장"
+        blocks.append(f"""    <div class="gal-wrap">
+      <div class="h"><b>{e(group["title"])}</b><span>{e(count)} · {e(group["note"])}</span></div>
+{body}
+    </div>""")
+    return "\n".join(blocks)
+
+
+def _control_html(snapshot: Snapshot, token: str) -> str:
+    """The action panel. Rendered ONLY when a local server is behind it.
+
+    A static copy of this page - the one written to Reports/ or published as an
+    Artifact - has nothing to POST to, so it must not show buttons at all.
+    A control that does nothing is worse than an absent one.
+    """
+    codex_open = [t for t in snapshot.tasks
+                  if t.get("owner") == "codex" and t.get("status") in ("todo", "in_progress")]
+    task_options = "".join(
+        f'<option value="{e(t["id"])}">{e(t["id"])} · {e(t.get("title", ""))}</option>'
+        for t in codex_open) or '<option value="">넘길 작업이 없습니다</option>'
+
+    game_options = "".join(
+        f'<option value="{e(g["id"])}">{e(g["id"])}</option>'
+        for g in snapshot.games if g["spec"]) or '<option value="">GameSpec 없음</option>'
+
+    return f"""  <section>
+    <div class="head">
+      <h2>AI 제어</h2>
+      <span class="note">이 PC에서 실행됩니다 · 커밋과 푸시는 하지 않습니다</span>
+    </div>
+    <div class="ctl">
+      <div class="acts">
+        <div class="combo">
+          <select id="task" aria-label="Codex에게 넘길 작업">{task_options}</select>
+          <button class="btn" data-act="team-run" data-arg="task">Codex 실행</button>
+        </div>
+        <div class="combo">
+          <select id="game" aria-label="빌드할 게임">{game_options}</select>
+          <button class="btn" data-act="build" data-arg="game">빌드</button>
+        </div>
+        <button class="btn ghost" data-act="codex-doctor">Codex 진단</button>
+        <button class="btn ghost" data-act="git-status">변경된 파일</button>
+        <button class="btn ghost" data-act="dashboard">새로고침</button>
+        <span id="busy"></span>
+      </div>
+      <pre class="term" id="term" aria-live="polite"></pre>
+    </div>
+  </section>
+
+  <script>
+  (function () {{
+    const TOKEN = {json.dumps(token)};
+    const term = document.getElementById('term');
+    const busy = document.getElementById('busy');
+    const buttons = [...document.querySelectorAll('.btn[data-act]')];
+    let poll = null;
+
+    function lock(on, label) {{
+      buttons.forEach(b => {{ b.disabled = on; }});
+      busy.className = on ? 'running' : '';
+      busy.textContent = on ? (label + ' 실행 중') : '';
+    }}
+
+    async function start(button) {{
+      const action = button.dataset.act;
+      const argId = button.dataset.arg;
+      const arg = argId ? document.getElementById(argId).value : '';
+      if (argId && !arg) {{ term.textContent = '선택할 항목이 없습니다.'; return; }}
+
+      term.textContent = '';
+      lock(true, button.textContent);
+      try {{
+        const res = await fetch('/run', {{
+          method: 'POST',
+          headers: {{ 'Content-Type': 'application/json' }},
+          body: JSON.stringify({{ token: TOKEN, action, arg }})
+        }});
+        const data = await res.json();
+        if (!res.ok) {{ term.textContent = '거부됨: ' + (data.error || res.status); lock(false); return; }}
+        watch(data.job, button.textContent);
+      }} catch (err) {{
+        term.textContent = '서버에 연결할 수 없습니다: ' + err;
+        lock(false);
+      }}
+    }}
+
+    function watch(job, label) {{
+      clearInterval(poll);
+      poll = setInterval(async () => {{
+        try {{
+          const res = await fetch('/log?job=' + encodeURIComponent(job));
+          const data = await res.json();
+          term.textContent = data.output || '(출력 없음)';
+          term.scrollTop = term.scrollHeight;
+          if (data.done) {{
+            clearInterval(poll);
+            lock(false);
+            term.textContent += '\\n\\n[종료 코드 ' + data.exit_code + ']' +
+              (data.exit_code === 0 ? '' : ' - 실패했습니다. 위 출력을 그대로 Claude에게 주세요.');
+            // The board and the reports move as a result of these commands, so
+            // a finished run makes the page above it stale.
+            if (data.exit_code === 0 && ['team-run','build','dashboard'].includes(data.action)) {{
+              term.textContent += '\\n페이지를 새로 읽어옵니다...';
+              setTimeout(() => location.reload(), 1400);
+            }}
+          }}
+        }} catch (err) {{
+          clearInterval(poll); lock(false);
+          term.textContent += '\\n로그를 읽지 못했습니다: ' + err;
+        }}
+      }}, 1000);
+    }}
+
+    buttons.forEach(b => b.addEventListener('click', () => start(b)));
+  }})();
+  </script>
+"""
+
+
+def render(snapshot: Snapshot, control_token: str | None = None) -> str:
     counts = {state: sum(1 for a in snapshot.agents if a.state == state)
               for state in (READY, GATED, BLOCKED, UNKNOWN)}
 
@@ -708,6 +1046,14 @@ def render(snapshot: Snapshot) -> str:
     hardware = snapshot.profile.get("hardware", {})
     unity = snapshot.profile.get("unity", {})
 
+    control = _control_html(snapshot, control_token) if control_token else ""
+    shot_count = sum(len(g["items"]) for g in snapshot.gallery)
+    # Said plainly rather than left to the reader: the static copy has no
+    # server, so it has no buttons, and that difference should not look like
+    # a missing feature.
+    mode = ("제어 가능 · 이 PC의 로컬 서버" if control_token
+            else "읽기 전용 · 제어는 PC에서 'orchestrator serve' 로 엽니다")
+
     return f"""<title>Game Factory 관제</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>{CSS}</style>
@@ -721,7 +1067,8 @@ def render(snapshot: Snapshot) -> str:
     <div class="stamp mono">
       생성 {e(snapshot.generated_at)}<br>
       {e(machine)} · RAM {e(f"{hardware.get('ramTotalGb', 0):.1f}")} GB<br>
-      Unity {e(unity.get('requiredByProject', '?'))} · {e(unity.get('status', '?'))}
+      Unity {e(unity.get('requiredByProject', '?'))} · {e(unity.get('status', '?'))}<br>
+      {e(mode)}
     </div>
   </header>
 
@@ -731,7 +1078,7 @@ def render(snapshot: Snapshot) -> str:
     <span>설치된 것과 실제로 돌아가는 것은 다릅니다. 아래 각 줄은 그 판단의 근거 파일을 함께 표시합니다.</span>
   </div>
   {missing_block}
-
+{control}
   <section>
     <div class="head">
       <h2>연동된 AI</h2>
@@ -776,6 +1123,14 @@ def render(snapshot: Snapshot) -> str:
 
   <section>
     <div class="head">
+      <h2>이미지</h2>
+      <span class="note">{shot_count}장 · 파일에 들어 있는 그대로</span>
+    </div>
+{_gallery_html(snapshot.gallery)}
+  </section>
+
+  <section>
+    <div class="head">
       <h2>10개 게임</h2>
       <span class="note">{done_games} / {len(snapshot.games)} 완료 · 리포트와 실제 APK가 둘 다 있어야 완료</span>
     </div>
@@ -811,8 +1166,23 @@ def render(snapshot: Snapshot) -> str:
 """
 
 
+def standalone(page: str) -> str:
+    """Wrap a rendered page as a complete HTML document.
+
+    render() deliberately emits no doctype or <head>: the Artifact publisher
+    supplies those. Everywhere else needs them, and the charset in particular
+    is load-bearing - every label on this page is Korean, and a browser
+    handed this file without a declared encoding falls back to Latin-1 and
+    renders the whole thing as mojibake.
+    """
+    return ('<!doctype html>\n<html lang="ko">\n<head>\n'
+            '<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+            '</head>\n<body>\n' + page + '\n</body>\n</html>\n')
+
+
 def write(repo_root: Path, out_path: Path | None = None) -> Path:
     target = out_path or (repo_root / "Reports" / "dashboard.html")
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(render(collect(repo_root)), encoding="utf-8")
+    target.write_text(standalone(render(collect(repo_root))), encoding="utf-8")
     return target

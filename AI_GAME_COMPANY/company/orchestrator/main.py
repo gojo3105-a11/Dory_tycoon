@@ -214,6 +214,17 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    """Open the control panel: the dashboard plus buttons that actually run.
+
+    Only useful on the machine that has the AI tooling. Bound to loopback and
+    token-guarded - see server.py for why both are needed rather than one.
+    """
+    from company.orchestrator.server import serve
+
+    return serve(REPO_ROOT, COMPANY_ROOT, port=args.port)
+
+
 def _board() -> TaskBoard:
     return TaskBoard.load(CONFIG_DIR / "TASKBOARD.json")
 
@@ -495,6 +506,10 @@ def main(argv: list[str] | None = None) -> int:
     codex.add_argument("--doctor", action="store_true",
                        help="also run 'codex doctor' and print its raw output")
     codex.set_defaults(func=cmd_codex)
+
+    serve_cmd = sub.add_parser("serve", help="open the control panel in a browser (this PC only)")
+    serve_cmd.add_argument("--port", type=int, default=8765)
+    serve_cmd.set_defaults(func=cmd_serve)
 
     dashboard = sub.add_parser("dashboard", help="write Reports/dashboard.html")
     dashboard.add_argument("--open", action="store_true",

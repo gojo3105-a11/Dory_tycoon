@@ -266,6 +266,42 @@ class RenderTests(unittest.TestCase):
         self.assertEqual("SharedArtImporter.cs",
                          dash._short_path("Assets\\GameFactory\\Editor\\SharedArtImporter.cs"))
 
+    def test_long_filenames_keep_their_distinguishing_tail(self):
+        # Fifteen reference photos share a 24-character prefix; clipped from
+        # the right they all render as the same caption.
+        a = dash._short_name("KakaoTalk_20260826_014200658_09.png")
+        b = dash._short_name("KakaoTalk_20260826_014200658_14.png")
+        self.assertNotEqual(a, b)
+        self.assertIn("09", a)
+        self.assertIn("14", b)
+        self.assertEqual("player.png", dash._short_name("player.png"),
+                         "a short name should be left alone")
+
+    def test_gallery_groups_are_present_even_when_empty(self):
+        # The AI-generated group being empty is the useful fact, so it has to
+        # render its reason rather than vanish.
+        groups = dash.read_gallery(REPO)
+        titles = [g["title"] for g in groups]
+        self.assertEqual(3, len(groups))
+        html_out = dash._gallery_html(groups)
+        for group in groups:
+            self.assertIn(group["title"], html_out)
+            if not group["items"]:
+                self.assertIn(group["empty"][:20], html_out)
+        self.assertTrue(any("AI" in t for t in titles))
+
+    def test_sprites_are_embedded_and_photos_are_thumbnailed(self):
+        groups = {g["title"]: g for g in dash.read_gallery(REPO)}
+        art = groups["게임에 들어간 아트"]["items"]
+        if not art:
+            self.skipTest("no art committed")
+        # Inlined, so one HTML file works offline and as an Artifact.
+        self.assertTrue(all(i["src"].startswith("data:") or i["note"] for i in art))
+        for item in art:
+            if item["src"]:
+                self.assertTrue(item["src"].startswith("data:image/png"),
+                                f"{item['name']} lost its alpha to a JPEG")
+
     def test_task_titles_are_escaped(self):
         # Board content is hand-edited JSON and Codex can be asked to touch
         # it; it reaches the page as text, never as markup.
@@ -299,6 +335,25 @@ class RenderTests(unittest.TestCase):
             snapshot = dash.collect(Path(tmp))
             self.assertIn("config/HARDWARE_PROFILE.json", snapshot.missing)
             self.assertIn("근거 없음", dash.render(snapshot))
+
+    def test_the_written_file_declares_utf8(self):
+        # Every label is Korean. A browser handed this file with no declared
+        # encoding falls back to Latin-1 and renders the page as mojibake -
+        # which is exactly what happened when it was served over plain HTTP.
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "dashboard.html"
+            dash.write(REPO, out)
+            head = out.read_text(encoding="utf-8")[:400]
+            self.assertIn("<!doctype html>", head.lower())
+            self.assertIn('<meta charset="utf-8">', head)
+            self.assertIn("viewport", head)
+
+    def test_render_alone_has_no_doctype(self):
+        # The Artifact publisher supplies the document skeleton, so render()
+        # must not emit a second one.
+        page = dash.render(dash.collect(REPO))
+        self.assertNotIn("<!doctype", page.lower())
+        self.assertNotIn("<html", page.lower())
 
     def test_write_produces_a_file(self):
         with tempfile.TemporaryDirectory() as tmp:
