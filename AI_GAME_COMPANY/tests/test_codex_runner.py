@@ -40,10 +40,12 @@ class FakeCodex:
         self.writes = writes
         self.calls: list[list[str]] = []
         self.envs: list[dict] = []
+        self.stdins: list[str | None] = []
 
-    def __call__(self, args, env):
+    def __call__(self, args, env, stdin_text=None):
         self.calls.append(args)
         self.envs.append(env)
+        self.stdins.append(stdin_text)
 
         if "--version" in args:
             return 0, "codex-cli 0.151.0", ""
@@ -117,10 +119,49 @@ class CommandBuildingTests(RunnerTestCase):
         self.make(fake).review("hi")
         self.assertFalse([a for a in fake.calls[-1] if "dangerously" in a])
 
-    def test_prompt_is_last_because_exec_takes_a_positional(self):
+    def test_the_prompt_goes_on_stdin_not_the_command_line(self):
+        # On Windows the resolved binary is codex.cmd, a batch file, so argv
+        # is parsed by cmd.exe. A task prompt is ~58 lines and can contain
+        # "<Colour>": cmd.exe would end the command at the first newline and
+        # treat the angle brackets as redirection. The captured --help
+        # documents "-" as "read the prompt from stdin", which skips that
+        # parser entirely.
         fake = FakeCodex()
         self.make(fake).review("review the diff")
-        self.assertEqual(fake.calls[-1][-1], "review the diff")
+
+        self.assertEqual("-", fake.calls[-1][-1])
+        self.assertNotIn("review the diff", fake.calls[-1])
+        self.assertEqual("review the diff", fake.stdins[-1])
+
+    def test_a_multiline_prompt_with_shell_metacharacters_stays_off_argv(self):
+        # The concrete shape that breaks: newlines plus redirection
+        # characters, exactly as build_prompt emits them.
+        prompt = "line one\nPNG/<Colour>/Default/button.png\n100%% & done ^caret"
+        fake = FakeCodex()
+        self.make(fake).review(prompt)
+
+        joined = " ".join(fake.calls[-1])
+        for danger in ("\n", "<", ">", "&", "^"):
+            self.assertNotIn(danger, joined,
+                             f"{danger!r} reached the command line")
+        self.assertEqual(prompt, fake.stdins[-1])
+
+    def test_probe_documents_reading_the_prompt_from_stdin(self):
+        # STEP 5: the behaviour relied on has to be in the captured help, not
+        # assumed. If a future codex drops it, this fails instead of the run.
+        if not PROBE.is_file():
+            self.skipTest("no codex probe committed")
+        exec_help = PROBE.read_text(encoding="utf-8-sig").split(
+            "### codex exec --help", 1)[-1]
+        self.assertIn("read from stdin", exec_help)
+
+    def test_version_and_doctor_send_no_stdin(self):
+        fake = FakeCodex()
+        runner = self.make(fake)
+        runner.is_available()
+        self.assertIsNone(fake.stdins[-1])
+        runner.doctor()
+        self.assertIsNone(fake.stdins[-1])
 
     def test_review_subcommand_is_opt_in(self):
         fake = FakeCodex()
@@ -250,7 +291,7 @@ class BinaryResolutionTests(RunnerTestCase):
     def test_a_winerror_2_names_the_path_and_the_cause(self):
         # The exact failure seen on the PC. The message has to say WHICH path
         # was tried and why the bare name cannot work there.
-        def explode(args, env):
+        def explode(args, env, stdin_text=None):
             raise FileNotFoundError(2, "지정된 파일을 찾을 수 없습니다")
 
         runner = CodexRunner(repo_root=self.root, policy=policy_with(),
@@ -363,13 +404,13 @@ class HonestResultTests(RunnerTestCase):
         self.assertTrue(result.output_path.is_file())
 
     def test_missing_binary_is_unavailable_not_a_pass(self):
-        def explode(args, env):
+        def explode(args, env, stdin_text=None):
             raise OSError("No such file or directory: 'codex'")
         with self.assertRaises(CodexUnavailable):
             self.make(explode).review("hi")
 
     def test_is_available_reports_rather_than_raises(self):
-        def explode(args, env):
+        def explode(args, env, stdin_text=None):
             raise OSError("missing")
         ok, detail = self.make(explode).is_available()
         self.assertFalse(ok)

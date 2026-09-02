@@ -72,6 +72,11 @@ SANDBOX_READ_ONLY = "read-only"
 # teamwork.py a second line of defence rather than the only one.
 SANDBOX_WORKSPACE_WRITE = "workspace-write"
 
+# The documented stand-in for "the prompt is on stdin", from the captured
+# --help. Keeping the prompt off the command line is what makes a multi-line
+# prompt survive cmd.exe on Windows - see exec_args.
+STDIN_PROMPT = "-"
+
 # The subscription is a quota, not a bill. Recognising exhaustion is what lets
 # the caller degrade instead of escalating, so these patterns decide a state
 # rather than merely colouring a message.
@@ -212,14 +217,25 @@ class CodexRunner:
 
     # ---- invocation building ---------------------------------------------
 
-    def exec_args(self, prompt: str, *, output_file: Path,
+    def exec_args(self, *, output_file: Path,
                   schema_file: Path | None = None,
                   sandbox: str = SANDBOX_READ_ONLY,
                   json_events: bool = False,
                   subcommand: str | None = None) -> list[str]:
         """Build a `codex exec` command from verified flags only.
 
-        Note the absence of --ask-for-approval: `codex exec` is already
+        THE PROMPT IS NOT HERE. It goes on stdin, and this ends with "-" to
+        say so. The captured --help documents both: "If not provided as an
+        argument (or if `-` is used), instructions are read from stdin."
+
+        Why that matters rather than being a style choice: on Windows the
+        resolved binary is codex.cmd, a BATCH FILE, so the invocation goes
+        through cmd.exe's parser. A task prompt from teamwork.build_prompt is
+        ~58 lines and contains "<Colour>" - cmd.exe would treat the newlines
+        as command terminators and the angle brackets as redirections. stdin
+        never touches that parser.
+
+        Note also the absence of --ask-for-approval: `codex exec` is already
         non-interactive and does not accept it. --color never keeps ANSI escape
         codes out of captured output.
         """
@@ -239,22 +255,28 @@ class CodexRunner:
         if self.model:
             args += ["--model", self.model]
 
-        # The prompt goes last: `codex exec [OPTIONS] [PROMPT]`.
-        if prompt:
-            args.append(prompt)
+        # `codex exec [OPTIONS] [PROMPT]`, with "-" as the prompt meaning
+        # "read it from stdin". Explicit rather than omitted, so the intent
+        # does not depend on codex detecting that stdin happens to be a pipe.
+        args.append(STDIN_PROMPT)
         return args
 
     # ---- execution -------------------------------------------------------
 
-    def _run(self, args: list[str], timeout: int | None = None) -> tuple[int, str, str]:
+    def _run(self, args: list[str], timeout: int | None = None,
+             stdin_text: str | None = None) -> tuple[int, str, str]:
         if self.runner is not None:  # test seam
-            return self.runner(args, self.child_env())
+            return self.runner(args, self.child_env(), stdin_text)
 
         completed = subprocess.run(
             args, capture_output=True, text=True,
             cwd=str(self.repo_root),
             env=self.child_env(),
             timeout=timeout or self.timeout_seconds,
+            # The prompt, encoded with the same encoding named below. Passing
+            # it here rather than in argv is what keeps a 58-line prompt out
+            # of cmd.exe's parser on Windows.
+            input=stdin_text,
             # Explicit, because text=True otherwise decodes with the machine's
             # locale encoding. On the Korean build PC that is cp949, and Codex
             # emits UTF-8 - which crashed `codex --doctor` outright with
@@ -370,12 +392,13 @@ class CodexRunner:
             schema_file.write_text(json.dumps(schema, indent=2), encoding="utf-8")
 
         args = self.exec_args(
-            prompt, output_file=output_file, schema_file=schema_file,
+            output_file=output_file, schema_file=schema_file,
             sandbox=sandbox, subcommand=subcommand,
         )
 
         try:
-            code, out, err = self._run(args, timeout=timeout_seconds)
+            code, out, err = self._run(args, timeout=timeout_seconds,
+                                       stdin_text=prompt)
         except subprocess.TimeoutExpired as exc:
             raise ReviewNotRun(
                 f"codex exec ({kind}) timed out after "
