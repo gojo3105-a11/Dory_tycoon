@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared task board for Claude and Codex. Since 2026-09-02 the user's standing rule is that ALL coding is requested from Codex: Claude writes the spec here and reviews the diff. 'files' is the allowlist the diff is checked against. Run one with: python -m company.orchestrator.main team run --task <id>",
+  "_comment": "Shared task board for Claude and Codex. Since 2026-09-02 the user's standing rule is that ALL coding is requested from Codex: Claude writes the spec here and reviews the diff. 'files' is the allowlist the diff is checked against - and when a task edits a GENERATOR, its committed OUTPUT belongs in that list too, or verifying the change reads as going out of bounds. Run one with: python -m company.orchestrator.main team run --task <id>",
   "_version": 1,
   "tasks": [
     {
@@ -163,7 +163,8 @@
       "goal": "Add one section to the dashboard that draws the connected AI as characters sitting in company departments, where each character's movement encodes that AI's real status. docs/OFFICE_VIEW_SPEC.md is the specification - read it first and follow it; it fixes the department mapping, the status-to-behaviour table and the constraints.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
-        "AI_GAME_COMPANY/tests/test_dashboard.py"
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "Reports/dashboard.html"
       ],
       "acceptance": [
         "docs/OFFICE_VIEW_SPEC.md is followed: the department mapping table, the four status behaviours, the floorplan layout with 외주 outside the building, and the 'do not' list at the end.",
@@ -176,7 +177,8 @@
         "The section renders in the static file too (it is display-only, unlike the control panel), and produces no horizontal page scroll at 360px wide.",
         "Each character carries a title/aria-label of its name and status, and links to the matching roster row.",
         "A test asserts every state in dash.STATE_LABEL has a distinct visual class in the office CSS - if two statuses render identically the section is decoration, not information.",
-        "A test asserts an unmapped agent name still appears in the rendered HTML."
+        "A test asserts an unmapped agent name still appears in the rendered HTML.",
+        "Regenerate Reports/dashboard.html with `python -m company.orchestrator.main dashboard` and leave the result in the working tree. That regenerated file is the only proof the section renders at all, since there is no other way to see it from here."
       ],
       "depends_on": [],
       "notes": [
@@ -184,7 +186,8 @@
         "Characters are procedural inline SVG. Do NOT add image files or any new licensed asset - v1 must work with zero assets. Keep the character drawing in one function so real art can replace it later.",
         "This page is left open for a long time, so an always-running JS animation is a battery cost with no benefit.",
         "Do not invent numbers. No progress percentages, no utilisation figures - this dashboard's rule is that anything without evidence reads as 확인 불가.",
-        "The Gemini roster row goes here rather than in CODEX-GEMINI1 because dashboard.py is in this task's allowlist and not in that one's. Do not edit gemini_client.py from here."
+        "The Gemini roster row goes here rather than in CODEX-GEMINI1 because dashboard.py is in this task's allowlist and not in that one's. Do not edit gemini_client.py from here.",
+        "Reports/dashboard.html is a TRACKED file and is in your allowlist for exactly this reason: you should regenerate it to check your work, and without it listed that correct action would have been reported as going outside the allowlist."
       ],
       "changed_files": [],
       "last_run": ""
