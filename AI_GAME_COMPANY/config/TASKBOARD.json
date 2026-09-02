@@ -381,22 +381,23 @@
         "Reports/dashboard.html"
       ],
       "acceptance": [
-        "Controls exist for exactly these, because these have adapters: Codex (already there), Unity build (already there), Ollama model selection (via CODEX-OLLAMA1's orchestrator ollama --use), and local image generation (tools/generate-sprite.py).",
+        "Controls exist for exactly these, because these have adapters: Codex (already there), Unity build (already there), Ollama model selection (`orchestrator ollama --use`, which CODEX-OLLAMA1 delivered and which ran on the real machine on 2026-09-02), and local image generation (tools/generate-sprite.py).",
         "Gemini and Blender get NO button and instead say why - 'gemini_client.py 없음', 'blender_runner.py 없음'. Wire Gemini up only if gemini_client.py exists by then; detect it, do not assume.",
         "The Ollama row is a picker of INSTALLED models only, with unapproved or oversized ones shown disabled and the reason visible. It must not offer to download anything: policy never_auto_install lists ollama_models.",
+        "ZERO installed models is the CURRENT state of the machine and is the case to get right, not an edge case: the Ollama row must then render an explicit '설치된 모델 없음' with no picker and no button, never an empty dropdown and never a control that posts nothing. A test asserts it, with the client reporting an empty inventory.",
         "SECURITY - server.py's four rules are unchanged and each new action obeys them: bound to 127.0.0.1 only; the browser sends an ACTION NAME and server.py builds argv (shell=False, ids matched against SAFE_ID and checked to really exist); the per-run token and Origin check apply to every new endpoint; one job at a time.",
         "Every new ACTIONS entry validates its argument the way build/team-run do - a model id must be one the Ollama client actually reports as installed, not any string the browser sends.",
         "test_server.py gains, per new action: a wrong token refused, a cross-site Origin refused, an unknown action refused, and an injected argument refused. The existing security tests must still pass unchanged.",
         "Still no controls in the static file, and no confirmation dialogs.",
         "Regenerate Reports/dashboard.html and leave it in the working tree."
       ],
-      "depends_on": [
-        "CODEX-OLLAMA1"
-      ],
+      "depends_on": [],
       "notes": [
         "server.py is the most dangerous file in this project - it runs commands for a web page. Read its module docstring before touching it; the four rules are written there with the reasoning.",
         "Do not add a danger-full-access sandbox, a shell=True call, or any action that takes a command string from the request. If a control seems to need one, stop and say so in your final message.",
-        "CODEX-START1 and CODEX-OFFICE1 also edit dashboard.py. Only one job runs at a time, so whichever runs later just builds on the earlier work - do not attempt their tasks here."
+        "CODEX-START1 and CODEX-OFFICE1 also edit dashboard.py. Only one job runs at a time, so whichever runs later just builds on the earlier work - do not attempt their tasks here.",
+        "2026-09-02: this task NO LONGER depends on CODEX-OLLAMA1. That dependency existed so this task would not wire a button to an API that did not exist yet; `ollama --list` and `--use` are now in main.py and `--list` was run on the build PC. CODEX-OLLAMA1 stays at review rather than done because `--use` cannot be exercised end to end - see the next note - and blocking this task on a check that cannot be performed would deadlock it.",
+        "THE MACHINE HAS NO OLLAMA MODELS AT ALL, verified 2026-09-02: `ollama rm gemma4:26b` said \"model not found\" and `orchestrator ollama --list` printed \"no models installed\". So the only Ollama state you can build against today is the empty one, which is why it is an acceptance criterion above. Do NOT trust HARDWARE_PROFILE.json here - it still lists gemma4:26b 17.33 GB from a 2026-09-01 scan and is stale. Read the inventory from OllamaClient at render time, not from the profile; the profile is for RAM sizes."
       ],
       "changed_files": [],
       "last_run": ""
