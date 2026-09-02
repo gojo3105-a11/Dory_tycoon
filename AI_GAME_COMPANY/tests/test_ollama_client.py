@@ -19,8 +19,27 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from company.orchestrator.ollama_client import (  # noqa: E402
-    ModelNotApproved, NonLocalEndpointRefused, OllamaClient, OllamaUnavailable,
+    ModelDoesNotFit, ModelNotApproved, ModelNotInstalled,
+    NonLocalEndpointRefused, OllamaClient, OllamaUnavailable,
 )
+
+
+class FakeHardwareProfile:
+    def __init__(self, sizes: dict[str, float], total_gb: float = 15.71,
+                 free_gb: float = 10.0):
+        self.ollama_model_sizes = list(sizes.items())
+        self.ram_total_gb = total_gb
+        self.ram_free_gb = free_gb
+
+    def model_fit(self, size_gb: float) -> tuple[str, str]:
+        if size_gb >= self.ram_total_gb:
+            return "NOT_VIABLE", (
+                f"{size_gb:.1f} GB of weights against {self.ram_total_gb:.1f} GB "
+                "of total RAM"
+            )
+        if size_gb > self.ram_free_gb - 2.0:
+            return "NOT_VIABLE", "exceeds the free RAM budget"
+        return "LIMITED", "fits, with CPU-only inference"
 
 
 class FakeTransport:
@@ -164,6 +183,63 @@ class ApprovedModelGateTests(unittest.TestCase):
     def test_summary_marks_installed_but_unapproved_models(self):
         client = OllamaClient(registry_path=None, opener=self.transport)
         self.assertIn("NOT APPROVED", client.status_summary())
+
+
+class ActiveModelTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.state_path = Path(self.tmp.name) / "company_state.json"
+        self.transport = FakeTransport({"/api/tags": {"models": [
+            {"name": "qwen2.5:3b", "size": 2 * 1024 ** 3},
+            {"name": "unapproved:3b", "size": 2 * 1024 ** 3},
+            {"name": "gemma4:26b", "size": int(17.33 * 1024 ** 3)},
+        ]}})
+        self.profile = FakeHardwareProfile({
+            "qwen2.5:3b": 2.0,
+            "unapproved:3b": 2.0,
+            "gemma4:26b": 17.33,
+        })
+        self.registry = _registry_with(["qwen2.5:3b", "gemma4:26b", "missing:3b"])
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def client(self) -> OllamaClient:
+        return OllamaClient(registry_path=self.registry, opener=self.transport,
+                            state_path=self.state_path)
+
+    def test_use_accepts_approved_installed_model_that_fits(self):
+        self.client().use_model("qwen2.5:3b", self.profile)
+        self.assertEqual(self.client().active_model(), "qwen2.5:3b")
+
+    def test_use_refuses_unapproved_model(self):
+        with self.assertRaisesRegex(ModelNotApproved, "licence check failed"):
+            self.client().use_model("unapproved:3b", self.profile)
+
+    def test_use_checks_licence_before_contacting_ollama(self):
+        client = self.client()
+        with self.assertRaises(ModelNotApproved):
+            client.use_model("unapproved:3b", self.profile)
+        self.assertEqual(self.transport.calls, [])
+
+    def test_use_refuses_oversized_model_with_size_and_machine_total(self):
+        with self.assertRaises(ModelDoesNotFit) as ctx:
+            self.client().use_model("gemma4:26b", self.profile)
+        self.assertIn("17.33 GB", str(ctx.exception))
+        self.assertIn("15.71 GB", str(ctx.exception))
+
+    def test_use_refuses_model_that_is_not_installed(self):
+        with self.assertRaisesRegex(ModelNotInstalled, "installation check failed"):
+            self.client().use_model("missing:3b", self.profile)
+
+    def test_persisted_choice_survives_reload_and_preserves_state(self):
+        self.state_path.write_text(json.dumps({"ollama_status": "READY"}),
+                                   encoding="utf-8")
+        self.client().use_model("qwen2.5:3b", self.profile)
+        reloaded = self.client()
+        self.assertEqual(reloaded.active_model(), "qwen2.5:3b")
+        state = json.loads(self.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["ollama_status"], "READY")
 
 
 if __name__ == "__main__":

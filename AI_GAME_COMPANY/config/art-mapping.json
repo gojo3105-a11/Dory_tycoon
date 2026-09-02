@@ -30,6 +30,34 @@
       "archiveName": "kenney_ui-pack.zip",
       "sourceFile": "PNG/Blue/Default/button_rectangle_depth_flat.png",
       "why": "Buttons were an Image with NO sprite at all - a hard-cornered solid rectangle, which reads as unfinished next to the Kenney art around it. The depth_flat variant has a bottom lip that makes a button look pressable, and being flat it survives being 9-sliced and tinted. Rectangle over round because the labels are words (Restart, Home, Shop), not icons."
+    },
+    {
+      "target": "Assets/Common/Art/UI/button_green.png",
+      "packId": "kenney-ui-pack",
+      "archiveName": "kenney_ui-pack.zip",
+      "sourceFile": "PNG/Green/Default/button_rectangle_depth_flat.png",
+      "why": "Green marks the primary action on each screen and the shop's buy/equip controls, giving the most important next step a consistent positive cue. It uses the same depth_flat rectangle as the blue fallback so every button keeps the same silhouette and pressable bottom lip."
+    },
+    {
+      "target": "Assets/Common/Art/UI/button_yellow.png",
+      "packId": "kenney-ui-pack",
+      "archiveName": "kenney_ui-pack.zip",
+      "sourceFile": "PNG/Yellow/Default/button_rectangle_depth_flat.png",
+      "why": "Yellow identifies the shop action, tying it to the game's gold coin economy without competing with green primary actions. The matching depth_flat rectangle keeps the colour semantic while preserving the established button shape."
+    },
+    {
+      "target": "Assets/Common/Art/UI/button_red.png",
+      "packId": "kenney-ui-pack",
+      "archiveName": "kenney_ui-pack.zip",
+      "sourceFile": "PNG/Red/Default/button_rectangle_depth_flat.png",
+      "why": "Red is reserved for close and other stop-or-exit actions, making those controls distinct from progression and purchase actions. Using the same depth_flat rectangle keeps the warning role readable without introducing a different visual style."
+    },
+    {
+      "target": "Assets/Common/Art/UI/button_grey.png",
+      "packId": "kenney-ui-pack",
+      "archiveName": "kenney_ui-pack.zip",
+      "sourceFile": "PNG/Grey/Default/button_rectangle_depth_flat.png",
+      "why": "Grey provides a quiet treatment for secondary and disabled actions so they sit behind green primary controls in the visual hierarchy. It retains the same depth_flat geometry, allowing state and priority to change without changing button dimensions."
     }
   ],
   "deliberatelyNotMapped": [

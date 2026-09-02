@@ -44,6 +44,14 @@ class ModelNotApproved(RuntimeError):
     """Section 8: this specific model ID is not APPROVED in the registry."""
 
 
+class ModelNotInstalled(RuntimeError):
+    """The requested model is not present in the local Ollama inventory."""
+
+
+class ModelDoesNotFit(RuntimeError):
+    """The requested model cannot be loaded within this machine's RAM budget."""
+
+
 @dataclass
 class ModelInfo:
     name: str
@@ -55,11 +63,12 @@ class ModelInfo:
 class OllamaClient:
     def __init__(self, base_url: str = DEFAULT_URL, *, local_only: bool = True,
                  registry_path: Path | None = None, timeout: float = 30.0,
-                 opener=None):
+                 opener=None, state_path: Path | None = None):
         self.base_url = base_url.rstrip("/")
         self.local_only = local_only
         self.registry_path = registry_path
         self.timeout = timeout
+        self.state_path = state_path
         # Injectable so the licence and local-only gates can be tested without
         # a running server.
         self._opener = opener or self._urlopen
@@ -124,6 +133,55 @@ class OllamaClient:
                 quantization=details.get("quantization_level", ""),
             ))
         return models
+
+    # ---- active model ---------------------------------------------------
+
+    def active_model(self) -> str | None:
+        """Return the persisted model choice, if one has been made."""
+        if not self.state_path or not self.state_path.is_file():
+            return None
+        state = json.loads(self.state_path.read_text(encoding="utf-8-sig"))
+        model = state.get("active_ollama_model")
+        return str(model) if model else None
+
+    def use_model(self, model: str, hardware_profile: Any) -> None:
+        """Validate and persist a model without ever pulling model weights.
+
+        Installation, licensing, and loadability are independent gates. All
+        three pass before the state file is touched, so a refused change leaves
+        the previous working choice intact.
+        """
+        # Keep the single authoritative licence decision in require_approved().
+        try:
+            self.require_approved(model)
+        except ModelNotApproved as exc:
+            raise ModelNotApproved(f"licence check failed: {exc}") from exc
+
+        installed = {entry.name: entry for entry in self.list_models()}
+        if model not in installed:
+            raise ModelNotInstalled(
+                f"installation check failed: '{model}' is not installed in Ollama"
+            )
+
+        recorded_sizes = dict(hardware_profile.ollama_model_sizes)
+        size_gb = recorded_sizes.get(model, installed[model].size_gb)
+        fit, why = hardware_profile.model_fit(size_gb)
+        if fit not in ("VIABLE", "LIMITED"):
+            raise ModelDoesNotFit(
+                f"RAM fit check failed for '{model}': model size {size_gb:.2f} GB, "
+                f"machine total {hardware_profile.ram_total_gb:.2f} GB. {why}"
+            )
+
+        if not self.state_path:
+            raise ValueError("a state_path is required to persist the active Ollama model")
+        state = {}
+        if self.state_path.is_file():
+            state = json.loads(self.state_path.read_text(encoding="utf-8-sig"))
+        state["active_ollama_model"] = model
+        self.state_path.parent.mkdir(parents=True, exist_ok=True)
+        self.state_path.write_text(
+            json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
 
     # ---- licence gate ----------------------------------------------------
 

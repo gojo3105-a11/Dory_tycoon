@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared task board for Claude and Codex. Since 2026-09-02 the user's standing rule is that ALL coding is requested from Codex: Claude writes the spec here and reviews the diff. 'files' is the allowlist the diff is checked against - and when a task edits a GENERATOR, its committed OUTPUT belongs in that list too, or verifying the change reads as going out of bounds. Run one with: python -m company.orchestrator.main team run --task <id>",
+  "_comment": "Shared task board for Claude and Codex. 'owner' decides who implements a task; 'files' is the allowlist its diff is checked against. Run one with: python -m company.orchestrator.main team run --task <id>",
   "_version": 1,
   "tasks": [
     {
@@ -141,7 +141,7 @@
       "id": "CODEX-GEMINI1",
       "title": "Gemini design adapter (free tier only, never escalates)",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "Add company/orchestrator/gemini_client.py so design work can be requested from Gemini's free tier. Model it on the two adapters already in this repo - ollama_client.py and codex_runner.py - which enforce their cost rules in code rather than in prose. Text prompts return text; image prompts return PNG bytes the caller writes under AI_GAME_COMPANY/generated/.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/gemini_client.py",
@@ -163,7 +163,8 @@
         "Endpoint shape, verified from this container on 2026-09-02: GET https://generativelanguage.googleapis.com/v1beta/models returns 403 PERMISSION_DENIED with 'Please use API Key' when unauthenticated - so the host is reachable and only the key is missing. Use that same host.",
         "Google's own pricing/rate-limit page (ai.google.dev) is BLOCKED by this environment's egress proxy, so the free tier could not be confirmed from a first-party source. Do not write a comment claiming specific free quotas. Write the code so that exceeding quota fails loudly instead.",
         "Do NOT call the API during the tests. There is no key here and a test that needs one is a test that never runs.",
-        "Login/key setup is a HUMAN_GATE (initial_gemini_login in company_policy.json). Report it, never perform it."
+        "Login/key setup is a HUMAN_GATE (initial_gemini_login in company_policy.json). Report it, never perform it.",
+        "2026-09-02 RUN: done and committed as e1ade1b, in the same commit as CODEX-OFFICE1 and CODEX-OLLAMA1. Status set BY HAND for the same reason - the codex_runner bug left the board stale. Verified from the commit: the key is read only through the env var named by policy gemini_api_key_env, key_status reports PRESENT/ABSENT and never a value, allow_gemini_design raises PolicyViolation before any request, a model outside gemini_free_tier_models raises GeminiModelNotAllowed, 429 raises GeminiLimited with no retry against another model or tier, and the transport is injectable urllib with no new dependency. test_gemini_client.py: 17 tests, all pass. REVIEW, not DONE - no key exists yet (initial_gemini_login is still an open HUMAN_GATE), so not one line of this has spoken to Google. The free tier itself is still unconfirmed from a first-party source: ai.google.dev is blocked by this container's egress proxy."
       ],
       "changed_files": [],
       "last_run": ""
@@ -203,9 +204,13 @@
         "Reports/dashboard.html is a TRACKED file and is in your allowlist for exactly this reason: you should regenerate it to check your work, and without it listed that correct action would have been reported as going outside the allowlist.",
         "User confirmed 2026-09-02 that the HTML UI's visual direction is 'office' and that Codex builds it. docs/OFFICE_VIEW_SPEC.md is the brief. If the whole page should later be restyled to match, that is a follow-up - do not widen this task to a full redesign, since the information density of the roster and the pipeline sections is what makes the page useful.",
         "2026-09-02 RUN: Codex finished this task and reported that all 46 dashboard tests pass and that it regenerated Reports/dashboard.html. The run was then thrown away by a bug in codex_runner._exec (the usage-limit check ran before the output file was read), so the CLI reported CODEX_LIMITED with exit code 4 and this board was left saying in_progress. The bug is fixed - a limit only fails a run that also produced nothing usable. Status set to review BY HAND, not by a run: the code is in the working tree on the build PC, so do NOT re-run this task and spend quota on work that is already done.",
-        "changed_files is empty because no run recorded it, not because nothing changed. The real list comes from the PC's `git diff --name-only` at commit time; expect it to be the three allowlisted files. REVIEW, not DONE - nothing here has been through `orchestrator build`."
+        "Committed as e1ade1b. changed_files below was read back from that commit, not recorded by a run. REVIEW, not DONE - the section renders in the regenerated Reports/dashboard.html and its tests pass, but nobody has looked at the page in a browser."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "Reports/dashboard.html"
+      ],
       "last_run": ""
     },
     {
@@ -295,7 +300,7 @@
       "id": "CODEX-START1",
       "title": "A start button on every waiting task, not one dropdown",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "The control panel can already run a Codex task, but only through a single <select> of task ids. Put the button on the task itself: every waiting row in the 공유 작업판 section gets its own start button, so you press the thing you are looking at instead of matching an id in a dropdown.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
@@ -318,16 +323,21 @@
         "Read dashboard.py fully first. _control_html() builds the panel and holds the script; the board rows are built in render() near the 'lanes' list. The button markup belongs with the rows, the script stays in _control_html - so render() needs to know whether a token is present, which it already does.",
         "server.py needs NO change and is not in your allowlist. ACTIONS['team-run'] already exists and Runner.valid_arg already checks that the id is a real Codex-owned task, so the endpoint is done.",
         "Do not add a confirmation dialog. Starting a task is reversible - run_task reverts nothing and commits nothing - and a prompt on every press would be friction for no safety.",
-        "CODEX-OFFICE1 also edits dashboard.py. There is no conflict: only one job runs at a time, so whichever runs second simply builds on the first. Do not try to do that task's work here."
+        "CODEX-OFFICE1 also edits dashboard.py. There is no conflict: only one job runs at a time, so whichever runs second simply builds on the first. Do not try to do that task's work here.",
+        "2026-09-02 RUN: done and committed as e1ade1b. Status set BY HAND, not by a run - the same codex_runner bug that misreported CODEX-OFFICE1 left this one stuck at in_progress too. Verified from the commit: _task_html renders a per-row button with data-act=\"team-run\", labels 작업 시작 / 다시 실행, disabled with the blocking ids for unmet dependencies, only for codex-owned non-done tasks, and only when served. test_dashboard.py is up from 38 to 46 tests and all pass. REVIEW, not DONE - nobody has pressed one of these buttons in a browser yet."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "Reports/dashboard.html"
+      ],
       "last_run": ""
     },
     {
       "id": "CODEX-OLLAMA1",
       "title": "Choose which Ollama model is in use, without breaking the licence gate",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "ollama_client can list installed models and knows which ids are APPROVED, but nothing can SELECT one - there is no concept of an active model anywhere. Add that, so the model can be changed without editing code, and so the dashboard can say which one is in use.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/ollama_client.py",
@@ -347,9 +357,14 @@
       "notes": [
         "Read ollama_client.py fully first. list_models(), approved_models() and require_approved() already exist and the local-only guard (NonLocalEndpointRefused) must stay - do not widen it.",
         "hardware.py already has model_fit() and ollama_model_sizes. Use them rather than re-deriving sizes.",
-        "This is the capability only. Wiring it into the web panel is CODEX-AICTL1's job and dashboard.py is not in your allowlist."
+        "This is the capability only. Wiring it into the web panel is CODEX-AICTL1's job and dashboard.py is not in your allowlist.",
+        "2026-09-02 RUN: done and committed as e1ade1b, alongside CODEX-OFFICE1. Status set BY HAND for the same reason as that task. Verified from the commit: ollama_client gained active_model()/use_model() with all three refusals separated (approved / installed / fits in RAM), main.py gained `ollama --list` and `ollama --use MODEL`, and test_ollama_client.py is up from 15 to 21 tests, all passing. REVIEW, not DONE - `--use` has not been run against a real Ollama on the PC, and gemma4:26b is still the recorded model, so the oversized-model refusal is untested against the machine it was written for."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "AI_GAME_COMPANY/company/orchestrator/ollama_client.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_ollama_client.py"
+      ],
       "last_run": ""
     },
     {
