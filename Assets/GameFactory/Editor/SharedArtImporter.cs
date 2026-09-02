@@ -31,6 +31,10 @@ namespace GameFactory.Editor
             new System.Collections.Generic.Dictionary<string, Vector4>
             {
                 { "button", new Vector4(4f, 8f, 4f, 4f) },
+                { "button_green", new Vector4(4f, 8f, 4f, 4f) },
+                { "button_yellow", new Vector4(4f, 8f, 4f, 4f) },
+                { "button_red", new Vector4(4f, 8f, 4f, 4f) },
+                { "button_grey", new Vector4(4f, 8f, 4f, 4f) },
             };
 
         /// <summary>
