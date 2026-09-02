@@ -1,3 +1,4 @@
+using System.Globalization;
 using GameFactory.Core;
 using UnityEngine;
 using UnityEngine.UI;
@@ -16,7 +17,15 @@ namespace GameFactory.UI
     {
         [SerializeField] private GameObject shopPanel;
         [SerializeField] private Text currencyText;
-        [SerializeField] private Button openButton;
+
+        /// <summary>
+        /// Every button that opens the shop. There are two - one on the title
+        /// screen and one on the game-over card - because the shop was
+        /// previously reachable only after dying, so a player who had just
+        /// earned coins had to lose a run to spend them.
+        /// </summary>
+        [SerializeField] private Button[] openButtons;
+
         [SerializeField] private Button coinMagnetButton;
         [SerializeField] private Text coinMagnetButtonLabel;
         [SerializeField] private Button redSkinButton;
@@ -27,11 +36,11 @@ namespace GameFactory.UI
         private PanelTransition shopTransition;
 
         /// <summary>Wires structural references. Called at edit time by SceneGenerator.</summary>
-        public void SetReferences(GameObject panel, Text currency, Button open, Button coinMagnet, Text coinMagnetLabel, Button redSkin, Text redSkinLabel, Button close)
+        public void SetReferences(GameObject panel, Text currency, Button[] open, Button coinMagnet, Text coinMagnetLabel, Button redSkin, Text redSkinLabel, Button close)
         {
             shopPanel = panel;
             currencyText = currency;
-            openButton = open;
+            openButtons = open;
             coinMagnetButton = coinMagnet;
             coinMagnetButtonLabel = coinMagnetLabel;
             redSkinButton = redSkin;
@@ -50,7 +59,14 @@ namespace GameFactory.UI
             gameId = GameManager.Instance != null ? GameManager.Instance.GameId : string.Empty;
             shopTransition = shopPanel != null ? shopPanel.GetComponent<PanelTransition>() : null;
 
-            if (openButton != null) openButton.onClick.AddListener(Open);
+            if (openButtons != null)
+            {
+                foreach (Button open in openButtons)
+                {
+                    if (open != null) open.onClick.AddListener(Open);
+                }
+            }
+
             if (coinMagnetButton != null) coinMagnetButton.onClick.AddListener(HandleCoinMagnetClicked);
             if (redSkinButton != null) redSkinButton.onClick.AddListener(HandleRedSkinClicked);
             if (closeButton != null) closeButton.onClick.AddListener(Close);
@@ -106,24 +122,38 @@ namespace GameFactory.UI
 
         private void Refresh()
         {
-            if (currencyText != null) currencyText.text = SaveSystem.GetInt(gameId, ShopKeys.Currency).ToString();
+            int currency = SaveSystem.GetInt(gameId, ShopKeys.Currency);
+            if (currencyText != null) currencyText.text = currency.ToString("N0", CultureInfo.InvariantCulture);
 
+            bool magnetOwned = IsOwned(ShopKeys.CoinMagnetOwned);
             if (coinMagnetButtonLabel != null)
             {
-                coinMagnetButtonLabel.text = IsOwned(ShopKeys.CoinMagnetOwned) ? "보유중" : $"구매 ({ShopKeys.CoinMagnetCost})";
+                coinMagnetButtonLabel.text = magnetOwned ? "보유중" : $"{ShopKeys.CoinMagnetCost}";
             }
+            // Dimmed but still priced: hiding an item the player cannot afford
+            // would hide the reason to keep playing. Owned is disabled too -
+            // there is nothing left to do with it.
+            SetAffordable(coinMagnetButton, !magnetOwned && currency >= ShopKeys.CoinMagnetCost);
 
+            bool skinOwned = IsOwned(ShopKeys.RedSkinOwned);
             if (redSkinButtonLabel != null)
             {
-                if (!IsOwned(ShopKeys.RedSkinOwned))
+                if (!skinOwned)
                 {
-                    redSkinButtonLabel.text = $"구매 ({ShopKeys.RedSkinCost})";
+                    redSkinButtonLabel.text = $"{ShopKeys.RedSkinCost}";
                 }
                 else
                 {
                     redSkinButtonLabel.text = SaveSystem.GetInt(gameId, ShopKeys.RedSkinEquipped) != 0 ? "장착됨" : "장착";
                 }
             }
+            // An owned skin stays live - the button toggles equip/unequip.
+            SetAffordable(redSkinButton, skinOwned || currency >= ShopKeys.RedSkinCost);
+        }
+
+        private static void SetAffordable(Button button, bool affordable)
+        {
+            if (button != null) button.interactable = affordable;
         }
     }
 }
