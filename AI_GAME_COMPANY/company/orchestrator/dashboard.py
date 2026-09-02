@@ -13,9 +13,9 @@ That is section 38 made visible: a claim with nothing behind it is not a
 status, and a dashboard that quietly upgrades "not checked" to "OK" is worse
 than no dashboard.
 
-Nothing here probes the network or the machine. It reads committed files, so
-it produces the same answer from the build PC and from a container that has
-never seen Unity.
+Nothing here probes the network or launches a tool. It reads committed files
+and, for Gemini, reports only whether the policy-named environment variable
+contains a key; the key itself is never retained or rendered.
 """
 
 from __future__ import annotations
@@ -24,12 +24,15 @@ import base64
 import html
 import io
 import json
+import os
 import re
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from company.orchestrator.teamwork import Task, TaskBoard
 
 # Optional: only used to shrink the multi-megabyte reference photos. Absent on
 # a machine that never installed it, and the gallery degrades to "too large to
@@ -57,6 +60,29 @@ STATE_LABEL = {
     GATED: "대기 중",
     BLOCKED: "사용 불가",
     UNKNOWN: "확인 불가",
+}
+
+# Agent names can include a model id, so departments are assigned by prefix.
+# Keep this as the single mapping table: new integrations that do not appear
+# here remain visible in the fallback department instead of disappearing.
+DEPARTMENT_BY_PREFIX = {
+    "Claude Code": "dev",
+    "Codex CLI": "dev",
+    "Gemini": "design",
+    "Stable Diffusion": "design",
+    "Qwen-Image": "design",
+    "Ollama": "lab",
+    "Blender": "modeling",
+    "유료 API": "outsource",
+}
+
+DEPARTMENT_LABEL = {
+    "dev": "기획개발실",
+    "design": "디자인실",
+    "lab": "사내 연구소",
+    "modeling": "3D 모델링실",
+    "outsource": "외주",
+    "etc": "기타",
 }
 
 
@@ -265,6 +291,26 @@ def build_agents(profile: dict[str, Any], policy: dict[str, Any],
             + "로그인 상태는 여기서 확인하지 않습니다. PC에서 "
               "'orchestrator codex --doctor' 로 확인하세요.",
             str(codex.get("version", "")), [profile_evidence, policy_evidence]))
+
+    # --- Gemini design ---
+    # Only the policy-selected environment variable is inspected. Its value is
+    # never copied into the snapshot, logs, or rendered HTML.
+    gemini_key_env = str(policy.get("gemini_api_key_env") or "")
+    if policy.get("allow_gemini_design") is not True:
+        agents.append(Agent(
+            "Gemini", "디자인 · 이미지 생성", BLOCKED,
+            "정책 allow_gemini_design 이 true 가 아닙니다.",
+            "", [policy_evidence]))
+    elif gemini_key_env and os.environ.get(gemini_key_env):
+        agents.append(Agent(
+            "Gemini", "디자인 · 이미지 생성", READY,
+            f"환경 변수 {gemini_key_env} 에 키가 있습니다. 값은 표시하지 않습니다.",
+            "", [policy_evidence]))
+    else:
+        agents.append(Agent(
+            "Gemini", "디자인 · 이미지 생성", GATED,
+            f"initial_gemini_login 게이트가 남아 있습니다. {gemini_key_env or '정책에 지정된 환경 변수'}에 키가 없습니다.",
+            "", [policy_evidence]))
 
     # --- Ollama and whatever model is actually installed ---
     api = profile.get("ollamaApi", {}) if isinstance(profile.get("ollamaApi"), dict) else {}
@@ -678,6 +724,79 @@ section{margin-top:44px;}
 .s-blocked{--st:var(--blocked); --st-soft:var(--blocked-soft);}
 .s-unknown{--st:var(--unknown); --st-soft:var(--unknown-soft);}
 
+/* ---- department office ---- */
+.office{max-width:100%; overflow:hidden;}
+.office-building{display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:2px; padding:2px; background:var(--line); border:2px solid var(--ink);
+  border-radius:3px;}
+.office-room{min-width:0; padding:14px; background:var(--surface);}
+.office-room--etc{grid-column:1/-1;}
+.office-room--outsource{margin-top:14px; border:2px dashed var(--unknown);
+  border-radius:3px; background:var(--surface);}
+.office-room-head{display:flex; flex-wrap:wrap; justify-content:space-between;
+  align-items:baseline; gap:4px 12px; margin-bottom:12px;}
+.office-room-head h3{font-size:13px; letter-spacing:.04em; color:var(--ink);}
+.office-room-count{font-size:11.5px; color:var(--muted);}
+.office-seats{display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;}
+.office-empty{min-height:112px; display:grid; place-items:center; text-align:center;
+  border:1px dashed var(--line); color:var(--muted); font-size:12px;}
+.office-agent{flex:1 1 118px; min-width:0; max-width:160px; padding:8px;
+  border:2px solid var(--st); border-radius:3px;
+  background:var(--surface-2); color:var(--ink); text-decoration:none;
+  text-align:center;}
+.office-agent:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.office-agent--ready{--st:var(--ok);}
+.office-agent--gated{--st:var(--gate);}
+.office-agent--blocked{--st:var(--blocked);}
+.office-agent--unknown{--st:var(--unknown); border-style:dashed;}
+.office-character{display:block; width:100%; max-width:112px; height:auto; margin:0 auto;
+  overflow:visible;}
+.office-desk{fill:var(--sunk); stroke:var(--line);}
+.office-chair{fill:var(--surface); stroke:var(--ink-2);}
+.office-person{fill:var(--ink-2); stroke:var(--ink);}
+.office-face{fill:var(--surface); stroke:var(--ink);}
+.office-limb{fill:none; stroke:var(--ink-2); stroke-width:7; stroke-linecap:round;}
+.office-agent--dev .office-person{fill:var(--accent);}
+.office-agent--dev .office-limb{stroke:var(--accent);}
+.office-agent--design .office-person{fill:var(--gate);}
+.office-agent--design .office-limb{stroke:var(--gate);}
+.office-agent--lab .office-person{fill:var(--ok);}
+.office-agent--lab .office-limb{stroke:var(--ok);}
+.office-agent--modeling .office-person{fill:var(--blocked);}
+.office-agent--modeling .office-limb{stroke:var(--blocked);}
+.office-agent--outsource .office-person{fill:var(--unknown);}
+.office-agent--outsource .office-limb{stroke:var(--unknown);}
+.office-screen{fill:var(--surface); stroke:var(--ink-2);}
+.office-screen--on{fill:var(--ok-soft); stroke:var(--ok);}
+.office-screen--wait{fill:var(--gate-soft); stroke:var(--gate);}
+.office-cursor{fill:var(--ok); animation:office-cursor 1s steps(1,end) infinite;}
+.office-agent--ready .office-body{transform-origin:56px 57px;
+  animation:office-work 1.1s ease-in-out infinite;}
+.office-agent--ready .office-arm-left{transform-origin:45px 59px;
+  animation:office-type-left .55s ease-in-out infinite alternate;}
+.office-agent--ready .office-arm-right{transform-origin:67px 59px;
+  animation:office-type-right .55s ease-in-out infinite alternate;}
+.office-alert{transform-origin:83px 19px; animation:office-alert 1.8s ease-in-out infinite;}
+.office-alert-bubble{fill:var(--gate-soft); stroke:var(--gate);}
+.office-alert-mark{fill:var(--gate);}
+.office-agent--blocked .office-person,.office-agent--blocked .office-limb{
+  fill:var(--unknown); stroke:var(--unknown);}
+.office-agent--blocked .office-limb{fill:none;}
+.office-chair--pushed{transform:translate(25px,8px);}
+.office-agent--unknown .office-silhouette{fill:none; stroke:var(--unknown);
+  stroke-width:3; stroke-dasharray:4 4; opacity:.55;
+  animation:office-unknown 4s ease-in-out infinite;}
+.office-agent-name{display:block; overflow-wrap:anywhere; font-size:11.5px;
+  font-weight:600; line-height:1.35;}
+.office-agent-state{display:block; margin-top:3px; color:var(--st);
+  font-size:11px; line-height:1.3;}
+@keyframes office-work{50%{transform:translateY(-1px);}}
+@keyframes office-type-left{to{transform:rotate(9deg) translateY(2px);}}
+@keyframes office-type-right{to{transform:rotate(-9deg) translateY(-2px);}}
+@keyframes office-cursor{50%{opacity:0;}}
+@keyframes office-alert{50%{transform:scale(1.12);}}
+@keyframes office-unknown{50%{opacity:.25;}}
+
 /* ---- board ---- */
 .board{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px;}
 .lane{background:var(--surface); border:1px solid var(--line); border-radius:3px;
@@ -694,6 +813,10 @@ section{margin-top:44px;}
 /* Wraps rather than scrolls: a clipped path with a hidden scrollbar reads as
    a broken layout, and only the filename identifies the file anyway. */
 .task .files{margin-top:5px; font-size:11.5px; color:var(--muted); line-height:1.7;}
+.task-action{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:9px;}
+.task-action .btn{padding:6px 11px; font-size:12px;}
+.task-blockers{font-size:11.5px; color:var(--blocked);}
+.task-blockers code{font-size:11px;}
 .tag{font-size:11px; font-weight:600; letter-spacing:0.05em; padding:2px 8px;
      border-radius:2px; background:var(--st-soft); color:var(--st); white-space:nowrap;}
 .s-todo{--st:var(--unknown); --st-soft:var(--unknown-soft);}
@@ -804,7 +927,9 @@ section{margin-top:44px;}
 .running::before{content:""; width:7px; height:7px; border-radius:50%;
                  background:currentColor; animation:blip 1s ease-in-out infinite;}
 @keyframes blip{50%{opacity:.25;}}
-@media (prefers-reduced-motion: reduce){.running::before{animation:none;}}
+@media (prefers-reduced-motion: reduce){
+  .running::before,.office-agent *{animation:none!important;}
+}
 
 .warn{margin-top:14px; padding:14px 18px; border-radius:3px;
       background:var(--blocked-soft); border-left:4px solid var(--blocked);
@@ -821,6 +946,9 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
   .stamp{text-align:left;}
   .log div{grid-template-columns:auto minmax(0,1fr); }
   .log .when{grid-column:1/-1;}
+  .office-building{grid-template-columns:minmax(0,1fr);}
+  .office-room--etc{grid-column:auto;}
+  .office-agent{max-width:none; flex-basis:104px;}
 }
 """
 
@@ -830,19 +958,96 @@ def _agent_row(agent: Agent) -> str:
         "".join(f"<code>{e(path)}</code>" for path in agent.evidence)
         if agent.evidence else '<span class="none">근거 없음 - 확인된 파일이 없습니다</span>'
     )
-    version = f'<div class="ver mono">{e(agent.version)}</div>' if agent.version else ""
-    return f"""      <div class="row s-{agent.state}">
+    version = (f'\n          <div class="ver mono">{e(agent.version)}</div>'
+               if agent.version else "")
+    return f"""      <div class="row s-{agent.state}" id="agent-{e(_agent_slug(agent.name))}">
         <div>
           <div class="who">{e(agent.name)}</div>
           <div class="role">{e(agent.role)}</div>
         </div>
         <div style="text-align:right">
-          <span class="pill">{e(STATE_LABEL[agent.state])}</span>
-          {version}
+          <span class="pill">{e(STATE_LABEL[agent.state])}</span>{version}
         </div>
         <div class="detail">{e(agent.detail)}</div>
         <div class="ev"><span class="k">근거</span>{evidence}</div>
       </div>"""
+
+
+def _agent_slug(name: str) -> str:
+    """A stable fragment shared by an office character and its roster row."""
+    return re.sub(r"[^\w]+", "-", name.lower(), flags=re.UNICODE).strip("-") or "agent"
+
+
+def _department_for_agent(name: str) -> str:
+    return next((department for prefix, department in DEPARTMENT_BY_PREFIX.items()
+                 if name.startswith(prefix)), "etc")
+
+
+def _character_svg(department: str, state: str) -> str:
+    """Procedural v1 character art, kept in one place for later replacement."""
+    desk = ('<rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/>'
+            '<path class="office-desk" d="M20 43v38M92 43v38"/>')
+    chair = '<path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/>'
+    head = '<circle class="office-face" cx="56" cy="52" r="10"/>'
+    torso = '<path class="office-person" d="M42 66q14-10 28 0v15H42z"/>'
+
+    if state == READY:
+        return (f'<svg class="office-character" viewBox="0 0 112 90" aria-hidden="true">'
+                f'{desk}<rect class="office-screen office-screen--on" x="39" y="9" width="34" height="22" rx="2"/>'
+                '<rect class="office-cursor" x="55" y="16" width="2" height="8"/>'
+                f'{chair}<g class="office-body">{head}{torso}'
+                '<path class="office-limb office-arm-left" d="M45 66l-9 9"/>'
+                '<path class="office-limb office-arm-right" d="M67 66l9 9"/></g></svg>')
+    if state == GATED:
+        return (f'<svg class="office-character" viewBox="0 0 112 90" aria-hidden="true">'
+                f'{desk}<rect class="office-screen office-screen--wait" x="39" y="9" width="34" height="22" rx="2"/>'
+                '<g class="office-alert"><circle class="office-alert-bubble" cx="86" cy="17" r="10"/>'
+                '<path class="office-alert-mark" d="M84 11h4l-1 8h-2zm0 10h4v4h-4z"/></g>'
+                f'<g transform="translate(-23 5)">{head}{torso}'
+                '<path class="office-limb" d="M45 65l-5 14M67 65l5 14"/></g></svg>')
+    if state == BLOCKED:
+        return (f'<svg class="office-character" viewBox="0 0 112 90" aria-hidden="true">'
+                f'{desk}<rect class="office-screen" x="39" y="9" width="34" height="22" rx="2"/>'
+                f'<g class="office-chair--pushed">{chair}{head}{torso}'
+                '<path class="office-limb" d="M45 67l-7 12M67 67l7 12"/></g></svg>')
+    return (f'<svg class="office-character" viewBox="0 0 112 90" aria-hidden="true">'
+            f'{desk}<g class="office-silhouette"><circle cx="56" cy="52" r="10"/>'
+            '<path d="M42 81V66q14-10 28 0v15M45 66l-7 12M67 66l7 12"/></g></svg>')
+
+
+def _office_html(agents: list[Agent]) -> str:
+    grouped = {department: [] for department in DEPARTMENT_LABEL}
+    for agent in agents:
+        grouped[_department_for_agent(agent.name)].append(agent)
+
+    def room(department: str) -> str:
+        occupants = grouped[department]
+        working = sum(agent.state == READY for agent in occupants)
+        room_classes = f"office-room office-room--{department}"
+        if occupants:
+            seats = []
+            for agent in occupants:
+                accessible = f"{agent.name} - {STATE_LABEL[agent.state]}"
+                seats.append(
+                    f'<a class="office-agent office-agent--{department} office-agent--{agent.state}" '
+                    f'href="#agent-{e(_agent_slug(agent.name))}" title="{e(accessible)}" '
+                    f'aria-label="{e(accessible)}">{_character_svg(department, agent.state)}'
+                    f'<span class="office-agent-name">{e(agent.name)}</span>'
+                    f'<span class="office-agent-state">{e(STATE_LABEL[agent.state])}</span></a>')
+            body = f'<div class="office-seats">{"".join(seats)}</div>'
+        else:
+            body = '<div class="office-empty">배정된 AI 없음</div>'
+        return (f'<div class="{room_classes}"><div class="office-room-head">'
+                f'<h3>{e(DEPARTMENT_LABEL[department])}</h3>'
+                f'<span class="office-room-count">{len(occupants)}명 중 {working}명 작업 중</span>'
+                f'</div>{body}</div>')
+
+    internal = "".join(room(department) for department in
+                       ("dev", "design", "lab", "modeling"))
+    if grouped["etc"]:
+        internal += room("etc")
+    return (f'<div class="office"><div class="office-building">{internal}</div>'
+            f'{room("outsource")}</div>')
 
 
 def _short_path(pattern: str) -> str:
@@ -857,7 +1062,8 @@ def _short_path(pattern: str) -> str:
     return f"{tail}/" if pattern.rstrip().endswith("/") else tail
 
 
-def _task_row(task: dict[str, Any]) -> str:
+def _task_row(task: dict[str, Any], served: bool = False,
+              unmet_dependencies: list[str] | None = None) -> str:
     status = str(task.get("status", "todo"))
     css = "s-blocked-tag" if status == "blocked" else f"s-{status}"
     label = {"todo": "대기", "in_progress": "진행 중", "review": "검토 필요",
@@ -867,13 +1073,28 @@ def _task_row(task: dict[str, Any]) -> str:
     files = " · ".join(_short_path(p) for p in paths[:4])
     if len(paths) > 4:
         files += f" 외 {len(paths) - 4}개"
+
+    action = ""
+    if (served and task.get("owner") == "codex"
+            and status in ("todo", "in_progress", "blocked", "review")):
+        unmet = unmet_dependencies or []
+        disabled = ' disabled data-blocked="true"' if unmet else ""
+        button_label = "작업 시작" if status == "todo" else "다시 실행"
+        blockers = ""
+        if unmet:
+            ids = ", ".join(e(dependency) for dependency in unmet)
+            blockers = f'<span class="task-blockers">선행 작업: <code>{ids}</code></span>'
+        action = (f'\n          <div class="task-action">'
+                  f'<button class="btn task-run" type="button" data-act="team-run" '
+                  f'data-arg-value="{e(task.get("id", ""))}"{disabled}>'
+                  f'{button_label}</button>{blockers}</div>')
     return f"""        <div class="task">
           <div class="t">
             <span class="title">{e(task.get('title', ''))}</span>
             <span class="tag {css}">{e(label)}</span>
           </div>
           <div class="id mono">{e(task.get('id', ''))}</div>
-          <div class="files mono">{e(files)}</div>
+          <div class="files mono">{e(files)}</div>{action}
         </div>"""
 
 
@@ -992,7 +1213,7 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
   </section>
 
   <script>
-  (function () {{
+  document.addEventListener('DOMContentLoaded', () => {{
     const TOKEN = {json.dumps(token)};
     const term = document.getElementById('term');
     const busy = document.getElementById('busy');
@@ -1000,7 +1221,7 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
     let poll = null;
 
     function lock(on, label) {{
-      buttons.forEach(b => {{ b.disabled = on; }});
+      buttons.forEach(b => {{ b.disabled = on || b.dataset.blocked === 'true'; }});
       busy.className = on ? 'running' : '';
       busy.textContent = on ? (label + ' 실행 중') : '';
     }}
@@ -1008,8 +1229,10 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
     async function start(button) {{
       const action = button.dataset.act;
       const argId = button.dataset.arg;
-      const arg = argId ? document.getElementById(argId).value : '';
-      if (argId && !arg) {{ term.textContent = '선택할 항목이 없습니다.'; return; }}
+      const hasDirectArg = button.dataset.argValue !== undefined;
+      const arg = hasDirectArg ? button.dataset.argValue :
+        (argId ? document.getElementById(argId).value : '');
+      if ((argId || hasDirectArg) && !arg) {{ term.textContent = '선택할 항목이 없습니다.'; return; }}
 
       term.textContent = '';
       lock(true, button.textContent);
@@ -1056,7 +1279,7 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
     }}
 
     buttons.forEach(b => b.addEventListener('click', () => start(b)));
-  }})();
+  }});
   </script>
 """
 
@@ -1065,12 +1288,21 @@ def render(snapshot: Snapshot, control_token: str | None = None) -> str:
     counts = {state: sum(1 for a in snapshot.agents if a.state == state)
               for state in (READY, GATED, BLOCKED, UNKNOWN)}
 
+    office = _office_html(snapshot.agents)
     roster = "\n".join(_agent_row(agent) for agent in snapshot.agents)
+
+    task_models = [Task.from_dict(task) for task in snapshot.tasks]
+    task_board = TaskBoard(path=Path(), tasks=task_models)
+    unmet_by_id = {task.id: task_board.unmet_dependencies(task)
+                   for task in task_models if task.owner == "codex" and task.status != "done"}
 
     lanes = []
     for owner, label in (("claude", "Claude"), ("codex", "Codex")):
         owned = [t for t in snapshot.tasks if t.get("owner") == owner]
-        rows = "\n".join(_task_row(t) for t in owned) or \
+        rows = "\n".join(
+            _task_row(t, served=control_token is not None,
+                      unmet_dependencies=unmet_by_id.get(str(t.get("id", "")), []))
+            for t in owned) or \
             '<div class="task"><span class="files">배정된 작업이 없습니다.</span></div>'
         lanes.append(f"""      <div class="lane">
         <h3>{e(label)}<span class="count">{len(owned)}개</span></h3>
@@ -1181,6 +1413,14 @@ def render(snapshot: Snapshot, control_token: str | None = None) -> str:
 {control}
   <section>
     <div class="head">
+      <h2>부서 사무실</h2>
+      <span class="note">움직임과 자세가 실제 상태를 나타냅니다 · 캐릭터를 누르면 로스터로 이동</span>
+    </div>
+    {office}
+  </section>
+
+  <section>
+    <div class="head">
       <h2>연동된 AI</h2>
       <span class="note">근거 = 이 상태를 읽어온 파일</span>
     </div>
@@ -1263,8 +1503,8 @@ def render(snapshot: Snapshot, control_token: str | None = None) -> str:
 
   <footer>
     이 페이지는 <code>python -m company.orchestrator.main dashboard</code> 로 다시 생성합니다.
-    저장소에 커밋된 파일만 읽으므로 네트워크나 장비를 건드리지 않고, 빌드 PC에서든
-    Unity를 본 적 없는 컨테이너에서든 같은 답을 냅니다.<br>
+    네트워크나 도구를 실행하지 않고, 커밋된 파일과 정책이 지정한 Gemini 키의 존재 여부만
+    읽습니다. 키 값은 저장하거나 표시하지 않습니다.<br>
     빈 칸은 "이상 없음"이 아니라 "확인된 근거가 없음"입니다.
   </footer>
 </div>

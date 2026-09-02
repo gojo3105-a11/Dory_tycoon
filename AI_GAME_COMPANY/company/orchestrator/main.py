@@ -24,7 +24,8 @@ from company.orchestrator.codex_runner import (  # noqa: E402
 )
 from company.orchestrator.hardware import HardwareProfile  # noqa: E402
 from company.orchestrator.ollama_client import (  # noqa: E402
-    NonLocalEndpointRefused, OllamaClient,
+    ModelDoesNotFit, ModelNotApproved, ModelNotInstalled,
+    NonLocalEndpointRefused, OllamaClient, OllamaUnavailable,
 )
 from company.orchestrator.policy import Policy  # noqa: E402
 from company.orchestrator.report_generator import (  # noqa: E402
@@ -116,7 +117,7 @@ def cmd_doctor(_args: argparse.Namespace) -> int:
     return exit_code
 
 
-def cmd_ollama(_args: argparse.Namespace) -> int:
+def cmd_ollama(args: argparse.Namespace) -> int:
     """Is the local model gateway usable, and is any installed model allowed?
 
     Three separate questions that are easy to conflate: reachable, licensed
@@ -130,41 +131,51 @@ def cmd_ollama(_args: argparse.Namespace) -> int:
         client = OllamaClient(
             local_only=policy.allows("ollama_local_only"),
             registry_path=registry if registry.is_file() else None,
+            state_path=STATE_PATH,
         )
     except NonLocalEndpointRefused as exc:
         print(f"REFUSED: {exc}")
         return 2
 
-    print("=== OLLAMA ===")
-    print(client.status_summary())
-
     profile_path = CONFIG_DIR / "HARDWARE_PROFILE.json"
     if not profile_path.exists():
-        print("\nNo HARDWARE_PROFILE.json, so model sizes cannot be checked "
-              "against this machine's RAM.")
-        return 0
+        print("REFUSED: RAM fit check failed: no HARDWARE_PROFILE.json, so model "
+              "sizes cannot be checked against this machine's RAM.")
+        return 2
 
     profile = HardwareProfile.load(profile_path)
-    print(f"\n=== FITS IN RAM? ({profile.ram_total_gb:.1f} GB total, "
-          f"{profile.ram_free_gb:.1f} GB free) ===")
 
-    sizes = profile.ollama_model_sizes
-    if not sizes:
-        print("  no models recorded in the hardware profile")
+    if getattr(args, "use", None):
+        try:
+            client.use_model(args.use, profile)
+        except (ModelNotInstalled, ModelNotApproved, ModelDoesNotFit,
+                OllamaUnavailable) as exc:
+            print(f"REFUSED: {exc}")
+            return 2
+        print(f"Active Ollama model set to {args.use}")
         return 0
 
-    exit_code = 0
-    for name, size_gb in sizes:
-        fit, why = profile.model_fit(size_gb)
-        print(f"  {STATUS_MARK.get(fit, '[ ?? ]')} {name}")
-        print(f"         {why}")
-        if fit == "NOT_VIABLE":
-            exit_code = 1
+    try:
+        models = client.list_models()
+    except OllamaUnavailable as exc:
+        print(f"ERROR: installation check failed: {exc}")
+        return 1
 
-    tier, tier_why = profile.recommend_llm_tier()
-    print(f"\n  what fits instead: {tier or 'NONE'}")
-    print(f"    {tier_why}")
-    return exit_code
+    print("=== OLLAMA MODELS ===")
+    if not models:
+        print("  no models installed")
+        return 0
+
+    approved = client.approved_models()
+    active = client.active_model()
+    recorded_sizes = dict(profile.ollama_model_sizes)
+    for model in models:
+        size_gb = recorded_sizes.get(model.name, model.size_gb)
+        fit, _why = profile.model_fit(size_gb)
+        licence = "APPROVED" if model.name in approved else "NOT APPROVED"
+        selected = "ACTIVE" if model.name == active else "inactive"
+        print(f"  {model.name}  licence={licence}  RAM={fit}  active={selected}")
+    return 0
 
 
 def cmd_codex(args: argparse.Namespace) -> int:
@@ -511,8 +522,15 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("doctor", help="what this machine can actually run").set_defaults(func=cmd_doctor)
     sub.add_parser("status", help="state and queue, reconciled with disk").set_defaults(func=cmd_status)
-    sub.add_parser("ollama", help="local model gateway: reachable, licensed, fits in RAM"
-                   ).set_defaults(func=cmd_ollama)
+    ollama = sub.add_parser(
+        "ollama", help="list or select local models after licence and RAM checks"
+    )
+    ollama_actions = ollama.add_mutually_exclusive_group()
+    ollama_actions.add_argument("--list", action="store_true",
+                                help="list installed models (the default)")
+    ollama_actions.add_argument("--use", metavar="MODEL",
+                                help="persist the active installed, approved model")
+    ollama.set_defaults(func=cmd_ollama)
 
     codex = sub.add_parser("codex", help="independent reviewer: available, policy, login gate")
     codex.add_argument("--doctor", action="store_true",

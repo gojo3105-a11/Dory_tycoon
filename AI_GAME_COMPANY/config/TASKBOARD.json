@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared task board for Claude and Codex. Since 2026-09-02 the user's standing rule is that ALL coding is requested from Codex: Claude writes the spec here and reviews the diff. 'files' is the allowlist the diff is checked against - and when a task edits a GENERATOR, its committed OUTPUT belongs in that list too, or verifying the change reads as going out of bounds. Run one with: python -m company.orchestrator.main team run --task <id>",
+  "_comment": "Shared task board for Claude and Codex. 'owner' decides who implements a task; 'files' is the allowlist its diff is checked against. Run one with: python -m company.orchestrator.main team run --task <id>",
   "_version": 1,
   "tasks": [
     {
@@ -172,7 +172,7 @@
       "id": "CODEX-OFFICE1",
       "title": "Department office view on the dashboard",
       "owner": "codex",
-      "status": "todo",
+      "status": "in_progress",
       "goal": "Add one section to the dashboard that draws the connected AI as characters sitting in company departments, where each character's movement encodes that AI's real status. docs/OFFICE_VIEW_SPEC.md is the specification - read it first and follow it; it fixes the department mapping, the status-to-behaviour table and the constraints.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
@@ -293,7 +293,7 @@
       "id": "CODEX-START1",
       "title": "A start button on every waiting task, not one dropdown",
       "owner": "codex",
-      "status": "todo",
+      "status": "in_progress",
       "goal": "The control panel can already run a Codex task, but only through a single <select> of task ids. Put the button on the task itself: every waiting row in the 공유 작업판 section gets its own start button, so you press the thing you are looking at instead of matching an id in a dropdown.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
@@ -325,7 +325,7 @@
       "id": "CODEX-OLLAMA1",
       "title": "Choose which Ollama model is in use, without breaking the licence gate",
       "owner": "codex",
-      "status": "todo",
+      "status": "in_progress",
       "goal": "ollama_client can list installed models and knows which ids are APPROVED, but nothing can SELECT one - there is no concept of an active model anywhere. Add that, so the model can be changed without editing code, and so the dashboard can say which one is in use.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/ollama_client.py",

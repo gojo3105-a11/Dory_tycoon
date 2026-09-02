@@ -15,6 +15,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -68,8 +69,10 @@ def policy(**overrides):
         "use_claude_code": True,
         "use_codex_subscription": True,
         "allow_codex_write": True,
+        "allow_gemini_design": True,
+        "gemini_api_key_env": "TEST_GEMINI_API_KEY",
         "allow_local_image_generation": True,
-        "human_gates": ["initial_codex_login"],
+        "human_gates": ["initial_codex_login", "initial_gemini_login"],
     }
     base.update(overrides)
     return base
@@ -159,6 +162,27 @@ class AgentStateTests(unittest.TestCase):
         codex = find(self.agents(pol=policy(allow_codex_write=False)), "Codex CLI")
         self.assertIn("리뷰", codex.role)
         self.assertIn("allow_codex_write", codex.detail)
+
+    def test_gemini_is_blocked_when_design_policy_is_not_true(self):
+        with mock.patch.dict("os.environ", {"TEST_GEMINI_API_KEY": "secret"}, clear=True):
+            gemini = find(self.agents(pol=policy(allow_gemini_design=False)), "Gemini")
+        self.assertEqual(dash.BLOCKED, gemini.state)
+        self.assertIn("allow_gemini_design", gemini.detail)
+        self.assertNotIn("secret", gemini.detail)
+
+    def test_gemini_is_gated_by_initial_login_without_a_key(self):
+        with mock.patch.dict("os.environ", {}, clear=True):
+            gemini = find(self.agents(), "Gemini")
+        self.assertEqual(dash.GATED, gemini.state)
+        self.assertIn("initial_gemini_login", gemini.detail)
+
+    def test_gemini_is_ready_when_the_policy_named_key_is_present(self):
+        with mock.patch.dict("os.environ", {"TEST_GEMINI_API_KEY": "do-not-print"}, clear=True):
+            gemini = find(self.agents(), "Gemini")
+        self.assertEqual(dash.READY, gemini.state)
+        self.assertIn("TEST_GEMINI_API_KEY", gemini.detail)
+        self.assertNotIn("do-not-print", gemini.detail)
+        self.assertEqual(["config/company_policy.json"], gemini.evidence)
 
     def test_a_model_that_fails_licence_and_ram_reports_both(self):
         # Naming only the first failure hides the second, and someone would
@@ -260,6 +284,68 @@ class GameProgressTests(unittest.TestCase):
 
 
 class RenderTests(unittest.TestCase):
+    def task_page(self, tasks, served=True):
+        snapshot = dash.collect(REPO)
+        snapshot.tasks = tasks
+        return dash.render(snapshot, control_token="test-token" if served else None)
+
+    def test_served_board_has_buttons_only_for_open_codex_tasks(self):
+        page = self.task_page([
+            {"id": "C-TODO", "title": "todo", "owner": "codex", "status": "todo"},
+            {"id": "C-WIP", "title": "wip", "owner": "codex", "status": "in_progress"},
+            {"id": "C-BLOCKED", "title": "blocked", "owner": "codex", "status": "blocked"},
+            {"id": "C-REVIEW", "title": "review", "owner": "codex", "status": "review"},
+            {"id": "C-DONE", "title": "done", "owner": "codex", "status": "done"},
+            {"id": "CLAUDE-TODO", "title": "claude", "owner": "claude", "status": "todo"},
+        ])
+
+        for task_id in ("C-TODO", "C-WIP", "C-BLOCKED", "C-REVIEW"):
+            self.assertIn(f'data-arg-value="{task_id}"', page)
+        self.assertNotIn('data-arg-value="C-DONE"', page)
+        self.assertNotIn('data-arg-value="CLAUDE-TODO"', page)
+        self.assertEqual(4, page.count('class="btn task-run"'))
+        self.assertEqual(1, page.count(">작업 시작</button>"))
+        self.assertEqual(3, page.count(">다시 실행</button>"))
+
+    def test_static_board_has_no_task_start_buttons(self):
+        page = self.task_page([
+            {"id": "C-TODO", "title": "todo", "owner": "codex", "status": "todo"},
+        ], served=False)
+
+        self.assertNotIn('class="btn task-run"', page)
+        self.assertNotIn('data-act="team-run"', page)
+
+    def test_unmet_dependency_disables_button_and_names_blocker(self):
+        page = self.task_page([
+            {"id": "FIRST", "title": "first", "owner": "claude", "status": "todo"},
+            {"id": "SECOND", "title": "second", "owner": "codex", "status": "todo",
+             "depends_on": ["FIRST"]},
+        ])
+
+        button = page.split('data-arg-value="SECOND"', 1)[1].split("</button>", 1)[0]
+        self.assertIn("disabled", button)
+        self.assertIn('data-blocked="true"', button)
+        self.assertIn("선행 작업: <code>FIRST</code>", page)
+
+    def test_every_agent_state_has_a_distinct_office_visual_class(self):
+        declarations = []
+        for state in dash.STATE_LABEL:
+            match = __import__("re").search(
+                rf"\.office-agent--{state}\{{([^}}]+)\}}", dash.CSS)
+            self.assertIsNotNone(match, f"office CSS has no visual class for {state}")
+            declarations.append(match.group(1).strip())
+        self.assertEqual(len(declarations), len(set(declarations)),
+                         "two agent states render identically in the office")
+
+    def test_an_unmapped_agent_is_rendered_in_the_etc_department(self):
+        snapshot = dash.collect(REPO)
+        snapshot.agents.append(dash.Agent(
+            "Future Assistant", "새 역할", dash.UNKNOWN, "아직 매핑되지 않음"))
+        html_out = dash.render(snapshot)
+        self.assertIn("Future Assistant", html_out)
+        self.assertIn("기타", html_out)
+        self.assertIn("office-agent--etc", html_out)
+
     def test_shortens_a_path_to_its_filename(self):
         self.assertEqual("SceneGenerator.cs",
                          dash._short_path("Assets/GameFactory/Editor/SceneGenerator.cs"))
