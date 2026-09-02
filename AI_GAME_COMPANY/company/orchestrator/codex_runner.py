@@ -125,6 +125,9 @@ class CodexResult:
     command: list[str] = field(default_factory=list)
     output_path: Path | None = None
     detail: str = ""
+    # Set when the output mentioned quota but the run still delivered.
+    # The work is kept; the caller decides whether to slow down.
+    limit_warning: str = ""
 
 
 def _matches(text: str, patterns: tuple[str, ...]) -> bool:
@@ -411,19 +414,28 @@ class CodexRunner:
 
         combined = f"{out}\n{err}"
 
-        # Checked before the exit code: a quota failure is a different state
-        # from a broken run, and the policy says to degrade rather than spend.
-        if _matches(combined, LIMIT_PATTERNS):
-            raise CodexLimited(
-                "Codex subscription limit reached. Policy on_codex_limit forbids "
-                "escalating to a paid API - fall back to "
-                f"{self.policy.raw.get('on_codex_limit', {}).get('fallback_order')}. "
-                f"Output: {combined.strip()[:300]}"
-            )
-
         last_message = ""
         if output_file.is_file():
             last_message = output_file.read_text(encoding="utf-8", errors="replace").strip()
+
+        # A limit MENTIONED is not a limit that stopped the work. This check
+        # used to run before the output was even read, so a run that finished
+        # the task and merely warned about quota was thrown away whole - which
+        # is exactly what happened to CODEX-OFFICE1: Codex reported the task
+        # complete with 46 tests passing, and the caller was told it failed.
+        #
+        # So the quota state now means what it says: the run produced nothing
+        # usable AND said why. Degrade then; keep the work otherwise.
+        mentions_limit = _matches(combined, LIMIT_PATTERNS)
+        produced_result = code == 0 and bool(last_message)
+
+        if mentions_limit and not produced_result:
+            raise CodexLimited(
+                "Codex subscription limit reached and the run produced nothing usable. "
+                "Policy on_codex_limit forbids escalating to a paid API - fall back to "
+                f"{self.policy.raw.get('on_codex_limit', {}).get('fallback_order')}. "
+                f"Output: {combined.strip()[:300]}"
+            )
 
         result = CodexResult(
             ok=(code == 0 and bool(last_message)),
@@ -433,6 +445,7 @@ class CodexRunner:
             stderr=err,
             command=args,
             output_path=output_file if output_file.is_file() else None,
+            limit_warning=(combined.strip()[:300] if mentions_limit else ""),
         )
 
         if code != 0:
