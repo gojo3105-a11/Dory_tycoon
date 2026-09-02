@@ -285,6 +285,38 @@
       ],
       "changed_files": [],
       "last_run": ""
+    },
+    {
+      "id": "CODEX-START1",
+      "title": "A start button on every waiting task, not one dropdown",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "The control panel can already run a Codex task, but only through a single <select> of task ids. Put the button on the task itself: every waiting row in the 공유 작업판 section gets its own start button, so you press the thing you are looking at instead of matching an id in a dropdown.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "Reports/dashboard.html"
+      ],
+      "acceptance": [
+        "Each task row in the board section gets a start button when the page is SERVED, and none at all in the static file - a control with no server to POST to is worse than an absent one, and there is already a test asserting the static page has no control panel.",
+        "The button posts the SAME action the dropdown does: {action: 'team-run', arg: <task id>} to /run with the token. Reuse the existing start()/watch()/lock() functions in the injected script - do not write a second fetch/poll implementation.",
+        "Label: '작업 시작' for a todo task, '다시 실행' for in_progress, blocked or review. NO button on a done task - there is nothing left to run.",
+        "Only Codex-owned tasks get a button. A claude-owned row gets none, because server.py's valid_arg refuses those and a button that always errors is a lie about what the page can do.",
+        "A task with unmet dependencies renders its button DISABLED with the blocking task ids visible, since run_task refuses it anyway. board.unmet_dependencies() already computes this.",
+        "The existing lock() disables every .btn[data-act] while a job runs, so the new buttons must carry that same attribute shape and be disabled together - two jobs at once would fight over one working tree.",
+        "The dropdown may stay or go, your call, but if it goes the game/build combo and the ghost buttons must keep working.",
+        "Tests: a served page contains a start button per runnable Codex task and none for claude-owned or done tasks; the static page contains none; a task with an unmet dependency renders as disabled.",
+        "Regenerate Reports/dashboard.html and leave it in the working tree - it is in your allowlist for that reason, and it is the only evidence the section still renders."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read dashboard.py fully first. _control_html() builds the panel and holds the script; the board rows are built in render() near the 'lanes' list. The button markup belongs with the rows, the script stays in _control_html - so render() needs to know whether a token is present, which it already does.",
+        "server.py needs NO change and is not in your allowlist. ACTIONS['team-run'] already exists and Runner.valid_arg already checks that the id is a real Codex-owned task, so the endpoint is done.",
+        "Do not add a confirmation dialog. Starting a task is reversible - run_task reverts nothing and commits nothing - and a prompt on every press would be friction for no safety.",
+        "CODEX-OFFICE1 also edits dashboard.py. There is no conflict: only one job runs at a time, so whichever runs second simply builds on the first. Do not try to do that task's work here."
+      ],
+      "changed_files": [],
+      "last_run": ""
     }
   ]
 }
