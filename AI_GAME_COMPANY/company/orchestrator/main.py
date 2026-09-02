@@ -49,6 +49,16 @@ STATUS_MARK = {
 }
 
 
+def _codex_binary() -> str:
+    """The codex path to launch, preferring the one detect-environment recorded.
+
+    Not just "codex": on Windows npm's extension-less shim is unlaunchable by
+    subprocess, which is what produced `codex --version could not run:
+    [WinError 2]` on the build PC even though codex was installed and on PATH.
+    """
+    return CodexRunner.resolve_binary(CONFIG_DIR / "HARDWARE_PROFILE.json")
+
+
 def _load_policy() -> Policy:
     path = CONFIG_DIR / "company_policy.json"
     if not path.exists():
@@ -165,9 +175,10 @@ def cmd_codex(args: argparse.Namespace) -> int:
     HUMAN_GATE. --doctor shows the CLI's own answer instead.
     """
     policy = _load_policy()
-    runner = CodexRunner(repo_root=REPO_ROOT, policy=policy)
+    runner = CodexRunner(repo_root=REPO_ROOT, policy=policy, binary=_codex_binary())
 
     print("=== CODEX ===")
+    print(f"  binary: {runner.binary}")
     print(runner.status_summary())
 
     if not args.doctor:
@@ -264,7 +275,8 @@ def cmd_team(args: argparse.Namespace) -> int:
         return 2
 
     policy = _load_policy()
-    codex = CodexRunner(repo_root=REPO_ROOT, policy=policy, model=args.model)
+    codex = CodexRunner(repo_root=REPO_ROOT, policy=policy, model=args.model,
+                        binary=_codex_binary())
 
     if not policy.allows("allow_codex_write"):
         print("REFUSED: policy allow_codex_write is not true.")

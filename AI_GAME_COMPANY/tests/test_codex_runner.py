@@ -11,6 +11,7 @@ can never be reported as a clean one.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -177,6 +178,88 @@ class CostGuardTests(RunnerTestCase):
             self.make(fake).review("hi")
         self.assertIn("local_ai_review", str(ctx.exception))
         self.assertIn("forbids escalating", str(ctx.exception))
+
+
+class BinaryResolutionTests(RunnerTestCase):
+    """Locating codex. This is what broke on the build PC."""
+
+    def profile(self, **codex) -> Path:
+        path = self.root / "HARDWARE_PROFILE.json"
+        path.write_text(json.dumps({"tools": {"codex": codex}}), encoding="utf-8")
+        return path
+
+    def test_prefers_the_recorded_path_when_it_exists(self):
+        shim = self.root / "codex.cmd"
+        shim.write_text("@echo off", encoding="utf-8")
+        resolved = CodexRunner.resolve_binary(
+            self.profile(status="OK", path=str(shim)))
+        self.assertEqual(str(shim), resolved)
+
+    def test_ignores_a_recorded_path_that_is_not_there(self):
+        # The profile is written on the build PC, so its Windows paths do not
+        # exist in a Linux container - falling through to PATH is correct.
+        resolved = CodexRunner.resolve_binary(
+            self.profile(status="OK", path=r"C:\Users\someone\AppData\codex.cmd"))
+        self.assertNotIn("C:\\", resolved)
+
+    def test_ignores_a_recorded_path_when_the_probe_did_not_pass(self):
+        shim = self.root / "codex.cmd"
+        shim.write_text("@echo off", encoding="utf-8")
+        resolved = CodexRunner.resolve_binary(
+            self.profile(status="MISSING", path=str(shim)))
+        self.assertNotEqual(str(shim), resolved)
+
+    def test_missing_profile_is_not_an_error(self):
+        self.assertTrue(CodexRunner.resolve_binary(self.root / "nope.json"))
+
+    def test_unparsable_profile_is_not_an_error(self):
+        path = self.root / "HARDWARE_PROFILE.json"
+        path.write_text("{ not json", encoding="utf-8")
+        self.assertTrue(CodexRunner.resolve_binary(path))
+
+    def test_falls_back_to_a_name_rather_than_raising(self):
+        # A binary that cannot be found has to arrive as a status through
+        # is_available(), never as an exception out of resolution - the CLI
+        # prints the resolved path before probing it.
+        resolved = CodexRunner.resolve_binary(None)
+        self.assertTrue(resolved)
+        self.assertIn("codex", Path(resolved).name)
+
+    def test_prefers_the_cmd_shim_over_the_extensionless_one(self):
+        # The actual Windows failure: npm ships `codex`, `codex.cmd` and
+        # `codex.ps1` side by side and only the .cmd can be launched, so the
+        # extension has to be named explicitly rather than left to PATHEXT
+        # (which subprocess does not apply). Asserted through PATH rather than
+        # by reading the source, so it holds on either platform.
+        bin_dir = self.root / "fakebin"
+        bin_dir.mkdir()
+        for name in ("codex", "codex.cmd"):
+            target = bin_dir / name
+            target.write_text("#!/bin/sh\n", encoding="utf-8")
+            target.chmod(0o755)
+
+        original = os.environ.get("PATH", "")
+        os.environ["PATH"] = str(bin_dir) + os.pathsep + original
+        try:
+            resolved = CodexRunner.resolve_binary(None)
+        finally:
+            os.environ["PATH"] = original
+
+        self.assertEqual(str(bin_dir / "codex.cmd"), resolved)
+
+    def test_a_winerror_2_names_the_path_and_the_cause(self):
+        # The exact failure seen on the PC. The message has to say WHICH path
+        # was tried and why the bare name cannot work there.
+        def explode(args, env):
+            raise FileNotFoundError(2, "지정된 파일을 찾을 수 없습니다")
+
+        runner = CodexRunner(repo_root=self.root, policy=policy_with(),
+                             runner=explode, binary="codex")
+        ok, detail = runner.is_available()
+        self.assertFalse(ok)
+        self.assertIn("tried: codex", detail)
+        self.assertIn("PATHEXT", detail)
+        self.assertIn("detect-environment.ps1", detail)
 
 
 class WriteModeTests(RunnerTestCase):
