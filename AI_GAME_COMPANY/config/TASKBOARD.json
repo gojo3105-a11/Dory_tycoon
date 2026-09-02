@@ -22,7 +22,8 @@
       ],
       "depends_on": [],
       "notes": [
-        "Design reference: https://claude.ai/code/artifact/2c13a317-896d-45cc-98da-b01955e1bc92"
+        "Design reference: https://claude.ai/code/artifact/2c13a317-896d-45cc-98da-b01955e1bc92",
+        "Compiles as of 2026-09-02 (build succeeded, APK produced). Still REVIEW and not done: the acceptance criteria are that every string is Korean and legible ON A DEVICE, and whether Font.CreateDynamicFontFromOSFont finds a Hangul face on Android is the one thing that cannot be checked from here. Install the APK and look."
       ],
       "changed_files": [],
       "last_run": ""
@@ -31,7 +32,7 @@
       "id": "CLAUDE-ECON",
       "title": "Split distance from coins in the economy",
       "owner": "claude",
-      "status": "review",
+      "status": "done",
       "goal": "Score was the coin count and there was no distance metric at all. Score is now distance in metres (RunnerDistanceTracker), coins are the shop currency, and game over pays out coins rather than score.",
       "files": [
         "Assets/GameFactory/Core/GameManager.cs",
@@ -43,7 +44,9 @@
         "A run that collects nothing still scores, because distance accrues."
       ],
       "depends_on": [],
-      "notes": [],
+      "notes": [
+        "Verified 2026-09-02: orchestrator build compiled it and PlayMode reported total=11 failed=0. Five of those eleven are CODEX-TEST1's and exercise this change directly - including that game-over pays out Coins and not Score, which was the whole point."
+      ],
       "changed_files": [],
       "last_run": ""
     },
@@ -69,7 +72,8 @@
       "notes": [
         "Unity's spriteBorder order is (left, bottom, right, top) - that is why the bottom is 8 and not the top: the depth lip is at the bottom of the sprite.",
         "Do not copy any image files. apply-art-mapping.ps1 does the copying on the PC, and it refuses any pack that is not APPROVED in LICENSE_REGISTRY.json.",
-        "Ran 2026-09-02. Codex edited both allowlisted files correctly; the run was reported BLOCKED only because Unity rewrote Packages/packages-lock.json while it worked - see CODEX-BOARD1 defect 1. Committed by hand as 89514dc. Still needs apply-art-mapping.ps1 -Commit to copy the actual PNGs, and a build to compile SharedArtImporter."
+        "Ran 2026-09-02. Codex edited both allowlisted files correctly; the run was reported BLOCKED only because Unity rewrote Packages/packages-lock.json while it worked - see CODEX-BOARD1 defect 1. Committed by hand as 89514dc. Still needs apply-art-mapping.ps1 -Commit to copy the actual PNGs, and a build to compile SharedArtImporter.",
+        "SharedArtImporter compiles as of 2026-09-02. Still REVIEW: the four button PNGs are not on disk yet, so every button in the current APK is still the blue fallback. Needs AI_GAME_COMPANY/tools/apply-art-mapping.ps1 -Commit."
       ],
       "changed_files": [
         "AI_GAME_COMPANY/config/art-mapping.json",
@@ -81,7 +85,7 @@
       "id": "CODEX-TEST1",
       "title": "PlayMode tests for the distance/coin split",
       "owner": "codex",
-      "status": "todo",
+      "status": "done",
       "goal": "GameManager just grew a second currency-like counter and a monotonic SetScore. The existing PlayMode tests only cover AddScore. Add tests that pin the new behaviour so a later refactor cannot quietly put distance back into the currency payout.",
       "files": [
         "Assets/GameFactory/Tests/PlayMode/FactoryRunnerPlayModeTests.cs"
@@ -98,9 +102,12 @@
       "notes": [
         "Read Assets/GameFactory/Core/GameManager.cs and Assets/GameFactory/Core/SaveSystem.cs first - the API is new and is not what the older tests assume.",
         "SaveSystem writes to PlayerPrefs, which persists between tests. Use a game id unique to each test, or clear the keys in SetUp, or the currency assertions will pass once and then drift.",
-        "Follow the arrange/act/assert shape and the [UnityTest] IEnumerator style already used in the file."
+        "Follow the arrange/act/assert shape and the [UnityTest] IEnumerator style already used in the file.",
+        "Ran 2026-09-02. Baseline was 6 [UnityTest] methods and the suite now reports total=11, so Codex added exactly the five behaviours specified. failed=0. Codex also followed the note about PlayerPrefs bleeding between tests and gave each run a unique game id via Guid."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "Assets/GameFactory/Tests/PlayMode/FactoryRunnerPlayModeTests.cs"
+      ],
       "last_run": ""
     },
     {
