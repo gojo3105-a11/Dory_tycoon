@@ -179,13 +179,81 @@ class CostGuardTests(RunnerTestCase):
         self.assertIn("forbids escalating", str(ctx.exception))
 
 
+class WriteModeTests(RunnerTestCase):
+    """implement() lets Codex edit the tree, so its gates matter most."""
+
+    def _writable(self) -> Policy:
+        return policy_with(allow_codex_write=True)
+
+    def test_write_needs_its_own_policy_key(self):
+        # The subscription being on must not by itself grant write access:
+        # enabling the reviewer and enabling a co-developer are different
+        # decisions with different blast radius.
+        fake = FakeCodex()
+        with self.assertRaises(PolicyViolation) as ctx:
+            self.make(fake).implement("do the thing")
+        self.assertIn("allow_codex_write", str(ctx.exception))
+        self.assertEqual([], fake.calls, "nothing may be sent before the gate passes")
+
+    def test_write_still_needs_the_subscription_gate(self):
+        fake = FakeCodex()
+        policy = policy_with(allow_codex_write=True, use_codex_subscription=False)
+        with self.assertRaises(PolicyViolation):
+            self.make(fake, policy).implement("do the thing")
+        self.assertEqual([], fake.calls)
+
+    def test_uses_workspace_write_not_full_access(self):
+        fake = FakeCodex(writes="changed one file")
+        self.make(fake, self._writable()).implement("do the thing")
+        args = fake.calls[-1]
+        self.assertIn("--sandbox", args)
+        self.assertEqual("workspace-write", args[args.index("--sandbox") + 1])
+        self.assertNotIn("danger-full-access", args)
+        self.assertNotIn("--dangerously-bypass-approvals-and-sandbox", args)
+
+    def test_review_is_unaffected_and_stays_read_only(self):
+        # Turning write on must not widen the reviewer.
+        fake = FakeCodex()
+        self.make(fake, self._writable()).review("look at this")
+        args = fake.calls[-1]
+        self.assertEqual("read-only", args[args.index("--sandbox") + 1])
+
+    def test_write_run_uses_only_probe_captured_flags(self):
+        if not PROBE.is_file():
+            self.skipTest("no codex probe committed")
+        exec_section = PROBE.read_text(encoding="utf-8-sig").split(
+            "### codex exec --help", 1)[-1]
+
+        fake = FakeCodex(writes="done")
+        self.make(fake, self._writable()).implement("do the thing")
+        for flag in [a for a in fake.calls[-1] if a.startswith("--")]:
+            self.assertIn(flag, exec_section,
+                          f"{flag} is not in the captured codex exec --help")
+
+    def test_silence_is_not_a_finished_task(self):
+        fake = FakeCodex(writes=None)
+        with self.assertRaises(ReviewNotRun) as ctx:
+            self.make(fake, self._writable()).implement("do the thing")
+        self.assertIn("(implement)", str(ctx.exception))
+
+    def test_quota_exhaustion_degrades_here_too(self):
+        fake = FakeCodex(stderr="429 rate limit exceeded")
+        with self.assertRaises(CodexLimited):
+            self.make(fake, self._writable()).implement("do the thing")
+
+
 class HonestResultTests(RunnerTestCase):
     def test_exit_zero_with_no_output_is_not_a_pass(self):
         # The section 38 case: silence must never become "no issues found".
         fake = FakeCodex(writes=None)
         with self.assertRaises(ReviewNotRun) as ctx:
             self.make(fake).review("hi")
-        self.assertIn("not a clean review", str(ctx.exception))
+        message = str(ctx.exception)
+        self.assertIn("not a pass", message)
+        # Names which kind of run went silent - review and implement share
+        # this code path, and "an empty result" means different things to a
+        # reader depending on which one produced it.
+        self.assertIn("(review)", message)
 
     def test_empty_output_file_is_not_a_pass(self):
         fake = FakeCodex(writes="   \n  ")

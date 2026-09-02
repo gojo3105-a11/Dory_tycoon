@@ -8,6 +8,8 @@
   "allow_auto_purchase": false,
   "use_claude_code": true,
   "use_codex_subscription": true,
+  "allow_codex_write": true,
+  "_allow_codex_write_note": "Set true on 2026-09-02 because the user asked for Codex to develop alongside Claude rather than only review. It runs 'codex exec --sandbox workspace-write', so its edits are confined to the repository, and teamwork.run_task additionally checks the resulting git diff against each task's declared file allowlist. It does NOT relax allow_openai_api_billing - this is still the subscription, not the paid API - and it grants no permission to commit or push: CLAUDE.md's rule that a human approves every commit is unchanged.",
   "use_local_ai": true,
   "ollama_local_only": true,
   "allow_openai_api_billing": false,

@@ -1,0 +1,128 @@
+{
+  "_comment": "Shared task board for Claude and Codex. 'owner' decides who implements a task; 'files' is the allowlist its diff is checked against. Run one with: python -m company.orchestrator.main team run --task <id>",
+  "_version": 1,
+  "tasks": [
+    {
+      "id": "CLAUDE-UI1",
+      "title": "Casual/Korean UI layout in SceneGenerator",
+      "owner": "claude",
+      "status": "in_progress",
+      "goal": "Rebuild the title, HUD, game-over, pause and shop screens in SceneGenerator to match the approved casual direction: cream cards with a thick brown outline, Korean labels, one primary green button per screen.",
+      "files": [
+        "Assets/GameFactory/Editor/SceneGenerator.cs",
+        "Assets/GameFactory/Editor/UiSpriteGenerator.cs",
+        "Assets/GameFactory/UI/GameUIController.cs",
+        "Assets/GameFactory/UI/KoreanFontApplier.cs",
+        "Assets/GameFactory/Core/KoreanFont.cs"
+      ],
+      "acceptance": [
+        "Every on-screen string is Korean.",
+        "The HUD shows distance and an in-run coin count.",
+        "Text is legible on a device - the built-in Latin-only font is not used for Hangul."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Design reference: https://claude.ai/code/artifact/2c13a317-896d-45cc-98da-b01955e1bc92"
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CLAUDE-ECON",
+      "title": "Split distance from coins in the economy",
+      "owner": "claude",
+      "status": "review",
+      "goal": "Score was the coin count and there was no distance metric at all. Score is now distance in metres (RunnerDistanceTracker), coins are the shop currency, and game over pays out coins rather than score.",
+      "files": [
+        "Assets/GameFactory/Core/GameManager.cs",
+        "Assets/GameFactory/Gameplay/Runner/Coin.cs",
+        "Assets/GameFactory/Gameplay/Runner/RunnerDistanceTracker.cs"
+      ],
+      "acceptance": [
+        "Currency earned per run is unchanged: one coin picked up is still one currency.",
+        "A run that collects nothing still scores, because distance accrues."
+      ],
+      "depends_on": [],
+      "notes": [],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-ART1",
+      "title": "Map the four Kenney button colours",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "The UI only has one button sprite (blue). The casual design needs green for the primary action, yellow for the shop, red for close and grey for secondary/disabled. Add the four colour variants from the already-approved kenney-ui-pack to the art mapping, and give each one its 9-slice border in SharedArtImporter so the outline keeps its thickness at any button size.",
+      "files": [
+        "AI_GAME_COMPANY/config/art-mapping.json",
+        "Assets/GameFactory/Editor/SharedArtImporter.cs"
+      ],
+      "acceptance": [
+        "art-mapping.json gains four targets: Assets/Common/Art/UI/button_green.png, button_yellow.png, button_red.png, button_grey.png.",
+        "Each uses packId kenney-ui-pack, archiveName kenney_ui-pack.zip, and sourceFile PNG/<Colour>/Default/button_rectangle_depth_flat.png with Colour one of Green, Yellow, Red, Grey - these exact paths are confirmed present in AI_GAME_COMPANY/asset_staging/kenney_ui-pack/INVENTORY.txt.",
+        "Each target has a 'why' field explaining the colour's role, matching the style of the entries already in the file.",
+        "SharedArtImporter.UiBorders gains an entry per file with the border new Vector4(4f, 8f, 4f, 4f) - the same measurement as the existing 'button' entry, because these are the same 192x64 sprite in a different palette.",
+        "The existing 'button' entry and the blue target are left alone.",
+        "The JSON stays valid and keeps its two-space indentation."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Unity's spriteBorder order is (left, bottom, right, top) - that is why the bottom is 8 and not the top: the depth lip is at the bottom of the sprite.",
+        "Do not copy any image files. apply-art-mapping.ps1 does the copying on the PC, and it refuses any pack that is not APPROVED in LICENSE_REGISTRY.json."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-TEST1",
+      "title": "PlayMode tests for the distance/coin split",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "GameManager just grew a second currency-like counter and a monotonic SetScore. The existing PlayMode tests only cover AddScore. Add tests that pin the new behaviour so a later refactor cannot quietly put distance back into the currency payout.",
+      "files": [
+        "Assets/GameFactory/Tests/PlayMode/FactoryRunnerPlayModeTests.cs"
+      ],
+      "acceptance": [
+        "A test proves SetScore ignores a value lower than or equal to the current Score.",
+        "A test proves AddCoins raises Coins and fires CoinsChanged, and is ignored once the state is GameOver.",
+        "A test proves StartGame resets both Score and Coins to zero.",
+        "A test proves TriggerGameOver adds Coins - not Score - to the saved currency, reading it back through SaveSystem.GetInt(gameId, ShopKeys.Currency).",
+        "A test proves IsNewBest and PreviousBest describe the record as it stood BEFORE the run ended.",
+        "Existing tests in the file still pass unchanged."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read Assets/GameFactory/Core/GameManager.cs and Assets/GameFactory/Core/SaveSystem.cs first - the API is new and is not what the older tests assume.",
+        "SaveSystem writes to PlayerPrefs, which persists between tests. Use a game id unique to each test, or clear the keys in SetUp, or the currency assertions will pass once and then drift.",
+        "Follow the arrange/act/assert shape and the [UnityTest] IEnumerator style already used in the file."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-ANIM1",
+      "title": "Give the character arms and legs that move",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "The character is one sprite with squash/stretch and a bob. The user asked whether the arms and legs move - they do not. Add procedural limbs that run while grounded and hold a pose in the air, driven from the existing RunnerCharacterMotion so no new Update loop is introduced.",
+      "files": [
+        "Assets/GameFactory/Gameplay/Runner/RunnerCharacterMotion.cs"
+      ],
+      "acceptance": [
+        "Limbs are child GameObjects created at runtime by this component - do NOT change PrefabGenerator, and do not require any new art file.",
+        "They swing in opposite phase (left arm with right leg) at a rate tied to the same cycle the existing bob uses, so the gait reads as one motion.",
+        "In the air they stop cycling and hold a jump pose, and they return to the run cycle on landing.",
+        "The limbs are drawn BEHIND the body sprite, and they never affect the collider - the collider is on the root and this component only touches the Visual child.",
+        "No allocation per frame: create the limb objects once, then only set transform values in Update."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read the whole of RunnerCharacterMotion.cs first. It already tracks grounded state and vertical velocity from RunnerPlayerController, and it already compensates the foot position when the sprite squashes - reuse those, do not recompute them.",
+        "Sorting: a SpriteRenderer child needs a lower sortingOrder than the body to draw behind it.",
+        "Keep it subtle. This is a 136x192 sprite on a phone; limbs that swing far read as broken, not lively."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    }
+  ]
+}

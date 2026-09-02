@@ -158,6 +158,37 @@ git branch -D fork-check
 파일이 없거나 오래되었으면(생성 시각 확인) 그때 사용자에게 요청한다. **"에러 있으면 붙여주세요"나
 "APK 확인해주세요"를 먼저 말하지 말고, 위 방법으로 먼저 확인한다.**
 
+## Codex와 함께 개발하기 (공유 작업판)
+
+Codex는 리뷰어가 아니라 **공동 개발자**다. `AI_GAME_COMPANY/config/TASKBOARD.json`이
+Claude와 Codex가 함께 보는 작업판이고, 각 작업에는 `owner`(claude/codex)와
+`files`(수정 허용 파일 목록)가 있다.
+
+```bash
+python -m company.orchestrator.main team board                 # 누가 뭘 하는지
+python -m company.orchestrator.main team run --task CODEX-ART1 --dry-run   # 보낼 프롬프트만 확인
+python -m company.orchestrator.main team run --task CODEX-ART1            # Codex가 실제로 코드를 작성
+```
+
+`AI_GAME_COMPANY/` 안에서 실행한다. Codex는 `codex exec --sandbox workspace-write`로
+돌아가므로 편집 범위가 저장소 안으로 제한되고, 실행이 끝나면 `git status` 기준으로
+**실제 변경된 파일이 그 작업의 허용 목록 안인지** 검사한다. 벗어나면 상태가 BLOCKED가
+되고 **아무것도 되돌리지 않는다** — 같은 작업 트리에 다른 쪽의 미커밋 작업이 있을 수
+있어서, 조용히 버리는 쪽이 더 위험하다.
+
+세 가지는 코드로 강제된다 (`company/orchestrator/teamwork.py`):
+
+- **allow_codex_write** 정책이 true여야 쓰기가 열린다. `use_codex_subscription`만으로는
+  리뷰만 가능하다 (게이트가 두 개인 이유: 리뷰어를 켜는 것과 공동 개발자를 켜는 것은
+  다른 결정이다).
+- **커밋/푸시는 절대 하지 않는다.** 작업 트리에 변경만 남기고, 사람이 검토 후 커밋한다.
+- **상태는 DONE이 아니라 REVIEW가 된다.** 여기서 컴파일한 게 없기 때문이다. DONE은
+  `orchestrator build`가 통과한 뒤에 사람이 정한다.
+
+Codex는 이 프로젝트를 기억하지 못한 채 매번 시작하므로, CLAUDE.md의 핵심 규칙
+(linearVelocity, Editor/Runtime 분리, .ps1 ASCII, 커밋 금지 등)이 프롬프트에 자동으로
+붙어서 전달된다 — `teamwork.HOUSE_RULES`가 그 원문이다. 규칙을 바꾸면 거기도 같이 고친다.
+
 ## PowerShell 스크립트 규칙
 
 `scripts/**/*.ps1`는 **ASCII만 사용한다 (한글 금지).** Windows PowerShell 5.1은 BOM 없는 UTF-8

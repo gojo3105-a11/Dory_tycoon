@@ -19,7 +19,9 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from company.orchestrator.codex_runner import CodexRunner  # noqa: E402
+from company.orchestrator.codex_runner import (  # noqa: E402
+    CodexLimited, CodexRunner, CodexUnavailable, ReviewNotRun,
+)
 from company.orchestrator.hardware import HardwareProfile  # noqa: E402
 from company.orchestrator.ollama_client import (  # noqa: E402
     NonLocalEndpointRefused, OllamaClient,
@@ -30,6 +32,9 @@ from company.orchestrator.report_generator import (  # noqa: E402
 )
 from company.orchestrator.state import CompanyState  # noqa: E402
 from company.orchestrator.tasks import TaskQueue  # noqa: E402
+from company.orchestrator.teamwork import (  # noqa: E402
+    NotCodexOwned, TaskBoard, TaskNotFound, build_prompt, run_task,
+)
 from company.orchestrator.unity_runner import UnityRunner  # noqa: E402
 
 COMPANY_ROOT = Path(__file__).resolve().parents[2]
@@ -177,6 +182,112 @@ def cmd_codex(args: argparse.Namespace) -> int:
         return 1
     print(result.stdout or result.stderr or "  (no output)")
     return 0 if result.ok else 1
+
+
+def _board() -> TaskBoard:
+    return TaskBoard.load(CONFIG_DIR / "TASKBOARD.json")
+
+
+def cmd_team(args: argparse.Namespace) -> int:
+    """The shared board Claude and Codex both work from.
+
+    `team board` is readable without Codex installed or signed in - the split
+    of work is useful information on its own, and printing it must not depend
+    on the CLI being available.
+    """
+    board = _board()
+
+    if not board.tasks:
+        print(f"No tasks on {board.path}.")
+        return 1
+
+    if args.action == "board":
+        by_owner: dict[str, list] = {}
+        for task in board.tasks:
+            by_owner.setdefault(task.owner, []).append(task)
+
+        print("=== SHARED TASK BOARD ===")
+        print(f"  {board.path}\n")
+        for owner in sorted(by_owner):
+            print(f"  {owner.upper()}")
+            for task in by_owner[owner]:
+                unmet = board.unmet_dependencies(task)
+                blocked = f"  waiting on {', '.join(unmet)}" if unmet else ""
+                print(f"    [{task.status:11}] {task.id:10} {task.title}{blocked}")
+            print()
+        return 0
+
+    # Everything below actually invokes Codex.
+    if not args.task:
+        print("ERROR: 'team run' needs --task <id>. Run 'team board' to see the ids.")
+        return 2
+
+    policy = _load_policy()
+    codex = CodexRunner(repo_root=REPO_ROOT, policy=policy, model=args.model)
+
+    if not policy.allows("allow_codex_write"):
+        print("REFUSED: policy allow_codex_write is not true.")
+        print("  Codex can review but not write. Section 7: the gate is the code, not the prose.")
+        return 3
+
+    try:
+        task = board.get(args.task)
+    except TaskNotFound as exc:
+        print(f"ERROR: {exc}")
+        return 2
+
+    print(f"=== HANDING {task.id} TO CODEX ===")
+    print(f"  {task.title}")
+    print(f"  allowlist: {', '.join(task.files) or '(none)'}")
+
+    if args.dry_run:
+        print("\n--- prompt (not sent) ---")
+        print(build_prompt(task, board))
+        return 0
+
+    print("  running codex exec --sandbox workspace-write ...\n")
+
+    try:
+        run = run_task(board, args.task, codex, REPO_ROOT,
+                       timeout_seconds=args.timeout)
+    except NotCodexOwned as exc:
+        print(f"REFUSED: {exc}")
+        return 2
+    except CodexLimited as exc:
+        # Section 3: degrade, never spend. This is a distinct exit code so a
+        # wrapper can tell "out of quota" from "the run went wrong".
+        print(f"CODEX_LIMITED: {exc}")
+        return 4
+    except (CodexUnavailable, ReviewNotRun) as exc:
+        print(f"FAILED: {exc}")
+        return 1
+
+    print("--- codex said ---")
+    print(run.summary)
+
+    print("\n--- files this run changed ---")
+    for path in run.changed:
+        print(f"  {path}")
+    if not run.changed:
+        print("  (none)")
+
+    if run.outside_allowlist:
+        print("\nBLOCKED - these are outside the task's allowlist:")
+        for path in run.outside_allowlist:
+            print(f"  {path}")
+        print("\n  Nothing was reverted: the working tree may hold work in")
+        print("  progress from the other agent, and discarding that silently")
+        print("  would be worse than the overreach. Review them by hand.")
+        return 1
+
+    if not run.ok:
+        print("\nBLOCKED - the run changed nothing. That is not progress.")
+        return 1
+
+    print(f"\n  status -> {run.task.status} (NOT done: nothing here compiled the project)")
+    print(f"  next: python -m company.orchestrator.main build --game {args.game}")
+    print("  then review the diff and commit it yourself - this never commits.")
+    return 0
 
 
 def cmd_status(_args: argparse.Namespace) -> int:
@@ -354,6 +465,19 @@ def main(argv: list[str] | None = None) -> int:
     codex.add_argument("--doctor", action="store_true",
                        help="also run 'codex doctor' and print its raw output")
     codex.set_defaults(func=cmd_codex)
+
+    team = sub.add_parser("team", help="the shared board Claude and Codex both work from")
+    team.add_argument("action", choices=["board", "run"],
+                      help="board: print who is doing what. run: hand a task to Codex")
+    team.add_argument("--task", default=None, help="task id, for 'run'")
+    team.add_argument("--game", default="game01",
+                      help="game id used in the follow-up build suggestion")
+    team.add_argument("--model", default=None, help="override the Codex model")
+    team.add_argument("--timeout", type=int, default=1800,
+                      help="seconds before the Codex run is abandoned (default 1800)")
+    team.add_argument("--dry-run", action="store_true",
+                      help="print the prompt that would be sent and stop")
+    team.set_defaults(func=cmd_team)
 
     build = sub.add_parser("build", help="run generate/validate/build locally, no CI")
     build.add_argument("--game", default="game01")
