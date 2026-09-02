@@ -432,6 +432,41 @@
       ],
       "changed_files": [],
       "last_run": ""
+    },
+    {
+      "id": "CODEX-RUNLOG1",
+      "title": "Every orchestrator run leaves a committed log, so failures reach Claude without copy-paste",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "Unity compile errors and build results already reach Claude on their own: sync-and-run.ps1 commits Reports/errors/latest.txt and Reports/build-status/latest.txt every 15 minutes and Claude reads them from the fork. Orchestrator runs have no such channel - when `team run` or `serve` or `codex --doctor` fails, the output dies on the PC console and the human has to retype it into a chat window. Three separate bugs on 2026-09-02 (WinError 2, a cp949 UnicodeDecodeError, and CODEX_LIMITED discarding a finished run) were all diagnosed that way. Apply the pattern that already works to the orchestrator.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/runlog.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_runlog.py",
+        "scripts/desktop/sync-and-run.ps1",
+        "Reports/runs/*"
+      ],
+      "acceptance": [
+        "A new module company/orchestrator/runlog.py writes one file per orchestrator run under Reports/runs/, plus Reports/runs/latest.txt holding the most recent one. Follow the shape of the two files that already work - read Reports/errors/latest.txt and Reports/build-status/latest.txt first and match their heading style, because Claude parses those and a third format is a third parser.",
+        "Each entry records: UTC timestamp, the subcommand and its arguments, the exit code, how long it took, and the tail of stdout/stderr (cap the tail - a Unity build log must not land in git). A run that raised records the exception type and message.",
+        "It records FAILURES as loudly as successes. A run that ends non-zero, raises, or times out is the entire point of this task; a log that only contains successes is worse than none.",
+        "main.py wires it into every subcommand through ONE place, not by editing each cmd_* function. The dispatcher already calls args.func(args) - wrap that call.",
+        "SECRETS: no value of any key in policy blocked_env_keys, and no value of the env var named by gemini_api_key_env, may ever be written. Reuse the existing 'names only' idiom - CodexRunner.stripped_keys - do not write a second redaction path that can drift from it. A test asserts a key value placed in the environment does not appear in the written file.",
+        "The log directory is bounded: keep at most 50 entries, delete the oldest beyond that. This is committed to git, so unbounded growth is a repository problem, not just a disk one.",
+        "sync-and-run.ps1 commits Reports/runs/ alongside the two reports it already commits. It must stay ASCII-only - Windows PowerShell 5.1 reads a BOM-less UTF-8 .ps1 in the local codepage and Korean literals break parsing. That is not a style preference, it has already broken this exact file once.",
+        "Writing the log NEVER changes the outcome of the command. If the log cannot be written (read-only disk, missing directory, permission error), the run still returns its real exit code and the failure to log is reported on stderr and nowhere else. A logging bug that turns a passing build into a failure would be worse than the problem this task solves.",
+        "Tests: a successful run writes an entry; a non-zero run writes one saying so; a raising run writes one naming the exception; a secret in the environment never appears in the file; the 50-entry cap evicts oldest-first; a write failure does not change the returned exit code."
+      ],
+      "depends_on": [],
+      "notes": [
+        "WHY THIS EXISTS, in the user's words on 2026-09-02: '왜 gpt 실행해서 오류 나면 너한테 복사해서 붙이라고 하지? 혼자서 스스로 고치지 못해?' The answer is that Claude runs in a remote container with no access to the build PC, and the only channel between that console and Claude is a committed file. Unity already has that channel. The orchestrator does not. This closes it.",
+        "READ FIRST: scripts/dev/collect-errors.ps1 and scripts/dev/report-build-status.ps1 for the report format, and scripts/desktop/sync-and-run.ps1 lines 120-145 for how those two get committed. Do not invent a new mechanism next to a working one.",
+        "ALLOWLIST WARNING, learned the hard way: Reports/runs/* is in your allowlist because running the orchestrator to test your own change WRITES there, and the allowlist check reads `git status --porcelain --untracked-files=all`. Without it listed, testing your work correctly would be reported as going out of bounds and the task would come back BLOCKED. See CODEX-BOARD1.",
+        "This does not make the loop fully autonomous and should not pretend to. Claude still cannot press the button - the run has to be started on the PC. What it removes is the human retyping an error message. The remaining gap (starting a run without a human) is a separate decision about running Codex from the self-hosted Actions runner, and is not in scope here.",
+        "Do not log prompts sent to Codex. They can be long, they are reconstructable from the board, and the run log is meant to be read at a glance."
+      ],
+      "changed_files": [],
+      "last_run": ""
     }
   ]
 }
