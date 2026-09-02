@@ -83,3 +83,12 @@ AI_GAME_COMPANY/company/queue/*.db
 AI_GAME_COMPANY/company/state/company_state.json
 AI_GAME_COMPANY/logs/
 AI_GAME_COMPANY/asset_staging/_incoming/
+
+# Windows runner setup leftovers
+scripts/windows-runner/Logs/
+# "nul" is a reserved DEVICE name on Windows, not a filename. PowerShell's
+# `> nul` creates a real file with that name, and git then cannot open it -
+# `git add -A` dies with "unable to index file 'nul'" and stages nothing at
+# all, which is how a whole afternoon of Codex output nearly looked lost.
+# Never a legitimate file; always an accident.
+nul
