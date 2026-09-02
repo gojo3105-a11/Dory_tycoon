@@ -213,8 +213,27 @@ class CostGuardTests(RunnerTestCase):
             runner.review("hi")
         self.assertEqual(fake.calls, [])
 
+    def test_a_limit_warning_does_not_discard_finished_work(self):
+        # What actually happened to CODEX-OFFICE1: Codex reported the task
+        # complete with 46 tests passing, mentioned quota in passing, and the
+        # whole result was thrown away as a failure. A limit MENTIONED is not
+        # a limit that stopped the work.
+        fake = FakeCodex(exit_code=0, stderr="warning: approaching rate limit",
+                         writes="TASK CODEX-OFFICE1 is complete. 46 tests pass.")
+        result = self.make(fake).review("hi")
+
+        self.assertTrue(result.ok)
+        self.assertIn("complete", result.last_message)
+        # The warning is kept, not swallowed - the caller may want to slow down.
+        self.assertIn("rate limit", result.limit_warning)
+
+    def test_a_clean_run_carries_no_limit_warning(self):
+        result = self.make(FakeCodex()).review("hi")
+        self.assertEqual("", result.limit_warning)
+
     def test_quota_exhaustion_degrades_instead_of_escalating(self):
-        fake = FakeCodex(exit_code=1, stderr="Error: usage limit reached (429)")
+        fake = FakeCodex(exit_code=1, stderr="Error: usage limit reached (429)",
+                         writes=None)
         with self.assertRaises(CodexLimited) as ctx:
             self.make(fake).review("hi")
         self.assertIn("local_ai_review", str(ctx.exception))
@@ -361,9 +380,23 @@ class WriteModeTests(RunnerTestCase):
         self.assertIn("(implement)", str(ctx.exception))
 
     def test_quota_exhaustion_degrades_here_too(self):
-        fake = FakeCodex(stderr="429 rate limit exceeded")
+        # Exhausted means it delivered nothing, not merely that the word
+        # appeared somewhere in the output.
+        fake = FakeCodex(exit_code=1, stderr="429 rate limit exceeded", writes=None)
         with self.assertRaises(CodexLimited):
             self.make(fake, self._writable()).implement("do the thing")
+
+    def test_an_implement_run_that_finished_survives_a_limit_warning(self):
+        # The CODEX-OFFICE1 case, on the path that matters most: Codex edited
+        # the tree, said the task was complete, and mentioned quota. Throwing
+        # that away loses real work already written to disk.
+        fake = FakeCodex(exit_code=0, stderr="warning: approaching usage limit",
+                         writes="TASK complete. Changed files: dashboard.py")
+        result = self.make(fake, self._writable()).implement("do the thing")
+
+        self.assertTrue(result.ok)
+        self.assertIn("dashboard.py", result.last_message)
+        self.assertIn("usage limit", result.limit_warning)
 
 
 class HonestResultTests(RunnerTestCase):

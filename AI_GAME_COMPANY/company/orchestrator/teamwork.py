@@ -339,7 +339,18 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
     # outside every allowlist, and still blocks - which is what should happen.
     before = changed_paths(repo_root)
 
-    result = codex.implement(build_prompt(task, board), timeout_seconds=timeout_seconds)
+    try:
+        result = codex.implement(build_prompt(task, board), timeout_seconds=timeout_seconds)
+    except Exception as exc:
+        # Whatever went wrong, the board must not be left claiming the task is
+        # still being worked on. It said IN_PROGRESS a moment ago, and without
+        # this a quota error or a timeout freezes it there forever - the next
+        # person reads "in progress" and waits for a run that already died.
+        # Re-raised, because the caller still has to report the failure.
+        task.status = BLOCKED
+        task.notes.append(f"BLOCKED: the run raised {type(exc).__name__}: {exc}"[:600])
+        board.save()
+        raise
 
     after = changed_paths(repo_root)
     # Only what THIS run introduced. Files already dirty before it started

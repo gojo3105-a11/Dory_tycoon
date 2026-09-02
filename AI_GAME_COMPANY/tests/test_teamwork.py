@@ -210,6 +210,22 @@ class RunTaskTests(RepoTestCase):
                                 text=True, check=True)
         self.assertEqual("", staged.stdout.strip())
 
+    def test_a_raised_error_does_not_leave_the_task_in_progress(self):
+        # run_task writes IN_PROGRESS before calling Codex. When the call
+        # raised - a quota error, a timeout - the board used to keep saying
+        # the task was being worked on, so the next person waited for a run
+        # that had already died.
+        class Exploding:
+            def implement(self, prompt, timeout_seconds=None):
+                raise RuntimeError("quota exhausted")
+
+        with self.assertRaises(RuntimeError):
+            run_task(self.board, "T1", Exploding(), self.repo)
+
+        reloaded = TaskBoard.load(self.board.path)
+        self.assertEqual(BLOCKED, reloaded.get("T1").status)
+        self.assertIn("quota exhausted", " ".join(reloaded.get("T1").notes))
+
     def test_refuses_a_task_owned_by_claude(self):
         self.board.tasks[0].owner = "claude"
         self.board.save()
