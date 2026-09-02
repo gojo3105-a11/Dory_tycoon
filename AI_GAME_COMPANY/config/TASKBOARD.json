@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared task board for Claude and Codex. Since 2026-09-02 the user's standing rule is that ALL coding is requested from Codex: Claude writes the spec here and reviews the diff. 'files' is the allowlist the diff is checked against. Run one with: python -m company.orchestrator.main team run --task <id>",
+  "_comment": "Shared task board for Claude and Codex. Since 2026-09-02 the user's standing rule is that ALL coding is requested from Codex: Claude writes the spec here and reviews the diff. 'files' is the allowlist the diff is checked against - and when a task edits a GENERATOR, its committed OUTPUT belongs in that list too, or verifying the change reads as going out of bounds. Run one with: python -m company.orchestrator.main team run --task <id>",
   "_version": 1,
   "tasks": [
     {
@@ -51,7 +51,7 @@
       "id": "CODEX-ART1",
       "title": "Map the four Kenney button colours",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "The UI only has one button sprite (blue). The casual design needs green for the primary action, yellow for the shop, red for close and grey for secondary/disabled. Add the four colour variants from the already-approved kenney-ui-pack to the art mapping, and give each one its 9-slice border in SharedArtImporter so the outline keeps its thickness at any button size.",
       "files": [
         "AI_GAME_COMPANY/config/art-mapping.json",
@@ -68,9 +68,13 @@
       "depends_on": [],
       "notes": [
         "Unity's spriteBorder order is (left, bottom, right, top) - that is why the bottom is 8 and not the top: the depth lip is at the bottom of the sprite.",
-        "Do not copy any image files. apply-art-mapping.ps1 does the copying on the PC, and it refuses any pack that is not APPROVED in LICENSE_REGISTRY.json."
+        "Do not copy any image files. apply-art-mapping.ps1 does the copying on the PC, and it refuses any pack that is not APPROVED in LICENSE_REGISTRY.json.",
+        "Ran 2026-09-02. Codex edited both allowlisted files correctly; the run was reported BLOCKED only because Unity rewrote Packages/packages-lock.json while it worked - see CODEX-BOARD1 defect 1. Committed by hand as 89514dc. Still needs apply-art-mapping.ps1 -Commit to copy the actual PNGs, and a build to compile SharedArtImporter."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "AI_GAME_COMPANY/config/art-mapping.json",
+        "Assets/GameFactory/Editor/SharedArtImporter.cs"
+      ],
       "last_run": ""
     },
     {
@@ -163,7 +167,8 @@
       "goal": "Add one section to the dashboard that draws the connected AI as characters sitting in company departments, where each character's movement encodes that AI's real status. docs/OFFICE_VIEW_SPEC.md is the specification - read it first and follow it; it fixes the department mapping, the status-to-behaviour table and the constraints.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
-        "AI_GAME_COMPANY/tests/test_dashboard.py"
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "Reports/dashboard.html"
       ],
       "acceptance": [
         "docs/OFFICE_VIEW_SPEC.md is followed: the department mapping table, the four status behaviours, the floorplan layout with 외주 outside the building, and the 'do not' list at the end.",
@@ -176,7 +181,8 @@
         "The section renders in the static file too (it is display-only, unlike the control panel), and produces no horizontal page scroll at 360px wide.",
         "Each character carries a title/aria-label of its name and status, and links to the matching roster row.",
         "A test asserts every state in dash.STATE_LABEL has a distinct visual class in the office CSS - if two statuses render identically the section is decoration, not information.",
-        "A test asserts an unmapped agent name still appears in the rendered HTML."
+        "A test asserts an unmapped agent name still appears in the rendered HTML.",
+        "Regenerate Reports/dashboard.html with `python -m company.orchestrator.main dashboard` and leave the result in the working tree. That regenerated file is the only proof the section renders at all, since there is no other way to see it from here."
       ],
       "depends_on": [],
       "notes": [
@@ -184,7 +190,8 @@
         "Characters are procedural inline SVG. Do NOT add image files or any new licensed asset - v1 must work with zero assets. Keep the character drawing in one function so real art can replace it later.",
         "This page is left open for a long time, so an always-running JS animation is a battery cost with no benefit.",
         "Do not invent numbers. No progress percentages, no utilisation figures - this dashboard's rule is that anything without evidence reads as 확인 불가.",
-        "The Gemini roster row goes here rather than in CODEX-GEMINI1 because dashboard.py is in this task's allowlist and not in that one's. Do not edit gemini_client.py from here."
+        "The Gemini roster row goes here rather than in CODEX-GEMINI1 because dashboard.py is in this task's allowlist and not in that one's. Do not edit gemini_client.py from here.",
+        "Reports/dashboard.html is a TRACKED file and is in your allowlist for exactly this reason: you should regenerate it to check your work, and without it listed that correct action would have been reported as going outside the allowlist."
       ],
       "changed_files": [],
       "last_run": ""
@@ -218,26 +225,56 @@
     },
     {
       "id": "CODEX-BOARD1",
-      "title": "The concurrent-work warning should track the tree, not the status",
+      "title": "Three bugs in the board runner, found by running it for real",
       "owner": "codex",
       "status": "todo",
-      "goal": "build_prompt tells Codex 'ANOTHER AGENT IS EDITING THIS SAME WORKING TREE RIGHT NOW' for every task whose status is in_progress or review. REVIEW means 'written, waiting for a build to verify it' - which for already-committed work is a false statement about the tree, and Codex is then warned off files that are stable. Make the warning describe what is actually uncommitted.",
+      "goal": "The first real `team run` reported CODEX-ART1 as BLOCKED even though Codex had done the work correctly. Three separate defects in teamwork.py caused or contributed to that, all of them mine. Fix all three.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/teamwork.py",
         "AI_GAME_COMPANY/tests/test_teamwork.py"
       ],
       "acceptance": [
-        "The warning lists a task only when at least one of its declared files is actually dirty in git - reuse the existing changed_paths(repo_root) helper in the same module rather than adding a second way to ask git.",
-        "A task in REVIEW whose files are all committed no longer appears in the warning.",
-        "A task in REVIEW or IN_PROGRESS with genuinely uncommitted files still appears, and the text names those files - 'do not touch X' is actionable, 'someone is working somewhere' is not.",
-        "build_prompt keeps working when git is unavailable or the path is not a repo: fall back to the current status-based behaviour rather than raising. A prompt builder must not be able to fail the run.",
-        "Tests cover all three: committed-REVIEW omitted, dirty-REVIEW included with its filenames, and the no-git fallback.",
-        "Existing tests in test_teamwork.py still pass unchanged - in particular test_the_prompt_warns_about_concurrent_work, which may need its fixture to dirty a file rather than only set a status."
+        "(1) TOOL CHURN MUST NOT BLOCK A TASK. Packages/packages-lock.json is tracked, is not gitignored, and Unity rewrites it whenever the editor re-resolves packages. It changed during the run, so it landed in `after - before`, matched no allowlist, and blocked the task. Add a module-level tuple of paths that are regenerated by tools rather than authored by an agent - Packages/packages-lock.json at minimum - and exclude them from the outside-allowlist check. Report them separately in TaskRun instead of dropping them silently, so a real change there is still visible.",
+        "(2) save() MUST NOT CLOBBER HAND-EDITED FIELDS. It hardcodes _comment and _version into the payload on every write, so a comment edited by hand in the JSON is silently reverted the first time run_task saves. Preserve unknown top-level keys and any existing _comment; only write the default when the file had none. A board that cannot be annotated by hand is not the shared, human-readable handoff it is supposed to be.",
+        "(3) The concurrent-work warning in build_prompt should track the tree, not the status field. It currently names every in_progress/review task as 'being edited right now', which for already-committed work is false and warns Codex off stable files. List a task only when at least one of its declared files is actually dirty, and name those files. Reuse the existing changed_paths() helper and Task.covers() rather than adding new matching logic.",
+        "build_prompt keeps working when git is unavailable or the path is not a repo: fall back to the status-based behaviour rather than raising. A prompt builder must not be able to fail the run.",
+        "Tests for each: a tool-churn path does not block a task while a real stray file still does; a hand-edited _comment survives a save/load round trip; a committed REVIEW task is omitted from the warning while a dirty one is included with its filenames; and the no-git fallback.",
+        "Existing tests in test_teamwork.py still pass - test_the_prompt_warns_about_concurrent_work may need its fixture to dirty a file rather than only set a status."
       ],
       "depends_on": [],
       "notes": [
-        "Read teamwork.py fully first. changed_paths() already handles renames and untracked files, and Task.covers() already matches a path against a task's allowlist patterns - use both instead of writing new matching logic.",
-        "Keep it cheap: build_prompt is called once per run, so one git call is fine, but do not call git once per task."
+        "Read teamwork.py fully first. changed_paths() already handles renames and untracked files, and Task.covers() already matches a path against a task's allowlist patterns.",
+        "Keep it cheap: build_prompt runs once per run, so one git call is fine, but do not call git once per task.",
+        "Do NOT gitignore Packages/packages-lock.json to make the symptom go away. Unity projects are supposed to commit it so package versions stay pinned; the fix is that the allowlist check should know the difference between a tool regenerating a file and an agent editing one.",
+        "A SPEC-WRITING RULE worth keeping, recorded here because _comment gets overwritten until defect (2) is fixed: when a task edits a GENERATOR, the generator's committed OUTPUT belongs in that task's allowlist too, or verifying the change reads as going out of bounds. That is why Reports/dashboard.html is listed on CODEX-OFFICE1."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-TESTCMD1",
+      "title": "orchestrator test - run the Unity test suites locally",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "There is no way to run the Unity tests from the orchestrator. run_pipeline deliberately does generate/validate/build and leaves tests to the workflow, but the self-hosted runner is not always up, and a task like CODEX-TEST1 that WRITES tests cannot be verified without running them. PlayMode test assemblies are also excluded from a player build, so `orchestrator build` does not even compile them - a syntax error in a test file passes the build and is caught by nobody. Add the missing step.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/unity_runner.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_unity_runner.py"
+      ],
+      "acceptance": [
+        "UnityRunner gains a test step per platform, invoked exactly the way .github/workflows/test.yml already invokes it: wait-for-unity.ps1 with -TestResultsPath, and Unity args -batchmode -nographics -projectPath <repo> -runTests -testPlatform EditMode|PlayMode -testResults <xml> -logFile <log>. Do not invent flags; copy the ones the workflow proves work.",
+        "A new CLI command `orchestrator test` with --platform editmode|playmode|both (default both) and --game (default game01).",
+        "PlayMode tests load the generated scene in [UnitySetUp], so the command generates it first - reuse UnityRunner.generate(game_id) rather than duplicating the invocation.",
+        "It PARSES the NUnit XML result file and prints passed/failed/skipped counts plus the name and message of each failure. A test run whose XML is missing or unparsable is reported as a failure, never as a pass - same rule as verify_build.",
+        "Exit code 0 only when the XML exists AND reports zero failures. Section 38: 'Unity exited 0' is not 'the tests passed'.",
+        "Tests use the injected runner seam already in test_unity_runner.py: assert the emitted flags match the workflow's, that a missing XML fails, that a failing XML fails with the test names, and that a passing XML passes."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read unity_runner.py fully first. It already has the sentinel/exitcode handling, the timeout budget, and _run_powershell - the new step is another _step call, not new plumbing.",
+        "wait-for-unity.ps1 reads the editor path from $env:UNITY_PATH, which unity_runner already exports. Only ONE of -SentinelName/-TestResultsPath/-CompileLogPath is required, and the test steps in test.yml pass -TestResultsPath - that is sufficient and is the pattern to follow.",
+        "Do not change .github/workflows/test.yml. It works, and it is not in your allowlist."
       ],
       "changed_files": [],
       "last_run": ""
