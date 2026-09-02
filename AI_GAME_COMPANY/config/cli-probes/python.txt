@@ -1,5 +1,5 @@
 ﻿# python capability probe
-# captured: 2026-09-01 01:14:29
+# captured: 2026-09-03 08:34:26
 ----------------------------------------------------------------------
 resolved path: C:\Users\VASCO-PC03\AppData\Local\Programs\Python\Python312\python.exe
 

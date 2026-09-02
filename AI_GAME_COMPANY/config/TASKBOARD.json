@@ -437,7 +437,7 @@
       "id": "CODEX-RUNLOG1",
       "title": "Every orchestrator run leaves a committed log, so failures reach Claude without copy-paste",
       "owner": "codex",
-      "status": "todo",
+      "status": "in_progress",
       "goal": "Unity compile errors and build results already reach Claude on their own: sync-and-run.ps1 commits Reports/errors/latest.txt and Reports/build-status/latest.txt every 15 minutes and Claude reads them from the fork. Orchestrator runs have no such channel - when `team run` or `serve` or `codex --doctor` fails, the output dies on the PC console and the human has to retype it into a chat window. Three separate bugs on 2026-09-02 (WinError 2, a cp949 UnicodeDecodeError, and CODEX_LIMITED discarding a finished run) were all diagnosed that way. Apply the pattern that already works to the orchestrator.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/runlog.py",

@@ -1,5 +1,5 @@
 ﻿{
-    "generatedAt":  "2026-09-01 01:14:38",
+    "generatedAt":  "2026-09-03 08:34:39",
     "generatedBy":  "AI_GAME_COMPANY/tools/detect-environment.ps1",
     "repoPath":  "C:\\Dory_tycoon",
     "machineName":  "DESKTOP-A7IU1E9",
@@ -10,8 +10,8 @@
                      "cpuCores":  10,
                      "cpuThreads":  12,
                      "ramTotalGb":  15.71,
-                     "ramFreeGb":  7.86,
-                     "systemDriveFreeGb":  96.85,
+                     "ramFreeGb":  2.27,
+                     "systemDriveFreeGb":  103.89,
                      "gpus":  [
                                   {
                                       "name":  "Intel(R) Iris(R) Xe Graphics",
@@ -110,19 +110,13 @@
                       "url":  "http://localhost:11434",
                       "reachable":  true,
                       "models":  [
-                                     {
-                                         "name":  "gemma4:26b",
-                                         "sizeGb":  17.33,
-                                         "parameterSize":  "25.2B",
-                                         "quantization":  "Q4_K_M",
-                                         "family":  "gemma4"
-                                     }
+
                                  ],
                       "loadedModels":  [
 
                                        ],
                       "error":  null,
-                      "responseMs":  2083
+                      "responseMs":  2485
                   },
     "unity":  {
                   "requiredByProject":  "6000.5.9f1",
