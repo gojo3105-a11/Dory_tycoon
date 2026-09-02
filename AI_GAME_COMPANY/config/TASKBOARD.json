@@ -172,7 +172,7 @@
       "id": "CODEX-OFFICE1",
       "title": "Department office view on the dashboard",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "Add one section to the dashboard that draws the connected AI as characters sitting in company departments, where each character's movement encodes that AI's real status. docs/OFFICE_VIEW_SPEC.md is the specification - read it first and follow it; it fixes the department mapping, the status-to-behaviour table and the constraints.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
@@ -201,7 +201,9 @@
         "Do not invent numbers. No progress percentages, no utilisation figures - this dashboard's rule is that anything without evidence reads as 확인 불가.",
         "The Gemini roster row goes here rather than in CODEX-GEMINI1 because dashboard.py is in this task's allowlist and not in that one's. Do not edit gemini_client.py from here.",
         "Reports/dashboard.html is a TRACKED file and is in your allowlist for exactly this reason: you should regenerate it to check your work, and without it listed that correct action would have been reported as going outside the allowlist.",
-        "User confirmed 2026-09-02 that the HTML UI's visual direction is 'office' and that Codex builds it. docs/OFFICE_VIEW_SPEC.md is the brief. If the whole page should later be restyled to match, that is a follow-up - do not widen this task to a full redesign, since the information density of the roster and the pipeline sections is what makes the page useful."
+        "User confirmed 2026-09-02 that the HTML UI's visual direction is 'office' and that Codex builds it. docs/OFFICE_VIEW_SPEC.md is the brief. If the whole page should later be restyled to match, that is a follow-up - do not widen this task to a full redesign, since the information density of the roster and the pipeline sections is what makes the page useful.",
+        "2026-09-02 RUN: Codex finished this task and reported that all 46 dashboard tests pass and that it regenerated Reports/dashboard.html. The run was then thrown away by a bug in codex_runner._exec (the usage-limit check ran before the output file was read), so the CLI reported CODEX_LIMITED with exit code 4 and this board was left saying in_progress. The bug is fixed - a limit only fails a run that also produced nothing usable. Status set to review BY HAND, not by a run: the code is in the working tree on the build PC, so do NOT re-run this task and spend quota on work that is already done.",
+        "changed_files is empty because no run recorded it, not because nothing changed. The real list comes from the PC's `git diff --name-only` at commit time; expect it to be the three allowlisted files. REVIEW, not DONE - nothing here has been through `orchestrator build`."
       ],
       "changed_files": [],
       "last_run": ""
