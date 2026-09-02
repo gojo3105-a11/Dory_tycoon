@@ -250,6 +250,34 @@
       ],
       "changed_files": [],
       "last_run": ""
+    },
+    {
+      "id": "CODEX-TESTCMD1",
+      "title": "orchestrator test - run the Unity test suites locally",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "There is no way to run the Unity tests from the orchestrator. run_pipeline deliberately does generate/validate/build and leaves tests to the workflow, but the self-hosted runner is not always up, and a task like CODEX-TEST1 that WRITES tests cannot be verified without running them. PlayMode test assemblies are also excluded from a player build, so `orchestrator build` does not even compile them - a syntax error in a test file passes the build and is caught by nobody. Add the missing step.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/unity_runner.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_unity_runner.py"
+      ],
+      "acceptance": [
+        "UnityRunner gains a test step per platform, invoked exactly the way .github/workflows/test.yml already invokes it: wait-for-unity.ps1 with -TestResultsPath, and Unity args -batchmode -nographics -projectPath <repo> -runTests -testPlatform EditMode|PlayMode -testResults <xml> -logFile <log>. Do not invent flags; copy the ones the workflow proves work.",
+        "A new CLI command `orchestrator test` with --platform editmode|playmode|both (default both) and --game (default game01).",
+        "PlayMode tests load the generated scene in [UnitySetUp], so the command generates it first - reuse UnityRunner.generate(game_id) rather than duplicating the invocation.",
+        "It PARSES the NUnit XML result file and prints passed/failed/skipped counts plus the name and message of each failure. A test run whose XML is missing or unparsable is reported as a failure, never as a pass - same rule as verify_build.",
+        "Exit code 0 only when the XML exists AND reports zero failures. Section 38: 'Unity exited 0' is not 'the tests passed'.",
+        "Tests use the injected runner seam already in test_unity_runner.py: assert the emitted flags match the workflow's, that a missing XML fails, that a failing XML fails with the test names, and that a passing XML passes."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read unity_runner.py fully first. It already has the sentinel/exitcode handling, the timeout budget, and _run_powershell - the new step is another _step call, not new plumbing.",
+        "wait-for-unity.ps1 reads the editor path from $env:UNITY_PATH, which unity_runner already exports. Only ONE of -SentinelName/-TestResultsPath/-CompileLogPath is required, and the test steps in test.yml pass -TestResultsPath - that is sufficient and is the pattern to follow.",
+        "Do not change .github/workflows/test.yml. It works, and it is not in your allowlist."
+      ],
+      "changed_files": [],
+      "last_run": ""
     }
   ]
 }
