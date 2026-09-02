@@ -86,6 +86,7 @@ class Snapshot:
     games: list[dict[str, Any]]
     commits: list[dict[str, str]]
     gallery: list[dict[str, Any]]
+    art_plan: dict[str, Any]
     missing: list[str]
 
 
@@ -492,6 +493,43 @@ def read_gallery(repo_root: Path) -> list[dict[str, Any]]:
     ]
 
 
+def read_art_plan(repo_root: Path) -> dict[str, Any]:
+    """The art that is planned but not in the tree, and why.
+
+    WHY THIS IS ON THE PAGE. The gallery showing four sprites is correct -
+    there are four - but "correct" and "obvious" are different things, and the
+    first question anyone asks is where the background and the buttons are.
+    The answer already exists in art-mapping.json; it just was not visible.
+    Three different reasons live in that file and they are not
+    interchangeable: a mapped target with no file is a step nobody has run, a
+    queued one is blocked on code that does not exist yet, and a deliberately
+    unmapped one is a decision.
+    """
+    mapping = _read_json(repo_root / "AI_GAME_COMPANY" / "config" / "art-mapping.json")
+    if not mapping:
+        return {"present": [], "missing": [], "queued": [], "declined": [],
+                "source": ""}
+
+    present, missing = [], []
+    for target in mapping.get("targets", []):
+        if not isinstance(target, dict):
+            continue
+        path = str(target.get("target", ""))
+        row = {"path": path, "pack": str(target.get("packId", "")),
+               "file": str(target.get("sourceFile", ""))}
+        (present if (repo_root / path).is_file() else missing).append(row)
+
+    queued = [{"what": str(q.get("what", "")), "pack": str(q.get("packId", "")),
+               "why": str(q.get("why", ""))}
+              for q in mapping.get("queued", []) if isinstance(q, dict)]
+
+    declined = [{"path": str(d.get("target", "")), "why": str(d.get("why", ""))}
+                for d in mapping.get("deliberatelyNotMapped", []) if isinstance(d, dict)]
+
+    return {"present": present, "missing": missing, "queued": queued,
+            "declined": declined, "source": "AI_GAME_COMPANY/config/art-mapping.json"}
+
+
 def collect(repo_root: Path) -> Snapshot:
     company_root = repo_root / "AI_GAME_COMPANY"
     config = company_root / "config"
@@ -528,6 +566,7 @@ def collect(repo_root: Path) -> Snapshot:
         games=read_games(repo_root, builds),
         commits=read_commits(repo_root),
         gallery=read_gallery(repo_root),
+        art_plan=read_art_plan(repo_root),
         missing=missing,
     )
 
@@ -719,6 +758,16 @@ section{margin-top:44px;}
             padding:0 6px;}
 .gal-empty{background:var(--surface); border:1px dashed var(--line); border-radius:3px;
            padding:20px; color:var(--muted); font-size:13.5px;}
+.plan{display:flex; flex-direction:column;}
+.plan .r{display:grid; grid-template-columns:auto minmax(0,1fr); gap:5px 12px;
+         padding:11px 0; border-top:1px solid var(--line);}
+.plan .r:first-child{border-top:0; padding-top:0;}
+.plan .t{font-size:11px; font-weight:600; letter-spacing:0.05em; padding:2px 9px;
+         border-radius:2px; background:var(--st-soft); color:var(--st);
+         white-space:nowrap; align-self:start;}
+.plan .n{font-family:'JetBrains Mono',monospace; font-size:12.5px; word-break:break-all;
+         align-self:center;}
+.plan .w{grid-column:2; color:var(--ink-2); font-size:12.5px; line-height:1.6;}
 .gal-wrap + .gal-wrap{margin-top:22px;}
 .gal-wrap > .h{display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 14px;
                margin-bottom:10px;}
@@ -854,6 +903,47 @@ def _gallery_html(groups: list[dict[str, Any]]) -> str:
 {body}
     </div>""")
     return "\n".join(blocks)
+
+
+def _art_plan_html(plan: dict[str, Any]) -> str:
+    """Why the gallery is shorter than the plan.
+
+    Three reasons, kept apart because the fix for each is different: a copy
+    step nobody ran, a task blocked on missing code, and a decision.
+    """
+    if not plan.get("source"):
+        return ('<div class="gal-empty">art-mapping.json 을 읽지 못했습니다. '
+                '계획 대비 실제를 비교할 수 없습니다.</div>')
+
+    def clip(text: str, limit: int = 220) -> str:
+        return text if len(text) <= limit else text[:limit].rstrip() + "…"
+
+    rows = []
+    for item in plan["missing"]:
+        rows.append(
+            f'<div class="r s-blocked-tag"><span class="t">복사 안 됨</span>'
+            f'<span class="n">{e(item["path"])}</span>'
+            f'<span class="w">{e(item["pack"])} 의 {e(item["file"])} 에서 와야 합니다. '
+            f'PC에서 <code>AI_GAME_COMPANY\\tools\\apply-art-mapping.ps1 -Commit</code> '
+            f'를 실행하면 복사되고 저장소에 올라옵니다.</span></div>')
+
+    for item in plan["queued"]:
+        rows.append(
+            f'<div class="r s-review"><span class="t">대기</span>'
+            f'<span class="n">{e(item["what"])}</span>'
+            f'<span class="w">{e(clip(item["why"]))}</span></div>')
+
+    for item in plan["declined"]:
+        rows.append(
+            f'<div class="r s-todo"><span class="t">제외</span>'
+            f'<span class="n">{e(item["path"])}</span>'
+            f'<span class="w">{e(clip(item["why"]))}</span></div>')
+
+    if not rows:
+        rows.append('<div class="r s-done"><span class="t">완료</span>'
+                    '<span class="n">계획된 아트가 모두 저장소에 있습니다.</span></div>')
+
+    return f'<div class="panel"><div class="plan">{"".join(rows)}</div></div>'
 
 
 def _control_html(snapshot: Snapshot, token: str) -> str:
@@ -1048,6 +1138,12 @@ def render(snapshot: Snapshot, control_token: str | None = None) -> str:
 
     control = _control_html(snapshot, control_token) if control_token else ""
     shot_count = sum(len(g["items"]) for g in snapshot.gallery)
+
+    plan = snapshot.art_plan
+    plan_note = (f'{len(plan.get("present", []))}개 반영 · '
+                 f'{len(plan.get("missing", []))}개 미복사 · '
+                 f'{len(plan.get("queued", []))}개 대기 · '
+                 f'{e(plan.get("source") or "근거 파일 없음")}')
     # Said plainly rather than left to the reader: the static copy has no
     # server, so it has no buttons, and that difference should not look like
     # a missing feature.
@@ -1127,6 +1223,11 @@ def render(snapshot: Snapshot, control_token: str | None = None) -> str:
       <span class="note">{shot_count}장 · 파일에 들어 있는 그대로</span>
     </div>
 {_gallery_html(snapshot.gallery)}
+
+    <div class="gal-wrap">
+      <div class="h"><b>계획 대비 실제</b><span>{e(plan_note)}</span></div>
+{_art_plan_html(snapshot.art_plan)}
+    </div>
   </section>
 
   <section>

@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from company.orchestrator import dashboard as dash  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
+COMPANY_CONFIG = REPO / "AI_GAME_COMPANY" / "config"
 
 BUILD_REPORT = """\
 # Build status report
@@ -301,6 +302,88 @@ class RenderTests(unittest.TestCase):
             if item["src"]:
                 self.assertTrue(item["src"].startswith("data:image/png"),
                                 f"{item['name']} lost its alpha to a JPEG")
+
+class ArtPlanTests(unittest.TestCase):
+    """Why the gallery is shorter than the plan - three distinct reasons."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = Path(self.tmp.name)
+        self.config = self.repo / "AI_GAME_COMPANY" / "config"
+        self.config.mkdir(parents=True)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def write(self, mapping: dict) -> None:
+        (self.config / "art-mapping.json").write_text(
+            json.dumps(mapping), encoding="utf-8")
+
+    def test_splits_targets_by_whether_the_file_is_actually_there(self):
+        self.write({"targets": [
+            {"target": "Assets/here.png", "packId": "p", "sourceFile": "a.png"},
+            {"target": "Assets/gone.png", "packId": "p", "sourceFile": "b.png"},
+        ]})
+        (self.repo / "Assets").mkdir()
+        (self.repo / "Assets" / "here.png").write_bytes(b"x")
+
+        plan = dash.read_art_plan(self.repo)
+        self.assertEqual(["Assets/here.png"], [x["path"] for x in plan["present"]])
+        self.assertEqual(["Assets/gone.png"], [x["path"] for x in plan["missing"]])
+
+    def test_a_missing_file_names_the_pack_it_should_come_from(self):
+        # "It is missing" is not actionable; "it comes from this pack via this
+        # script" is.
+        self.write({"targets": [
+            {"target": "Assets/x.png", "packId": "kenney-ui-pack",
+             "sourceFile": "PNG/Blue/Default/button.png"}]})
+        html_out = dash._art_plan_html(dash.read_art_plan(self.repo))
+        self.assertIn("kenney-ui-pack", html_out)
+        self.assertIn("apply-art-mapping.ps1", html_out)
+        self.assertIn("-Commit", html_out)
+
+    def test_queued_and_declined_carry_their_reason(self):
+        self.write({
+            "queued": [{"what": "parallax", "packId": "p", "why": "needs a component"}],
+            "deliberatelyNotMapped": [{"target": "Assets/z.png", "why": "a tint is better"}],
+        })
+        plan = dash.read_art_plan(self.repo)
+        html_out = dash._art_plan_html(plan)
+        self.assertIn("needs a component", html_out)
+        self.assertIn("a tint is better", html_out)
+        # The three reasons must stay visually distinct - the fix for each is
+        # different, so one shared badge would flatten them.
+        self.assertIn("대기", html_out)
+        self.assertIn("제외", html_out)
+
+    def test_no_mapping_file_says_so_instead_of_showing_nothing(self):
+        plan = dash.read_art_plan(self.repo)
+        self.assertEqual("", plan["source"])
+        self.assertIn("읽지 못했습니다", dash._art_plan_html(plan))
+
+    def test_the_committed_mapping_has_no_target_without_a_reason(self):
+        path = COMPANY_CONFIG / "art-mapping.json"
+        if not path.is_file():
+            self.skipTest("no mapping committed")
+        mapping = json.loads(path.read_text(encoding="utf-8-sig"))
+        for target in mapping.get("targets", []):
+            self.assertTrue(target.get("why"), target.get("target"))
+            self.assertTrue(target.get("packId"), target.get("target"))
+        for item in mapping.get("queued", []) + mapping.get("deliberatelyNotMapped", []):
+            self.assertTrue(item.get("why"), item)
+
+    def test_the_real_repository_reports_the_background_as_queued(self):
+        # The question this section exists to answer. If the background ever
+        # stops being reported, either it shipped or the plan lost it - and
+        # both should be a deliberate edit, not a silent one.
+        plan = dash.read_art_plan(REPO)
+        if not plan["source"]:
+            self.skipTest("no mapping committed")
+        queued = " ".join(x["what"] + x["why"] for x in plan["queued"])
+        present = " ".join(x["path"] for x in plan["present"])
+        self.assertTrue("background" in queued.lower() or "background" in present.lower(),
+                        "background art is neither shipped nor queued")
+
 
     def test_task_titles_are_escaped(self):
         # Board content is hand-edited JSON and Codex can be asked to touch
