@@ -17,6 +17,34 @@ GameSpec(JSON) → Unity Editor 자동 생성기 → Scene/Prefab/Level/UI 생�
 → Validation → Unity Test → Android Build → APK/AAB
 ```
 
+## 역할 분담 (2026-09-02 사용자 지시, 이후 모든 작업에 적용)
+
+세 가지가 고정 규칙이다. 편해서가 아니라 사용자가 정한 것이므로 지킨다.
+
+1. **모든 코딩은 Codex에게 요청한다.** Claude는 명세를 `AI_GAME_COMPANY/config/TASKBOARD.json`에
+   올리고, 나온 diff를 리뷰하고, 설정/문서를 관리한다. 프로덕션 코드를 직접 쓰지 않는다.
+   정책 키는 `codex_writes_all_code`.
+2. **디자인이 필요하면 Gemini에 요청한다** (무료 등급). 정책 키는 `allow_gemini_design`,
+   키는 `GEMINI_API_KEY` 환경변수. 아래 제약을 반드시 지킨다.
+3. **관제 화면은 AI를 회사 부서별 캐릭터로 보여준다** (`docs/OFFICE_VIEW_SPEC.md`).
+
+**여기서 반드시 알아야 하는 현실 하나:** `codex` CLI는 빌드 PC에만 있고 **Claude Code
+컨테이너에는 없다** (`which codex` → 없음). 그래서 규칙 1을 지키면 Claude는 이 환경에서
+**작업을 큐에 넣는 것까지만** 할 수 있고, PC에서 `orchestrator team run --task <id>`를
+돌려야 실제 코드가 생긴다. 이 지연은 규칙의 대가이지 버그가 아니다 -
+"Codex에게 맡겼다"고 말한 뒤 코드가 저장소에 없으면, 아직 실행되지 않은 것이다.
+
+### Gemini 제약 (코드로 강제할 것, 문서만으로는 부족)
+
+- **별도 환경변수 `GEMINI_API_KEY`.** `GOOGLE_API_KEY`는 `blocked_env_keys`에 그대로 둔다 -
+  이 프로젝트의 다른 코드가 구글 키를 조용히 쓰기 시작하는 일이 없어야 한다.
+- **무료 모델만.** `gemini_free_tier_models`에 없는 모델 id는 어댑터가 거부한다.
+- **429/쿼터 소진 시 절대 승격하지 않는다.** `on_codex_limit`과 같은 방식으로 degrade한다.
+- **키는 절대 커밋/로그/출력하지 않는다.** 존재 여부만 기록한다. 로그인은 HUMAN_GATE
+  (`initial_gemini_login`).
+- Google 공식 요금 페이지(`ai.google.dev`)는 이 환경의 egress 프록시에서 차단된다. 즉
+  무료 등급을 1차 출처로 확인한 것이 아니다 - 그러니 **가정하지 말고 실패하게** 만든다.
+
 ## Development Environment
 
 - Engine: Unity (버전은 `ProjectSettings/ProjectVersion.txt` 참조, 임의 변경 금지)

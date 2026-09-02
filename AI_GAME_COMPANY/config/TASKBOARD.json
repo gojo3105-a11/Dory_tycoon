@@ -1,12 +1,12 @@
 {
-  "_comment": "Shared task board for Claude and Codex. 'owner' decides who implements a task; 'files' is the allowlist its diff is checked against. Run one with: python -m company.orchestrator.main team run --task <id>",
+  "_comment": "Shared task board for Claude and Codex. Since 2026-09-02 the user's standing rule is that ALL coding is requested from Codex: Claude writes the spec here and reviews the diff. 'files' is the allowlist the diff is checked against. Run one with: python -m company.orchestrator.main team run --task <id>",
   "_version": 1,
   "tasks": [
     {
       "id": "CLAUDE-UI1",
       "title": "Casual/Korean UI layout in SceneGenerator",
       "owner": "claude",
-      "status": "in_progress",
+      "status": "review",
       "goal": "Rebuild the title, HUD, game-over, pause and shop screens in SceneGenerator to match the approved casual direction: cream cards with a thick brown outline, Korean labels, one primary green button per screen.",
       "files": [
         "Assets/GameFactory/Editor/SceneGenerator.cs",
@@ -120,6 +120,124 @@
         "Read the whole of RunnerCharacterMotion.cs first. It already tracks grounded state and vertical velocity from RunnerPlayerController, and it already compensates the foot position when the sprite squashes - reuse those, do not recompute them.",
         "Sorting: a SpriteRenderer child needs a lower sortingOrder than the body to draw behind it.",
         "Keep it subtle. This is a 136x192 sprite on a phone; limbs that swing far read as broken, not lively."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-GEMINI1",
+      "title": "Gemini design adapter (free tier only, never escalates)",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "Add company/orchestrator/gemini_client.py so design work can be requested from Gemini's free tier. Model it on the two adapters already in this repo - ollama_client.py and codex_runner.py - which enforce their cost rules in code rather than in prose. Text prompts return text; image prompts return PNG bytes the caller writes under AI_GAME_COMPANY/generated/.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/gemini_client.py",
+        "AI_GAME_COMPANY/tests/test_gemini_client.py"
+      ],
+      "acceptance": [
+        "Reads the API key ONLY from the env var named by policy gemini_api_key_env (GEMINI_API_KEY). Never from GOOGLE_API_KEY, which stays on blocked_env_keys, and never from a file in the repo.",
+        "The key value is never logged, printed, put in an exception message, or written to disk. A status helper may report that a key is PRESENT or ABSENT and nothing more - copy the 'names only' idiom from CodexRunner.stripped_keys.",
+        "Raises a PolicyViolation (from company.orchestrator.policy) before any network call when policy allow_gemini_design is not true. Test that no request is attempted in that case.",
+        "Refuses any model id that is not in the policy's gemini_free_tier_models list, with its own exception type. This is the free-tier gate and it must be checked before the request, not after.",
+        "On HTTP 429 or a quota/rate-limit response, raises a GeminiLimited exception - the same 'degrade, never spend' shape as CodexLimited. It must NOT retry against another model, another tier, or a billed project.",
+        "An HTTP error, an empty response, or a response that is not the expected content type raises rather than returning something falsy. A generation that did not happen is never reported as a generation that produced nothing.",
+        "Uses only the Python standard library (urllib.request). Do not add a dependency - google-generativeai is not installed and must not be added.",
+        "Network calls are injectable so the tests need no key and no network: follow the 'runner' test seam CodexRunner uses.",
+        "Tests cover: the policy gate, the free-model gate, key absence, a 429 degrading, a malformed response raising, and that the key never appears in any exception text or status string."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Endpoint shape, verified from this container on 2026-09-02: GET https://generativelanguage.googleapis.com/v1beta/models returns 403 PERMISSION_DENIED with 'Please use API Key' when unauthenticated - so the host is reachable and only the key is missing. Use that same host.",
+        "Google's own pricing/rate-limit page (ai.google.dev) is BLOCKED by this environment's egress proxy, so the free tier could not be confirmed from a first-party source. Do not write a comment claiming specific free quotas. Write the code so that exceeding quota fails loudly instead.",
+        "Do NOT call the API during the tests. There is no key here and a test that needs one is a test that never runs.",
+        "Login/key setup is a HUMAN_GATE (initial_gemini_login in company_policy.json). Report it, never perform it."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-OFFICE1",
+      "title": "Department office view on the dashboard",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "Add one section to the dashboard that draws the connected AI as characters sitting in company departments, where each character's movement encodes that AI's real status. docs/OFFICE_VIEW_SPEC.md is the specification - read it first and follow it; it fixes the department mapping, the status-to-behaviour table and the constraints.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
+        "AI_GAME_COMPANY/tests/test_dashboard.py"
+      ],
+      "acceptance": [
+        "docs/OFFICE_VIEW_SPEC.md is followed: the department mapping table, the four status behaviours, the floorplan layout with 외주 outside the building, and the 'do not' list at the end.",
+        "Adds a Gemini row to the agent roster in build_agents, so the design department is not drawn empty: state READY only if a key is present in the env var named by policy gemini_api_key_env, otherwise GATED naming initial_gemini_login as the gate, and BLOCKED if policy allow_gemini_design is not true. Evidence is config/company_policy.json. Report only whether a key is present - never its value.",
+        "Reads only the existing Snapshot.agents - no new file is parsed and no new data source is added.",
+        "An agent whose name matches no prefix in the mapping lands in a 기타 department rather than being dropped from the page.",
+        "Animation is CSS keyframes only. No JavaScript animation loop and no external library.",
+        "Every colour comes from an existing --token. No new colour is introduced, and no colour is defined only inside a @media or [data-theme] block.",
+        "Under prefers-reduced-motion: reduce all movement stops, and status is still readable from colour and posture alone.",
+        "The section renders in the static file too (it is display-only, unlike the control panel), and produces no horizontal page scroll at 360px wide.",
+        "Each character carries a title/aria-label of its name and status, and links to the matching roster row.",
+        "A test asserts every state in dash.STATE_LABEL has a distinct visual class in the office CSS - if two statuses render identically the section is decoration, not information.",
+        "A test asserts an unmapped agent name still appears in the rendered HTML."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read dashboard.py fully first. It already has: the four status constants (READY/GATED/BLOCKED/UNKNOWN), the token palette in CSS, the e() escaping helper, and the section markup pattern. Reuse them.",
+        "Characters are procedural inline SVG. Do NOT add image files or any new licensed asset - v1 must work with zero assets. Keep the character drawing in one function so real art can replace it later.",
+        "This page is left open for a long time, so an always-running JS animation is a battery cost with no benefit.",
+        "Do not invent numbers. No progress percentages, no utilisation figures - this dashboard's rule is that anything without evidence reads as 확인 불가.",
+        "The Gemini roster row goes here rather than in CODEX-GEMINI1 because dashboard.py is in this task's allowlist and not in that one's. Do not edit gemini_client.py from here."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-BG1",
+      "title": "ParallaxBackground so the level can have background art",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "The level has no background art at all - just a generated sky gradient. The approved kenney-background-elements-remastered pack cannot be used because nothing scrolls a background layer yet. Add that component so the art becomes a file copy afterwards.",
+      "files": [
+        "Assets/GameFactory/Gameplay/Runner/ParallaxBackground.cs"
+      ],
+      "acceptance": [
+        "One MonoBehaviour that scrolls N background layers horizontally at per-layer speed factors, so distant layers move slower than near ones.",
+        "Structural wiring goes in a SetReferences/SetLayers method called at edit time; numeric tuning goes in a Configure method called at runtime. That split is a project rule, see CLAUDE.md.",
+        "Layers repeat seamlessly: when a layer has scrolled one full sprite width it wraps, with no visible gap or jump.",
+        "No allocation per frame - no GetComponent, no Find, no new objects in Update.",
+        "It works with NO layers assigned (does nothing, logs nothing) so a generated scene without background art is unaffected.",
+        "Runtime script: it must NOT reference UnityEditor in any form, or the Android build breaks.",
+        "Uses current Unity APIs only - Rigidbody2D.linearVelocity rather than the obsolete .velocity, if velocity is touched at all."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Do NOT wire this into SceneGenerator and do NOT copy any art in this task. Those are separate steps that need the art files present first, and SceneGenerator.cs is not in your allowlist.",
+        "Read Assets/GameFactory/Gameplay/Runner/GroundSpawner.cs first - it already solves the recycle-when-passed problem for ground tiles and the same idiom should be used here rather than a new one.",
+        "The camera is orthographic with orthographicSize 5 and follows the player on X only (CameraFollow2D)."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-BOARD1",
+      "title": "The concurrent-work warning should track the tree, not the status",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "build_prompt tells Codex 'ANOTHER AGENT IS EDITING THIS SAME WORKING TREE RIGHT NOW' for every task whose status is in_progress or review. REVIEW means 'written, waiting for a build to verify it' - which for already-committed work is a false statement about the tree, and Codex is then warned off files that are stable. Make the warning describe what is actually uncommitted.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/teamwork.py",
+        "AI_GAME_COMPANY/tests/test_teamwork.py"
+      ],
+      "acceptance": [
+        "The warning lists a task only when at least one of its declared files is actually dirty in git - reuse the existing changed_paths(repo_root) helper in the same module rather than adding a second way to ask git.",
+        "A task in REVIEW whose files are all committed no longer appears in the warning.",
+        "A task in REVIEW or IN_PROGRESS with genuinely uncommitted files still appears, and the text names those files - 'do not touch X' is actionable, 'someone is working somewhere' is not.",
+        "build_prompt keeps working when git is unavailable or the path is not a repo: fall back to the current status-based behaviour rather than raising. A prompt builder must not be able to fail the run.",
+        "Tests cover all three: committed-REVIEW omitted, dirty-REVIEW included with its filenames, and the no-git fallback.",
+        "Existing tests in test_teamwork.py still pass unchanged - in particular test_the_prompt_warns_about_concurrent_work, which may need its fixture to dirty a file rather than only set a status."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read teamwork.py fully first. changed_paths() already handles renames and untracked files, and Task.covers() already matches a path against a task's allowlist patterns - use both instead of writing new matching logic.",
+        "Keep it cheap: build_prompt is called once per run, so one git call is fine, but do not call git once per task."
       ],
       "changed_files": [],
       "last_run": ""

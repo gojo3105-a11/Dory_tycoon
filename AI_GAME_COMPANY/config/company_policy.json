@@ -9,6 +9,15 @@
   "use_claude_code": true,
   "use_codex_subscription": true,
   "allow_codex_write": true,
+  "codex_writes_all_code": true,
+  "_codex_writes_all_code_note": "Set true on 2026-09-02 on the user's instruction: all coding is requested from Codex. Claude writes specifications onto TASKBOARD.json, reviews the resulting diff, and maintains config/docs; it does not author production code while this is true. Note the practical cost, which is not a policy question: the codex CLI is installed on the build PC and NOT in the Claude Code container, so Claude can only QUEUE work here - nothing lands until 'orchestrator team run' is executed on the PC.",
+  "allow_gemini_design": true,
+  "gemini_free_tier_models": [
+    "gemini-2.5-flash-image",
+    "gemini-2.5-flash"
+  ],
+  "gemini_api_key_env": "GEMINI_API_KEY",
+  "_allow_gemini_design_note": "Set true on 2026-09-02 because the user asked for Gemini to be integrated for design work, free of charge. FOUR limits, all of which belong in code and not just here. (1) A SEPARATE env var: GEMINI_API_KEY, deliberately not GOOGLE_API_KEY - that one stays on blocked_env_keys so nothing else in this project silently starts spending a Google key. (2) FREE MODELS ONLY: the adapter must refuse any model id not in gemini_free_tier_models. (3) NEVER ESCALATE: a 429/quota response degrades like on_codex_limit does - it must never retry against a paid tier or a billed project. (4) The key is a HUMAN_GATE (initial_gemini_login) and must never be committed, logged, or printed; presence may be recorded, the value never. Google's own pricing page (ai.google.dev) is blocked by this environment's egress proxy, so the free tier was NOT verified against a first-party source - which is exactly why the code must fail rather than assume.",
   "_allow_codex_write_note": "Set true on 2026-09-02 because the user asked for Codex to develop alongside Claude rather than only review. It runs 'codex exec --sandbox workspace-write', so its edits are confined to the repository, and teamwork.run_task additionally checks the resulting git diff against each task's declared file allowlist. It does NOT relax allow_openai_api_billing - this is still the subscription, not the paid API - and it grants no permission to commit or push: CLAUDE.md's rule that a human approves every commit is unchanged.",
   "use_local_ai": true,
   "ollama_local_only": true,
@@ -54,6 +63,7 @@
   "human_gates": [
     "initial_claude_login",
     "initial_codex_login",
+    "initial_gemini_login",
     "terms_acceptance",
     "any_payment",
     "android_signing_secret",
