@@ -309,5 +309,60 @@ class HardwareTests(unittest.TestCase):
         self.assertTrue(profile.verdicts())
 
 
+class SubprocessEncodingTests(unittest.TestCase):
+    """Every captured subprocess must name its encoding.
+
+    text=True decodes with the machine's locale encoding, which on the Korean
+    build PC is cp949. Codex, git, Unity and Gradle all emit UTF-8, so the
+    default raised UnicodeDecodeError and took down whatever was asking - it
+    broke `codex --doctor` outright, and would have broken `team run`, the
+    dashboard's git log and the build log the same way.
+
+    Four call sites had this bug at once, which is why this is a scan and not
+    four separate assertions: the next one added should fail here rather than
+    on someone's machine.
+    """
+
+    ORCHESTRATOR = REPO_ROOT / "AI_GAME_COMPANY" / "company" / "orchestrator"
+
+    def _calls(self):
+        import re
+        for path in sorted(self.ORCHESTRATOR.glob("*.py")):
+            source = path.read_text(encoding="utf-8")
+            for match in re.finditer(r"subprocess\.(?:run|Popen)\(", source):
+                # The call's argument list, up to its closing paren at the
+                # start of a line - enough to see the keywords it passes.
+                tail = source[match.end():]
+                end = tail.find("\n        )")
+                if end == -1:
+                    end = tail.find("\n    )")
+                chunk = tail[:end if end != -1 else 600]
+                line = source[:match.start()].count("\n") + 1
+                yield f"{path.name}:{line}", chunk
+
+    def test_no_captured_subprocess_relies_on_the_locale_encoding(self):
+        offenders = [
+            where for where, chunk in self._calls()
+            if "text=True" in chunk and "encoding=" not in chunk
+        ]
+        self.assertEqual([], offenders,
+                         "text=True without encoding= decodes with the machine "
+                         "locale (cp949 on the build PC) and raises on UTF-8 output")
+
+    def test_decoding_is_lenient_rather_than_strict(self):
+        # errors="replace": one odd byte in a diagnostic pipe must not lose the
+        # whole log, which is exactly when the log is being asked for.
+        offenders = [
+            where for where, chunk in self._calls()
+            if "encoding=" in chunk and 'errors="replace"' not in chunk
+        ]
+        self.assertEqual([], offenders)
+
+    def test_the_scan_actually_finds_the_call_sites(self):
+        # A scan that matched nothing would pass both tests above while
+        # checking nothing at all.
+        self.assertGreaterEqual(len(list(self._calls())), 4)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

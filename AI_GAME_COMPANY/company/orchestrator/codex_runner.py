@@ -255,6 +255,13 @@ class CodexRunner:
             cwd=str(self.repo_root),
             env=self.child_env(),
             timeout=timeout or self.timeout_seconds,
+            # Explicit, because text=True otherwise decodes with the machine's
+            # locale encoding. On the Korean build PC that is cp949, and Codex
+            # emits UTF-8 - which crashed `codex --doctor` outright with
+            # "'cp949' codec can't decode byte 0xe2". replace, not strict: a
+            # diagnostic pipe must survive one odd byte rather than take the
+            # whole run down with it.
+            encoding="utf-8", errors="replace",
         )
         return completed.returncode, completed.stdout, completed.stderr
 

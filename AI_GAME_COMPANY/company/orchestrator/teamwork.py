@@ -175,6 +175,10 @@ def changed_paths(repo_root: Path) -> set[str]:
     completed = subprocess.run(
         ["git", "status", "--porcelain", "--untracked-files=all"],
         cwd=str(repo_root), capture_output=True, text=True, check=True,
+        # Explicit: a path with a non-ASCII character in it would otherwise be
+        # decoded with the machine's locale encoding and raise, which would
+        # take down run_task before Codex was even invoked.
+        encoding="utf-8", errors="replace",
     )
 
     paths: set[str] = set()
