@@ -383,6 +383,38 @@
       ],
       "changed_files": [],
       "last_run": ""
+    },
+    {
+      "id": "CODEX-LIVE1",
+      "title": "The page contradicts itself: 'Codex 실행 중' at the top, '대기 중' below",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "While a Codex job is running, the control panel says so and the office view right below it shows Codex as 대기 중. Both are reading their own source correctly - the panel watches the live job, build_agents reads committed files - but a page that contradicts itself is wrong however defensible each half is. Three defects, all in code Claude wrote.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
+        "AI_GAME_COMPANY/company/orchestrator/server.py",
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "AI_GAME_COMPANY/tests/test_server.py",
+        "Reports/dashboard.html"
+      ],
+      "acceptance": [
+        "(1) THE SERVED PAGE USES THE LIVE JOB. When a job is running, the AI it belongs to renders as working - typing posture, not waiting. Map the action to the agent: team-run -> Codex CLI, build -> Unity (or the Claude/Unity row if there is no Unity agent), and any future action to its own AI. The server already holds Runner.current; pass it in rather than inventing a second source of truth.",
+        "(2) THE STATIC PAGE IS UNCHANGED. It has no live job to read, so it keeps showing file evidence only. Do not fake a running state there. The existing test that the static page has no control panel must still pass, and add one that the static page shows no live-job state either.",
+        "(3) 'GATED' MUST SAY WHAT IT WAITS FOR. Codex is GATED unconditionally because login cannot be read from a file - that is a HUMAN_GATE, not idleness. The office character's label currently reads bare '대기 중', which a reader takes as 'not working right now'. Give a gated agent a short reason in the office view itself (e.g. '로그인 확인 필요'), not only in the roster detail line. The four status labels in STATE_LABEL stay as they are for the roster; this is about the character's caption.",
+        "(4) Fix the doubled text: the busy indicator concatenates the button's own label, so pressing 'Codex 실행' produces 'Codex 실행 실행 중'. It should read once.",
+        "SECURITY: server.py's four rules are unchanged. Exposing the current job to the renderer is read-only - do NOT add an endpoint that lets the browser set or clear job state, and do not widen what /run accepts.",
+        "Tests: a served page with a fake running team-run job shows Codex as working; the same page with no job shows it gated with its reason; the static page shows neither; and the busy label is not doubled.",
+        "Regenerate Reports/dashboard.html and leave it in the working tree."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read dashboard.py's build_agents() first - the Codex branch is unconditionally GATED and the comment there explains why login is not inferred. Keep that reasoning; the fix is about how the state is PRESENTED and about layering live job state on top, not about guessing login.",
+        "The office view already exists (CODEX-OFFICE1) and reads Snapshot.agents. Extend that path rather than adding a parallel one.",
+        "One job runs at a time, so at most one AI is working - do not build a multi-job model.",
+        "This is a presentation defect in Claude's code, not in the office view Codex built. Do not restyle the office view while fixing it."
+      ],
+      "changed_files": [],
+      "last_run": ""
     }
   ]
 }
