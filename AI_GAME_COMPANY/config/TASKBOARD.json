@@ -23,7 +23,8 @@
       "depends_on": [],
       "notes": [
         "Design reference: https://claude.ai/code/artifact/2c13a317-896d-45cc-98da-b01955e1bc92",
-        "Compiles as of 2026-09-02 (build succeeded, APK produced). Still REVIEW and not done: the acceptance criteria are that every string is Korean and legible ON A DEVICE, and whether Font.CreateDynamicFontFromOSFont finds a Hangul face on Android is the one thing that cannot be checked from here. Install the APK and look."
+        "Compiles as of 2026-09-02 (build succeeded, APK produced). Still REVIEW and not done: the acceptance criteria are that every string is Korean and legible ON A DEVICE, and whether Font.CreateDynamicFontFromOSFont finds a Hangul face on Android is the one thing that cannot be checked from here. Install the APK and look.",
+        "Verified from the fork's committed reports 2026-09-02 20:25: generate/validate/build all exit 0, APK Builds/game01/APK/Game01_FactoryRunner_v1.0.apk 17.32 MB sha256:7F81E6F18E29EA94, and 0 compile errors / 0 obsolete-API warnings / 0 runtime exceptions / 0 build failures. Still REVIEW for one reason only: nobody has looked at the Korean text on a device yet."
       ],
       "changed_files": [],
       "last_run": ""
@@ -73,7 +74,8 @@
         "Unity's spriteBorder order is (left, bottom, right, top) - that is why the bottom is 8 and not the top: the depth lip is at the bottom of the sprite.",
         "Do not copy any image files. apply-art-mapping.ps1 does the copying on the PC, and it refuses any pack that is not APPROVED in LICENSE_REGISTRY.json.",
         "Ran 2026-09-02. Codex edited both allowlisted files correctly; the run was reported BLOCKED only because Unity rewrote Packages/packages-lock.json while it worked - see CODEX-BOARD1 defect 1. Committed by hand as 89514dc. Still needs apply-art-mapping.ps1 -Commit to copy the actual PNGs, and a build to compile SharedArtImporter.",
-        "SharedArtImporter compiles as of 2026-09-02. Still REVIEW: the four button PNGs are not on disk yet, so every button in the current APK is still the blue fallback. Needs AI_GAME_COMPANY/tools/apply-art-mapping.ps1 -Commit."
+        "SharedArtImporter compiles as of 2026-09-02. Still REVIEW: the four button PNGs are not on disk yet, so every button in the current APK is still the blue fallback. Needs AI_GAME_COMPANY/tools/apply-art-mapping.ps1 -Commit.",
+        "Still REVIEW as of 2026-09-02 20:25: the fork has no Assets/Common/Art/UI/ directory at all, so the four button PNGs were never copied - apply-art-mapping.ps1 has not been run with -Commit. Every button in the 17.32 MB APK is therefore still the blue fallback that StyleButton falls back to."
       ],
       "changed_files": [
         "AI_GAME_COMPANY/config/art-mapping.json",
