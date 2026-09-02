@@ -198,7 +198,8 @@
         "This page is left open for a long time, so an always-running JS animation is a battery cost with no benefit.",
         "Do not invent numbers. No progress percentages, no utilisation figures - this dashboard's rule is that anything without evidence reads as 확인 불가.",
         "The Gemini roster row goes here rather than in CODEX-GEMINI1 because dashboard.py is in this task's allowlist and not in that one's. Do not edit gemini_client.py from here.",
-        "Reports/dashboard.html is a TRACKED file and is in your allowlist for exactly this reason: you should regenerate it to check your work, and without it listed that correct action would have been reported as going outside the allowlist."
+        "Reports/dashboard.html is a TRACKED file and is in your allowlist for exactly this reason: you should regenerate it to check your work, and without it listed that correct action would have been reported as going outside the allowlist.",
+        "User confirmed 2026-09-02 that the HTML UI's visual direction is 'office' and that Codex builds it. docs/OFFICE_VIEW_SPEC.md is the brief. If the whole page should later be restyled to match, that is a follow-up - do not widen this task to a full redesign, since the information density of the roster and the pipeline sections is what makes the page useful."
       ],
       "changed_files": [],
       "last_run": ""
@@ -314,6 +315,69 @@
         "server.py needs NO change and is not in your allowlist. ACTIONS['team-run'] already exists and Runner.valid_arg already checks that the id is a real Codex-owned task, so the endpoint is done.",
         "Do not add a confirmation dialog. Starting a task is reversible - run_task reverts nothing and commits nothing - and a prompt on every press would be friction for no safety.",
         "CODEX-OFFICE1 also edits dashboard.py. There is no conflict: only one job runs at a time, so whichever runs second simply builds on the first. Do not try to do that task's work here."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-OLLAMA1",
+      "title": "Choose which Ollama model is in use, without breaking the licence gate",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "ollama_client can list installed models and knows which ids are APPROVED, but nothing can SELECT one - there is no concept of an active model anywhere. Add that, so the model can be changed without editing code, and so the dashboard can say which one is in use.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/ollama_client.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_ollama_client.py"
+      ],
+      "acceptance": [
+        "`orchestrator ollama --list` prints every installed model with three facts per row: licence status from LICENSE_REGISTRY.json, whether it fits this machine's RAM (HardwareProfile.model_fit already computes this), and whether it is the active one.",
+        "`orchestrator ollama --use <model>` sets the active model, persisted somewhere committed and readable - company/state/company_state.json is the existing place for runtime state and already carries ollama_status.",
+        "--use REFUSES a model that is not APPROVED in the registry. Call the existing require_approved(); do not add a second licence check that could drift from it.",
+        "--use REFUSES a model that does not fit in RAM, naming the model size and the machine's total. gemma4:26b is 17.33 GB against 15.71 GB and must be refused on those grounds even if someone later marks it APPROVED - installed, licensed and unloadable are three separate things.",
+        "--use REFUSES a model that is not installed. Do NOT add any way to pull or download one: policy never_auto_install lists ollama_models, and a licence has to be verified per model id first.",
+        "Both refusals exit non-zero and say which of the three checks failed. A refusal that does not say why sends someone to change the wrong thing.",
+        "Tests, with the HTTP layer injected as the existing ones do: --use accepts an approved model that fits; refuses an unapproved one; refuses an oversized one; refuses one that is not installed; and the persisted choice survives a reload."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Read ollama_client.py fully first. list_models(), approved_models() and require_approved() already exist and the local-only guard (NonLocalEndpointRefused) must stay - do not widen it.",
+        "hardware.py already has model_fit() and ollama_model_sizes. Use them rather than re-deriving sizes.",
+        "This is the capability only. Wiring it into the web panel is CODEX-AICTL1's job and dashboard.py is not in your allowlist."
+      ],
+      "changed_files": [],
+      "last_run": ""
+    },
+    {
+      "id": "CODEX-AICTL1",
+      "title": "A control per AI in the panel, and honest silence where there is none",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "The control panel can only drive Codex and Unity. Give each connected AI its own control - and give the ones with no adapter no control at all, stated as such, because a button that cannot work misrepresents what this project can do.",
+      "files": [
+        "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
+        "AI_GAME_COMPANY/company/orchestrator/server.py",
+        "AI_GAME_COMPANY/tests/test_dashboard.py",
+        "AI_GAME_COMPANY/tests/test_server.py",
+        "Reports/dashboard.html"
+      ],
+      "acceptance": [
+        "Controls exist for exactly these, because these have adapters: Codex (already there), Unity build (already there), Ollama model selection (via CODEX-OLLAMA1's orchestrator ollama --use), and local image generation (tools/generate-sprite.py).",
+        "Gemini and Blender get NO button and instead say why - 'gemini_client.py 없음', 'blender_runner.py 없음'. Wire Gemini up only if gemini_client.py exists by then; detect it, do not assume.",
+        "The Ollama row is a picker of INSTALLED models only, with unapproved or oversized ones shown disabled and the reason visible. It must not offer to download anything: policy never_auto_install lists ollama_models.",
+        "SECURITY - server.py's four rules are unchanged and each new action obeys them: bound to 127.0.0.1 only; the browser sends an ACTION NAME and server.py builds argv (shell=False, ids matched against SAFE_ID and checked to really exist); the per-run token and Origin check apply to every new endpoint; one job at a time.",
+        "Every new ACTIONS entry validates its argument the way build/team-run do - a model id must be one the Ollama client actually reports as installed, not any string the browser sends.",
+        "test_server.py gains, per new action: a wrong token refused, a cross-site Origin refused, an unknown action refused, and an injected argument refused. The existing security tests must still pass unchanged.",
+        "Still no controls in the static file, and no confirmation dialogs.",
+        "Regenerate Reports/dashboard.html and leave it in the working tree."
+      ],
+      "depends_on": [
+        "CODEX-OLLAMA1"
+      ],
+      "notes": [
+        "server.py is the most dangerous file in this project - it runs commands for a web page. Read its module docstring before touching it; the four rules are written there with the reasoning.",
+        "Do not add a danger-full-access sandbox, a shell=True call, or any action that takes a command string from the request. If a control seems to need one, stop and say so in your final message.",
+        "CODEX-START1 and CODEX-OFFICE1 also edit dashboard.py. Only one job runs at a time, so whichever runs later just builds on the earlier work - do not attempt their tasks here."
       ],
       "changed_files": [],
       "last_run": ""
