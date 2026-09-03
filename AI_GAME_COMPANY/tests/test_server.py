@@ -253,5 +253,52 @@ class LiveServerTests(unittest.TestCase):
         self.assertNotEqual(0, payload["exit_code"])
 
 
+class JobProgressTests(unittest.TestCase):
+    """A polled job carries the Korean summary, not just a wall of English.
+
+    Derived on this side rather than in the browser so the rule that every
+    phrase is anchored to a printed line can be tested at all.
+    """
+
+    def job(self, action="team-run", arg="C-1"):
+        return srv.Job(id="j1", action=action, arg=arg, argv=["true"])
+
+    def test_the_snapshot_carries_a_phase_and_the_argument(self):
+        job = self.job()
+        job.append("=== HANDING C-1 TO CODEX ===\n")
+        payload = job.snapshot()
+
+        self.assertEqual("C-1", payload["arg"])
+        self.assertIn("progress", payload)
+        self.assertEqual("작업 명세를 읽고 Codex에게 넘기는 중",
+                         payload["progress"]["phase"])
+        self.assertEqual("Codex 작업 실행", payload["progress"]["action_label"])
+
+    def test_a_job_that_has_printed_nothing_is_starting(self):
+        self.assertEqual("시작하는 중", self.job().snapshot()["progress"]["phase"])
+
+    def test_elapsed_time_stops_when_the_job_does(self):
+        # Otherwise a finished run keeps counting up for as long as the page
+        # is left open, which reads as still running.
+        job = self.job()
+        job.finished = job.started + 42
+        first = job.snapshot()["progress"]["elapsed"]
+        self.assertEqual("42초", first)
+        self.assertEqual(first, job.snapshot()["progress"]["elapsed"])
+
+    def test_a_finished_job_reports_its_exit_code(self):
+        job = self.job()
+        job.done, job.exit_code, job.finished = True, 4, job.started + 3
+        progress = job.snapshot()["progress"]
+        self.assertTrue(progress["done"])
+        self.assertIn("4", progress["phase"])
+
+    def test_the_running_job_is_exposed_read_only(self):
+        # LIVE state reaches the renderer, but nothing a request can send
+        # creates or clears it - only start() makes a Job.
+        self.assertFalse(hasattr(srv.Handler, "set_job"))
+        self.assertNotIn("job", srv.ACTIONS)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
