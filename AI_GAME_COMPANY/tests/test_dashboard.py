@@ -687,5 +687,135 @@ class LiveAgentTests(unittest.TestCase):
         self.assertEqual("대기 중", dash.STATE_LABEL[dash.GATED])
 
 
+class PcLinkTests(unittest.TestCase):
+    """The 'PC 연결' section: the two files by which the PC reaches Claude.
+
+    Both readers follow the page's founding rule - a missing file is 확인 불가,
+    never a clean bill of health - and a stale sync is called out, because a
+    scheduled task that quietly stopped is exactly how a day got lost.
+    """
+
+    SYNC_BLOCKED = (
+        "# Auto-sync status\n\nGenerated: 2026-09-03 12:00:00\nOutcome: BLOCKED\n"
+        "Reason: Uncommitted changes to tracked files:  M Packages/packages-lock.json\n"
+        "Last-Success: 2026-09-03 08:25:10\nLocal-Head: 9ec5c9d\nUpstream-Head: f198460\n"
+        "Branch: claude/x\n\nWritten by scripts/desktop/sync-and-run.ps1 on every run.\n"
+    )
+    RUN_FAILED = (
+        "# Orchestrator run report\n\nGenerated: 2026-09-03 12:34:56\n"
+        "Command: team run --task CODEX-X\nOutcome: FAILED\nExit: 4\nDuration: 12분 3초\n"
+        "\n## Output (tail)\n\nOutcome: OK (this is body text and must be ignored)\n"
+    )
+
+    def page(self, sync=None, run=None, served=False):
+        snapshot = dash.collect(REPO)
+        snapshot.sync_status = dash.read_header_fields(self.write(sync)) if sync else {}
+        snapshot.last_run = dash.read_header_fields(self.write(run)) if run else {}
+        return RenderTests.section(
+            dash.render(snapshot, control_token="tok" if served else None), "PC 연결")
+
+    def write(self, text):
+        self._tmp = getattr(self, "_tmp", None) or tempfile.TemporaryDirectory()
+        path = Path(self._tmp.name) / f"{abs(hash(text))}.txt"
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def tearDown(self):
+        tmp = getattr(self, "_tmp", None)
+        if tmp:
+            tmp.cleanup()
+
+    def test_missing_files_render_as_unknown_not_ok(self):
+        section = self.page()
+        sync_panel = section.split("PC 자동 동기화", 1)[1].split("마지막 오케스트레이터 실행", 1)[0]
+        run_panel = section.split("마지막 오케스트레이터 실행", 1)[1]
+        self.assertIn("확인 불가", sync_panel)
+        self.assertIn("확인 불가", run_panel)
+        self.assertNotIn("동기화됨", section)
+        self.assertNotIn(">성공<", section)
+
+    def test_a_blocked_sync_shows_the_reason(self):
+        section = self.page(sync=self.SYNC_BLOCKED)
+        self.assertIn("머지 보류", section)
+        self.assertIn("packages-lock.json", section)
+        self.assertIn("2026-09-03 08:25:10", section)   # last success
+        self.assertIn("· 다름", section)                 # heads differ
+
+    def test_a_failed_run_shows_command_and_exit_code(self):
+        section = self.page(run=self.RUN_FAILED)
+        self.assertIn(">실패<", section)
+        self.assertIn("team run --task CODEX-X", section)
+        self.assertIn("종료 코드 4", section)
+        self.assertIn("Reports/runs/latest.txt", section)
+
+    def test_the_header_parser_stops_at_the_body(self):
+        fields = dash.read_header_fields(self.write(self.RUN_FAILED))
+        self.assertEqual("FAILED", fields["Outcome"])
+        self.assertEqual("4", fields["Exit"])
+
+    def test_a_stale_sync_is_called_out(self):
+        from datetime import datetime, timedelta
+        old = (datetime.now() - timedelta(hours=20)).strftime("%Y-%m-%d %H:%M:%S")
+        text = self.SYNC_BLOCKED.replace("2026-09-03 12:00:00", old).replace("BLOCKED", "OK")
+        section = self.page(sync=text)
+        self.assertIn("예약 작업", section)
+        self.assertIn("시간 전", section)
+
+    def test_a_fresh_sync_is_not_called_stale(self):
+        from datetime import datetime
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        text = self.SYNC_BLOCKED.replace("2026-09-03 12:00:00", now).replace("BLOCKED", "OK")
+        section = self.page(sync=text)
+        self.assertNotIn("예약 작업", section)
+        self.assertIn("동기화됨", section)
+
+    def test_hours_since_handles_garbage(self):
+        self.assertIsNone(dash.hours_since("yesterday-ish"))
+        self.assertIsNone(dash.hours_since(""))
+        from datetime import datetime
+        self.assertAlmostEqual(
+            2.0, dash.hours_since("2026-09-03 10:00:00", now=datetime(2026, 9, 3, 12, 0, 0)), places=3)
+
+
+class KoreanTitleTests(unittest.TestCase):
+    """The page is Korean; a task with a title_ko shows it, one without falls back."""
+
+    TASKS = [
+        {"id": "K-1", "title": "English title", "title_ko": "한국어 제목", "owner": "codex",
+         "status": "todo"},
+        {"id": "K-2", "title": "Only English", "owner": "codex", "status": "todo"},
+    ]
+
+    def page(self, served=True):
+        snapshot = dash.collect(REPO)
+        snapshot.tasks = list(self.TASKS)
+        return dash.render(snapshot, control_token="tok" if served else None)
+
+    def test_the_queue_and_board_prefer_the_korean_title(self):
+        page = self.page()
+        queue = RenderTests.section(page, "작업 대기열")
+        board = RenderTests.section(page, "공유 작업판")
+        self.assertIn("한국어 제목", queue)
+        self.assertIn("한국어 제목", board)
+        # The English title survives as a hover so Codex's wording is one
+        # mouse-over away, not lost.
+        self.assertIn('title="English title"', board)
+
+    def test_a_task_without_a_translation_still_shows_its_title(self):
+        page = self.page()
+        self.assertIn("Only English", RenderTests.section(page, "작업 대기열"))
+
+    def test_the_dropdown_uses_the_korean_title_too(self):
+        page = self.page()
+        self.assertIn("K-1 · 한국어 제목", page)
+
+    def test_every_committed_task_has_a_korean_title(self):
+        # The board is what the page shows; an untranslated task is the one
+        # English line on a Korean page, which is how this started.
+        board = json.loads((COMPANY_CONFIG / "TASKBOARD.json").read_text(encoding="utf-8"))
+        missing = [t["id"] for t in board["tasks"] if not t.get("title_ko")]
+        self.assertEqual([], missing)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

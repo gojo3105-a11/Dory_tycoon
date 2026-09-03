@@ -28,6 +28,11 @@ GameSpec(JSON) → Unity Editor 자동 생성기 → Scene/Prefab/Level/UI 생�
    키는 `GEMINI_API_KEY` 환경변수. 아래 제약을 반드시 지킨다.
 3. **관제 화면은 AI를 회사 부서별 캐릭터로 보여준다** (`docs/OFFICE_VIEW_SPEC.md`).
 
+**규칙 1의 예외 기록.** 사용자가 직접 지시한 경우에만 Claude가 코드를 썼다: 2026-09-03 "두 가지 사항은
+너가 직접 고치기"(진행 상황 한글 요약, 작업 대기열 → CODEX-LIVE1까지 함께 종결), 같은 날 "전체 문제 있는
+부분 및 디자인과 개발시스템 수정"(CODEX-RUNLOG1, CODEX-BOARD1, sync-and-run.ps1 상태 파일, 한국어
+작업 제목). 각 작업판 항목의 notes에 "DONE BY CLAUDE"로 남겨두었다. 그 외에는 규칙 1이 그대로다.
+
 **여기서 반드시 알아야 하는 현실 하나:** `codex` CLI는 빌드 PC에만 있고 **Claude Code
 컨테이너에는 없다** (`which codex` → 없음). 그래서 규칙 1을 지키면 Claude는 이 환경에서
 **작업을 큐에 넣는 것까지만** 할 수 있고, PC에서 `orchestrator team run --task <id>`를
@@ -173,6 +178,27 @@ GameSpec의 mechanics/level/enemy/special 조합이 실제로 달라져야 한�
 Editor 쪽 파일은 아예 컴파일되지 않아 에러 목록에 나타나지도 않는다.** Runtime 에러를 먼저 고치고
 다시 확인해야 Editor 에러가 보인다 - 에러 목록이 짧다고 문제가 그것뿐이라고 단정하지 않는다.
 
+**오케스트레이터 실행 결과와 자동 동기화 상태도 같은 방식이다** (2026-09-03 추가). 두 파일이 더 있다:
+
+- **`Reports/runs/latest.txt`** - `python -m company.orchestrator.main <명령>`을 실행할 때마다
+  `company/orchestrator/runlog.py`가 남긴다(`serve` 제외). 명령, 종료 코드, 소요 시간, 출력 꼬리,
+  예외. `Reports/runs/<시각>-<명령>.txt`로 최근 50개 보관. `blocked_env_keys`와 `GEMINI_API_KEY`의
+  **값**은 쓰기 전에 `[REDACTED:<이름>]`으로 치환된다 - 이름만 남는다. 기록 실패는 stderr에만 찍히고
+  명령의 종료 코드를 바꾸지 않는다.
+- **`Reports/sync-status/latest.txt`** - `scripts/desktop/sync-and-run.ps1`이 매 실행마다 쓴다.
+  `Outcome`은 OK / UP-TO-DATE / BLOCKED / FAILED, `Reason`에 이유. 결과가 바뀌었거나 6시간이 지났을
+  때만 커밋한다(15분마다 타임스탬프만 바뀌는 커밋을 하루 96개 만들지 않기 위해). 이 파일이 7시간 넘게
+  갱신되지 않으면 예약 작업 자체가 죽은 것이다.
+
+이 두 파일이 생긴 이유: 2026-09-03 아침, 자동 동기화가 추적 파일 하나가 더러워진 것 때문에 8시간 동안
+아무것도 머지하지 않았는데, 그 사실이 gitignore된 `Logs/auto-sync.log`에만 남아서 아무도 몰랐다. 그리고
+같은 날 `team run` 실패 세 건을 사용자가 콘솔에서 복사해 붙여야 했다. **"pull 하세요" / "에러 붙여주세요"를
+말하기 전에 이 파일들을 먼저 읽는다.** 대시보드의 "PC 연결" 섹션이 같은 두 파일을 보여준다.
+
+`sync-and-run.ps1`은 `Packages/packages-lock.json`이 수정돼 있으면 Unity가 다시 쓴 것으로 보고
+housekeeping 커밋을 만든 뒤 진행한다(`ProjectVersion.txt`와 같은 취급). 다른 추적 파일이 더러우면 여전히
+멈추고, 그 사실을 `sync-status`에 BLOCKED로 남긴다.
+
 이 저장소(`gojo3105-a11/Dory_tycoon`)에는 그 파일들이 사용자가 병합할 때까지 안 들어올 수
 있으므로, 최신 상태는 **사용자 포크에서 직접 읽는다**:
 
@@ -180,6 +206,8 @@ Editor 쪽 파일은 아예 컴파일되지 않아 에러 목록에 나타나지
 git fetch https://github.com/gojo3105/dory_tycoon claude/delete-current-content-mgn4xm:fork-check
 git show fork-check:Reports/errors/latest.txt
 git show fork-check:Reports/build-status/latest.txt
+git show fork-check:Reports/sync-status/latest.txt
+git show fork-check:Reports/runs/latest.txt
 git branch -D fork-check
 ```
 
@@ -196,6 +224,11 @@ python -m company.orchestrator.main serve              # 제어판 (버튼이 �
 `dashboard`는 `Reports/dashboard.html`을 만든다. 커밋된 파일만 읽으므로 빌드 PC에서든
 Unity가 없는 컨테이너에서든 같은 답을 낸다. 이미지(게임 아트 / AI 생성물 / 캐릭터 원본)는
 data URI로 파일 안에 박아 넣으므로, 그 한 파일만 있으면 어디서든 보인다.
+
+**PC에서는 `scripts/desktop/open-control-panel.ps1` 하나로 연다** - upstream을 당기고(sync-and-run.ps1
+`-NoTrigger`), `AI_GAME_COMPANY/`로 들어가 `serve`를 띄우고, 브라우저를 연다. `company` 패키지가
+`AI_GAME_COMPANY/` 안에 있어서 저장소 루트에서 `serve`를 치면 `No module named 'company'`로 죽는데,
+그걸 매번 기억하지 않게 하려는 스크립트다.
 
 `serve`는 같은 화면에 실행 버튼을 붙여서 `http://127.0.0.1:8765` 로 띄운다.
 Codex 작업 실행 / 빌드 / Codex 진단 / 변경 파일 확인을 브라우저에서 누를 수 있다.

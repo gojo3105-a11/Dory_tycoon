@@ -21,9 +21,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from company.orchestrator.teamwork import (  # noqa: E402
-    BLOCKED, CODEX, DONE, IN_PROGRESS, REVIEW, TODO,
+    BLOCKED, CODEX, DONE, IN_PROGRESS, REVIEW, TODO, TOOL_OWNED_PATHS,
     AllowlistViolation, NotCodexOwned, Task, TaskBoard, TaskNotFound,
-    build_prompt, changed_paths, run_task,
+    build_prompt, changed_paths, concurrent_work, run_task,
 )
 
 BOARD = Path(__file__).resolve().parents[1] / "config" / "TASKBOARD.json"
@@ -288,6 +288,116 @@ class PromptTests(RepoTestCase):
         prompt = build_prompt(self.board.get("T1"), self.board)
         self.assertIn("C1", prompt)
         self.assertIn("SAME WORKING TREE", prompt)
+
+
+class ToolChurnTests(RepoTestCase):
+    """CODEX-BOARD1 defect 1: a file a TOOL rewrote must not block the task."""
+
+    def test_packages_lock_churn_is_reported_not_blamed(self):
+        self.assertIn("Packages/packages-lock.json", TOOL_OWNED_PATHS)
+        agent = FakeCodexAgent(self.repo, {
+            "src/allowed.cs": "// work\n",
+            "Packages/packages-lock.json": "{ \"rewritten by unity\": true }\n",
+        })
+        run = run_task(self.board, "T1", agent, self.repo)
+
+        self.assertTrue(run.ok, run.outside_allowlist)
+        self.assertEqual(REVIEW, self.board.get("T1").status)
+        self.assertEqual(["src/allowed.cs"], run.changed)
+        self.assertEqual(["Packages/packages-lock.json"], run.tool_churn)
+        # Not silently dropped: it is on the run, just not on the task.
+        self.assertNotIn("Packages/packages-lock.json", self.board.get("T1").changed_files)
+
+    def test_a_real_stray_file_still_blocks(self):
+        agent = FakeCodexAgent(self.repo, {
+            "src/allowed.cs": "// work\n",
+            "Packages/packages-lock.json": "{}\n",
+            "src/other.cs": "// overreach\n",
+        })
+        run = run_task(self.board, "T1", agent, self.repo)
+
+        self.assertFalse(run.ok)
+        self.assertEqual(["src/other.cs"], run.outside_allowlist)
+        self.assertEqual(BLOCKED, self.board.get("T1").status)
+
+
+class BoardMetaTests(unittest.TestCase):
+    """CODEX-BOARD1 defect 2: save() must not clobber hand-edited fields."""
+
+    def test_a_hand_edited_comment_and_unknown_keys_survive_a_round_trip(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "board.json"
+            path.write_text(json.dumps({
+                "_comment": "edited by a person - keep me",
+                "_version": 7,
+                "_house_note": "also keep me",
+                "tasks": [{"id": "A", "title": "a", "owner": "codex", "status": "todo",
+                           "title_ko": "가"}],
+            }, ensure_ascii=False), encoding="utf-8")
+
+            board = TaskBoard.load(path)
+            board.tasks[0].status = REVIEW
+            board.save()
+
+            data = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual("edited by a person - keep me", data["_comment"])
+            self.assertEqual(7, data["_version"])
+            self.assertEqual("also keep me", data["_house_note"])
+            self.assertEqual("review", data["tasks"][0]["status"])
+            self.assertEqual("가", data["tasks"][0]["title_ko"])
+            # And the key order still puts the metadata first, tasks last.
+            self.assertEqual("tasks", list(data)[-1])
+
+    def test_a_board_with_no_comment_gets_the_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "board.json"
+            TaskBoard(path=path, tasks=[Task(id="A", title="a")]).save()
+            data = json.loads(path.read_text(encoding="utf-8"))
+            self.assertIn("Shared task board", data["_comment"])
+            self.assertEqual(1, data["_version"])
+
+
+class ConcurrentWorkTests(RepoTestCase):
+    """CODEX-BOARD1 defect 3: the warning tracks the tree, not the status."""
+
+    def setUp(self):
+        super().setUp()
+        self.board.tasks.append(
+            Task(id="C1", title="claude's job", owner="claude", status=REVIEW,
+                 files=["docs/"]))
+        self.board.save()
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "add C1")
+
+    def test_a_committed_review_task_is_not_called_work_in_progress(self):
+        prompt = build_prompt(self.board.get("T1"), self.board, self.repo)
+        self.assertNotIn("SAME WORKING TREE", prompt)
+        self.assertNotIn("C1", prompt.split("ACCEPTANCE CRITERIA")[1].split("PROJECT RULES")[0])
+
+    def test_a_task_with_a_dirty_declared_file_is_named_with_the_file(self):
+        (self.repo / "docs").mkdir(exist_ok=True)
+        (self.repo / "docs" / "draft.md").write_text("wip\n", encoding="utf-8")
+
+        lines = concurrent_work(self.board.get("T1"), self.board, self.repo)
+        self.assertTrue(any("C1" in line for line in lines), lines)
+        self.assertTrue(any("docs/draft.md" in line for line in lines), lines)
+        prompt = build_prompt(self.board.get("T1"), self.board, self.repo)
+        self.assertIn("SAME WORKING TREE", prompt)
+        self.assertIn("docs/draft.md", prompt)
+
+    def test_without_git_it_falls_back_to_status_instead_of_raising(self):
+        self.board.tasks.append(
+            Task(id="C2", title="in flight", owner="claude", status=IN_PROGRESS))
+        with tempfile.TemporaryDirectory() as not_a_repo:
+            prompt = build_prompt(self.board.get("T1"), self.board, Path(not_a_repo))
+        self.assertIn("C2", prompt)
+        self.assertIn("SAME WORKING TREE", prompt)
+
+    def test_the_task_itself_is_never_listed_as_concurrent(self):
+        (self.repo / "src").mkdir(exist_ok=True)
+        (self.repo / "src" / "allowed.cs").write_text("mine\n", encoding="utf-8")
+        lines = concurrent_work(self.board.get("T1"), self.board, self.repo)
+        self.assertFalse(any("T1" in line for line in lines), lines)
 
 
 class CommittedBoardTests(unittest.TestCase):

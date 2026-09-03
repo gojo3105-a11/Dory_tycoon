@@ -188,7 +188,10 @@ class LiveServerTests(unittest.TestCase):
         page = dash.render(dash.collect(self.repo))
         self.assertNotIn("AI 제어", page)
         self.assertNotIn("const TOKEN", page)
-        self.assertNotIn("/run", page)
+        # The endpoint literal as the served script spells it. Not a bare
+        # "/run": the page legitimately names Reports/runs/latest.txt.
+        self.assertNotIn("'/run'", page)
+        self.assertNotIn("data-act=", page)
 
     def test_unknown_path_is_404(self):
         self.assertEqual(404, self.get("/../../etc/passwd")[0])

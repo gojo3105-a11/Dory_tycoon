@@ -28,6 +28,7 @@ from company.orchestrator.ollama_client import (  # noqa: E402
     NonLocalEndpointRefused, OllamaClient, OllamaUnavailable,
 )
 from company.orchestrator.policy import Policy  # noqa: E402
+from company.orchestrator.runlog import Recorder  # noqa: E402
 from company.orchestrator.report_generator import (  # noqa: E402
     GameNarrative, MissingRequiredSection, ReportGenerator, WouldDowngradeReport,
 )
@@ -306,7 +307,7 @@ def cmd_team(args: argparse.Namespace) -> int:
 
     if args.dry_run:
         print("\n--- prompt (not sent) ---")
-        print(build_prompt(task, board))
+        print(build_prompt(task, board, REPO_ROOT))
         return 0
 
     print("  running codex exec --sandbox workspace-write ...\n")
@@ -334,6 +335,11 @@ def cmd_team(args: argparse.Namespace) -> int:
         print(f"  {path}")
     if not run.changed:
         print("  (none)")
+    if run.tool_churn:
+        # Reported, not blamed: Unity rewrote these while Codex worked.
+        print("\n--- rewritten by tools during the run (not counted against the task) ---")
+        for path in run.tool_churn:
+            print(f"  {path}")
 
     if run.outside_allowlist:
         print("\nBLOCKED - these are outside the task's allowlist:")
@@ -577,7 +583,34 @@ def main(argv: list[str] | None = None) -> int:
     report.set_defaults(func=cmd_report)
 
     args = parser.parse_args(argv)
-    return args.func(args)
+
+    # Every subcommand is wrapped in ONE place so its outcome - success,
+    # non-zero exit, or an exception - lands in Reports/runs/, which the
+    # scheduled sync commits. That is the channel by which a failure on the
+    # build PC reaches Claude without a person retyping it. The wrapper only
+    # observes: the exit code and any exception pass through untouched, and a
+    # failure to write the log is reported on stderr and changes nothing.
+    recorder = Recorder(REPO_ROOT / "Reports" / "runs",
+                        redact_names=_secret_env_names())
+    command_argv = list(sys.argv[1:] if argv is None else argv)
+    return recorder.run(args.command, command_argv, lambda: args.func(args))
+
+
+def _secret_env_names() -> list[str]:
+    """Env var NAMES whose values must never appear in a run log.
+
+    Read from policy so the list cannot drift from the one CodexRunner strips
+    from Codex's environment; the Gemini key is named by policy too.
+    """
+    path = CONFIG_DIR / "company_policy.json"
+    if not path.exists():
+        return []
+    policy = Policy.load(path)
+    names = list(policy.blocked_env_keys)
+    gemini = policy.raw.get("gemini_api_key_env")
+    if isinstance(gemini, str) and gemini:
+        names.append(gemini)
+    return names
 
 
 if __name__ == "__main__":

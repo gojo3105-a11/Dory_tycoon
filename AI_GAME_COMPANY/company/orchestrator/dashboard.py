@@ -115,6 +115,10 @@ class Snapshot:
     gallery: list[dict[str, Any]]
     art_plan: dict[str, Any]
     missing: list[str]
+    # Reports/sync-status/latest.txt and Reports/runs/latest.txt, parsed.
+    # Empty dict = file absent, which renders as 확인 불가 - never as fine.
+    sync_status: dict[str, str] = field(default_factory=dict)
+    last_run: dict[str, str] = field(default_factory=dict)
 
 
 # ---- reading -------------------------------------------------------------
@@ -202,6 +206,45 @@ def read_errors(path: Path) -> tuple[dict[str, int], str]:
         if match:
             counts[key] = int(match.group(1))
     return counts, _report_timestamp(text)
+
+
+def read_header_fields(path: Path) -> dict[str, str]:
+    """'Key: value' header lines of a report, up to its first '## ' section.
+
+    Shared by the sync-status and run-log readers because both files use the
+    same shape as the two reports that already work - a third format would
+    be a third parser.
+    """
+    if not path.is_file():
+        return {}
+    fields: dict[str, str] = {}
+    try:
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
+        return {}
+    for line in text.splitlines():
+        if line.startswith("## "):
+            break
+        match = re.match(r"^([A-Za-z][A-Za-z-]*):\s*(.*)$", line)
+        if match:
+            fields[match.group(1)] = match.group(2).strip()
+    return fields
+
+
+def hours_since(stamp: str, now: datetime | None = None) -> float | None:
+    """Age of a 'YYYY-MM-DD HH:MM:SS' stamp in hours, or None if unreadable."""
+    try:
+        then = datetime.strptime(stamp.strip()[:19], "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    current = now or datetime.now()
+    return max(0.0, (current - then).total_seconds() / 3600)
+
+
+# The scheduled sync runs every 15 minutes but commits its status only when
+# the outcome changes or after a 6-hour heartbeat, so a committed stamp up to
+# ~6h old is normal. Past this, the scheduled task itself has probably stopped.
+SYNC_STALE_HOURS = 7.0
 
 
 def read_commits(repo_root: Path, limit: int = 8) -> list[dict[str, str]]:
@@ -603,7 +646,10 @@ def collect(repo_root: Path) -> Snapshot:
         missing.append("Reports/build-status/latest.txt")
 
     licences = _licence_status(registry)
+    reports = repo_root / "Reports"
     return Snapshot(
+        sync_status=read_header_fields(reports / "sync-status" / "latest.txt"),
+        last_run=read_header_fields(reports / "runs" / "latest.txt"),
         generated_at=datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M"),
         profile=profile,
         policy=policy,
@@ -849,6 +895,8 @@ section{margin-top:44px;}
 .live--done .live-phase{color:var(--ok);}
 .live--failed{background:var(--blocked-soft); border-color:var(--blocked);}
 .live--failed .live-phase{color:var(--blocked);}
+
+.kv-note{margin-top:10px; font-size:12px; line-height:1.6; color:var(--muted);}
 
 /* ---- board ---- */
 .board{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px;}
@@ -1257,7 +1305,7 @@ def _queue_item(index: int, task: dict[str, Any], served: bool,
     return f"""        <div class="q-item {kind}">
           <span class="q-seat" aria-hidden="true">{e(seat)}</span>
           <div class="q-head">
-            <span class="q-title">{e(task.get('title', ''))}</span>
+            <span class="q-title" title="{e(task.get('title', ''))}">{e(task_title(task))}</span>
             <span class="tag {css}">{e(label)}</span>
           </div>
           <div class="q-id mono">{e(task.get('id', ''))}</div>
@@ -1328,6 +1376,17 @@ def _queue_html(tasks: list[dict[str, Any]], unmet_by_id: dict[str, list[str]],
     return chr(10).join(lanes)
 
 
+def task_title(task: dict[str, Any]) -> str:
+    """The title the page shows: Korean when the board has one.
+
+    The board's `title` is what Codex is prompted with and stays English; the
+    page is read by a Korean speaker and was the one place on it still in
+    English. Falls back to `title` so a task without a translation is never
+    blank.
+    """
+    return str(task.get("title_ko") or task.get("title") or task.get("id") or "")
+
+
 def _task_row(task: dict[str, Any], served: bool = False,
               unmet_dependencies: list[str] | None = None) -> str:
     status = str(task.get("status", "todo"))
@@ -1354,14 +1413,103 @@ def _task_row(task: dict[str, Any], served: bool = False,
                   f'<button class="btn task-run" type="button" data-act="team-run" '
                   f'data-arg-value="{e(task.get("id", ""))}"{disabled}>'
                   f'{button_label}</button>{blockers}</div>')
+    original = str(task.get("title", ""))
+    hover = f' title="{e(original)}"' if task.get("title_ko") and original else ""
     return f"""        <div class="task">
           <div class="t">
-            <span class="title">{e(task.get('title', ''))}</span>
+            <span class="title"{hover}>{e(task_title(task))}</span>
             <span class="tag {css}">{e(label)}</span>
           </div>
           <div class="id mono">{e(task.get('id', ''))}</div>
           <div class="files mono">{e(files)}</div>{action}
         </div>"""
+
+
+SYNC_OUTCOME_LABEL = {
+    "OK": ("동기화됨", "ok"),
+    "UP-TO-DATE": ("최신 상태", "ok"),
+    "BLOCKED": ("머지 보류", "blocked"),
+    "FAILED": ("실패", "blocked"),
+}
+
+RUN_OUTCOME_LABEL = {
+    "OK": ("성공", "ok"),
+    "FAILED": ("실패", "blocked"),
+    "RAISED": ("예외 발생", "blocked"),
+    "UNKNOWN": ("확인 불가", "unknown"),
+}
+
+
+def _kv(label: str, value_html: str) -> str:
+    return (f'<div class="kv"><span class="k">{e(label)}</span>'
+            f'<span class="v">{value_html}</span></div>')
+
+
+def _link_panel_sync(status: dict[str, str]) -> str:
+    """How the PC's scheduled sync is doing, from the file it commits.
+
+    The sync used to fail silently: its log is gitignored, so a dirty tracked
+    file could freeze every merge for a day and nothing on this page moved.
+    Now it commits its outcome, and this is where that lands.
+    """
+    if not status:
+        body = _kv("상태", '<span style="color:var(--unknown)">확인 불가</span>')
+        body += ('<div class="kv-note">Reports/sync-status/latest.txt 가 없습니다. '
+                 'PC의 sync-and-run.ps1 이 이 파일을 쓰기 전이거나, 예약 작업이 돌지 않았습니다.</div>')
+        return f'<div class="panel"><h3>PC 자동 동기화</h3>{body}</div>'
+
+    outcome = status.get("Outcome", "")
+    label, tone = SYNC_OUTCOME_LABEL.get(outcome, (outcome or "확인 불가", "unknown"))
+    body = _kv("상태", f'<span class="big" style="color:var(--{tone})">{e(label)}</span>')
+
+    age = hours_since(status.get("Generated", ""))
+    stale = age is not None and age > SYNC_STALE_HOURS
+    when = e(status.get("Generated", "") or "없음")
+    if stale:
+        when += f' <span style="color:var(--blocked)">· {age:.0f}시간 전</span>'
+    body += _kv("마지막 실행", f'<span class="mono">{when}</span>')
+    body += _kv("마지막 성공", f'<span class="mono">{e(status.get("Last-Success", "") or "없음")}</span>')
+
+    local, upstream = status.get("Local-Head", ""), status.get("Upstream-Head", "")
+    if local and upstream:
+        behind = local != upstream
+        heads = f'PC {e(local)} · Claude {e(upstream)}'
+        if behind:
+            heads += ' <span style="color:var(--gate)">· 다름</span>'
+        body += _kv("커밋", f'<span class="mono">{heads}</span>')
+
+    reason = status.get("Reason", "")
+    if tone == "blocked" and reason:
+        body += f'<div class="kv-note" style="color:var(--blocked)">{e(reason[:400])}</div>'
+    if stale:
+        body += ('<div class="kv-note" style="color:var(--blocked)">15분마다 돌아야 하는 예약 작업이 '
+                 f'{age:.0f}시간 동안 상태를 남기지 않았습니다. 작업 스케줄러에서 등록 상태를 확인하세요.</div>')
+    return f'<div class="panel"><h3>PC 자동 동기화</h3>{body}</div>'
+
+
+def _link_panel_run(run: dict[str, str]) -> str:
+    """The last orchestrator command that ran on the PC, from Reports/runs/."""
+    if not run:
+        body = _kv("상태", '<span style="color:var(--unknown)">확인 불가</span>')
+        body += ('<div class="kv-note">Reports/runs/latest.txt 가 없습니다. 오케스트레이터가 '
+                 '이 기록을 남기는 버전으로 아직 실행되지 않았습니다.</div>')
+        return f'<div class="panel"><h3>마지막 오케스트레이터 실행</h3>{body}</div>'
+
+    outcome = run.get("Outcome", "")
+    label, tone = RUN_OUTCOME_LABEL.get(outcome, (outcome or "확인 불가", "unknown"))
+    body = _kv("결과", f'<span class="big" style="color:var(--{tone})">{e(label)}</span>')
+    body += _kv("명령", f'<span class="mono">{e(run.get("Command", "") or "?")}</span>')
+    body += _kv("실행 시각", f'<span class="mono">{e(run.get("Generated", "") or "없음")}</span>')
+    detail = " · ".join(x for x in (
+        f'종료 코드 {run["Exit"]}' if run.get("Exit") not in (None, "", "-") else "",
+        run.get("Duration", ""),
+    ) if x)
+    if detail:
+        body += _kv("상세", f'<span class="mono">{e(detail)}</span>')
+    if tone == "blocked":
+        body += ('<div class="kv-note">전체 출력은 Reports/runs/latest.txt 에 있습니다. '
+                 'Claude가 포크에서 직접 읽으므로 붙여넣을 필요가 없습니다.</div>')
+    return f'<div class="panel"><h3>마지막 오케스트레이터 실행</h3>{body}</div>'
 
 
 def _gallery_html(groups: list[dict[str, Any]]) -> str:
@@ -1448,7 +1596,7 @@ def _control_html(snapshot: Snapshot, token: str,
     codex_open = [t for t in snapshot.tasks
                   if t.get("owner") == "codex" and t.get("status") in ("todo", "in_progress")]
     task_options = "".join(
-        f'<option value="{e(t["id"])}">{e(t["id"])} · {e(t.get("title", ""))}</option>'
+        f'<option value="{e(t["id"])}">{e(t["id"])} · {e(task_title(t))}</option>'
         for t in codex_open) or '<option value="">넘길 작업이 없습니다</option>'
 
     game_options = "".join(
@@ -1760,6 +1908,17 @@ def render(snapshot: Snapshot, control_token: str | None = None,
     </div>
     <div class="queue">
 {queue}
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>PC 연결</h2>
+      <span class="note">이 두 파일이 PC에서 Claude로 오는 유일한 통로입니다 · 없으면 확인 불가</span>
+    </div>
+    <div class="grid2">
+      {_link_panel_sync(snapshot.sync_status)}
+      {_link_panel_run(snapshot.last_run)}
     </div>
   </section>
 

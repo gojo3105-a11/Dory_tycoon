@@ -5,6 +5,7 @@
     {
       "id": "CLAUDE-UI1",
       "title": "Casual/Korean UI layout in SceneGenerator",
+      "title_ko": "SceneGenerator 캐주얼·한국어 UI 레이아웃",
       "owner": "claude",
       "status": "review",
       "goal": "Rebuild the title, HUD, game-over, pause and shop screens in SceneGenerator to match the approved casual direction: cream cards with a thick brown outline, Korean labels, one primary green button per screen.",
@@ -32,6 +33,7 @@
     {
       "id": "CLAUDE-ECON",
       "title": "Split distance from coins in the economy",
+      "title_ko": "경제 분리: 거리 점수와 코인",
       "owner": "claude",
       "status": "done",
       "goal": "Score was the coin count and there was no distance metric at all. Score is now distance in metres (RunnerDistanceTracker), coins are the shop currency, and game over pays out coins rather than score.",
@@ -54,6 +56,7 @@
     {
       "id": "CODEX-ART1",
       "title": "Map the four Kenney button colours",
+      "title_ko": "Kenney 버튼 4색 매핑",
       "owner": "codex",
       "status": "review",
       "goal": "The UI only has one button sprite (blue). The casual design needs green for the primary action, yellow for the shop, red for close and grey for secondary/disabled. Add the four colour variants from the already-approved kenney-ui-pack to the art mapping, and give each one its 9-slice border in SharedArtImporter so the outline keeps its thickness at any button size.",
@@ -86,6 +89,7 @@
     {
       "id": "CODEX-TEST1",
       "title": "PlayMode tests for the distance/coin split",
+      "title_ko": "거리/코인 분리 PlayMode 테스트",
       "owner": "codex",
       "status": "done",
       "goal": "GameManager just grew a second currency-like counter and a monotonic SetScore. The existing PlayMode tests only cover AddScore. Add tests that pin the new behaviour so a later refactor cannot quietly put distance back into the currency payout.",
@@ -115,6 +119,7 @@
     {
       "id": "CODEX-ANIM1",
       "title": "Give the character arms and legs that move",
+      "title_ko": "캐릭터 팔다리 움직임",
       "owner": "codex",
       "status": "todo",
       "goal": "The character is one sprite with squash/stretch and a bob. The user asked whether the arms and legs move - they do not. Add procedural limbs that run while grounded and hold a pose in the air, driven from the existing RunnerCharacterMotion so no new Update loop is introduced.",
@@ -140,6 +145,7 @@
     {
       "id": "CODEX-GEMINI1",
       "title": "Gemini design adapter (free tier only, never escalates)",
+      "title_ko": "Gemini 디자인 어댑터 (무료 등급 전용)",
       "owner": "codex",
       "status": "review",
       "goal": "Add company/orchestrator/gemini_client.py so design work can be requested from Gemini's free tier. Model it on the two adapters already in this repo - ollama_client.py and codex_runner.py - which enforce their cost rules in code rather than in prose. Text prompts return text; image prompts return PNG bytes the caller writes under AI_GAME_COMPANY/generated/.",
@@ -172,6 +178,7 @@
     {
       "id": "CODEX-OFFICE1",
       "title": "Department office view on the dashboard",
+      "title_ko": "대시보드 부서 사무실 뷰",
       "owner": "codex",
       "status": "review",
       "goal": "Add one section to the dashboard that draws the connected AI as characters sitting in company departments, where each character's movement encodes that AI's real status. docs/OFFICE_VIEW_SPEC.md is the specification - read it first and follow it; it fixes the department mapping, the status-to-behaviour table and the constraints.",
@@ -216,6 +223,7 @@
     {
       "id": "CODEX-BG1",
       "title": "ParallaxBackground so the level can have background art",
+      "title_ko": "ParallaxBackground 배경 아트 레이어",
       "owner": "codex",
       "status": "todo",
       "goal": "The level has no background art at all - just a generated sky gradient. The approved kenney-background-elements-remastered pack cannot be used because nothing scrolls a background layer yet. Add that component so the art becomes a file copy afterwards.",
@@ -243,8 +251,9 @@
     {
       "id": "CODEX-BOARD1",
       "title": "Three bugs in the board runner, found by running it for real",
+      "title_ko": "작업판 러너 버그 3건 수정",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "The first real `team run` reported CODEX-ART1 as BLOCKED even though Codex had done the work correctly. Three separate defects in teamwork.py caused or contributed to that, all of them mine. Fix all three.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/teamwork.py",
@@ -263,14 +272,21 @@
         "Read teamwork.py fully first. changed_paths() already handles renames and untracked files, and Task.covers() already matches a path against a task's allowlist patterns.",
         "Keep it cheap: build_prompt runs once per run, so one git call is fine, but do not call git once per task.",
         "Do NOT gitignore Packages/packages-lock.json to make the symptom go away. Unity projects are supposed to commit it so package versions stay pinned; the fix is that the allowlist check should know the difference between a tool regenerating a file and an agent editing one.",
-        "A SPEC-WRITING RULE worth keeping, recorded here because _comment gets overwritten until defect (2) is fixed: when a task edits a GENERATOR, the generator's committed OUTPUT belongs in that task's allowlist too, or verifying the change reads as going out of bounds. That is why Reports/dashboard.html is listed on CODEX-OFFICE1."
+        "A SPEC-WRITING RULE worth keeping, recorded here because _comment gets overwritten until defect (2) is fixed: when a task edits a GENERATOR, the generator's committed OUTPUT belongs in that task's allowlist too, or verifying the change reads as going out of bounds. That is why Reports/dashboard.html is listed on CODEX-OFFICE1.",
+        "2026-09-03: DONE BY CLAUDE, not Codex, in the same pass. (1) TOOL_OWNED_PATHS tuple with Packages/packages-lock.json; run_task splits tool churn out of the diff before the allowlist check and reports it on TaskRun.tool_churn, which main.py prints separately. (2) TaskBoard keeps every non-'tasks' top-level key in .meta and save() writes them back, defaulting _comment/_version only when absent - so the note above about _comment being overwritten is now history. (3) concurrent_work() lists another agent's task only when one of its declared files is dirty, names the files, and falls back to the status-based reading when git cannot answer. build_prompt takes an optional repo_root; run_task and the dry-run pass it. 8 new tests; the pre-existing concurrent-work test still passes unchanged because it exercises the fallback.",
+        "REVIEW, not DONE: the tool-churn path has not yet been exercised by a real run with the Unity Editor open, which is the exact condition that produced the false BLOCKED on CODEX-ART1."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "AI_GAME_COMPANY/company/orchestrator/teamwork.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_teamwork.py"
+      ],
       "last_run": ""
     },
     {
       "id": "CODEX-TESTCMD1",
       "title": "orchestrator test - run the Unity test suites locally",
+      "title_ko": "orchestrator test - Unity 테스트 로컬 실행",
       "owner": "codex",
       "status": "todo",
       "goal": "There is no way to run the Unity tests from the orchestrator. run_pipeline deliberately does generate/validate/build and leaves tests to the workflow, but the self-hosted runner is not always up, and a task like CODEX-TEST1 that WRITES tests cannot be verified without running them. PlayMode test assemblies are also excluded from a player build, so `orchestrator build` does not even compile them - a syntax error in a test file passes the build and is caught by nobody. Add the missing step.",
@@ -299,6 +315,7 @@
     {
       "id": "CODEX-START1",
       "title": "A start button on every waiting task, not one dropdown",
+      "title_ko": "대기 작업마다 시작 버튼",
       "owner": "codex",
       "status": "review",
       "goal": "The control panel can already run a Codex task, but only through a single <select> of task ids. Put the button on the task itself: every waiting row in the 공유 작업판 section gets its own start button, so you press the thing you are looking at instead of matching an id in a dropdown.",
@@ -336,6 +353,7 @@
     {
       "id": "CODEX-OLLAMA1",
       "title": "Choose which Ollama model is in use, without breaking the licence gate",
+      "title_ko": "Ollama 사용 모델 선택 (라이선스 게이트 유지)",
       "owner": "codex",
       "status": "review",
       "goal": "ollama_client can list installed models and knows which ids are APPROVED, but nothing can SELECT one - there is no concept of an active model anywhere. Add that, so the model can be changed without editing code, and so the dashboard can say which one is in use.",
@@ -370,6 +388,7 @@
     {
       "id": "CODEX-AICTL1",
       "title": "A control per AI in the panel, and honest silence where there is none",
+      "title_ko": "AI별 제어 버튼, 없으면 정직하게 없음 표시",
       "owner": "codex",
       "status": "todo",
       "goal": "The control panel can only drive Codex and Unity. Give each connected AI its own control - and give the ones with no adapter no control at all, stated as such, because a button that cannot work misrepresents what this project can do.",
@@ -405,6 +424,7 @@
     {
       "id": "CODEX-LIVE1",
       "title": "The page contradicts itself: 'Codex 실행 중' at the top, '대기 중' below",
+      "title_ko": "실행 중 표시 모순 해소 (패널 vs 사무실 뷰)",
       "owner": "codex",
       "status": "review",
       "goal": "While a Codex job is running, the control panel says so and the office view right below it shows Codex as 대기 중. Both are reading their own source correctly - the panel watches the live job, build_agents reads committed files - but a page that contradicts itself is wrong however defensible each half is. Three defects, all in code Claude wrote.",
@@ -448,8 +468,9 @@
     {
       "id": "CODEX-RUNLOG1",
       "title": "Every orchestrator run leaves a committed log, so failures reach Claude without copy-paste",
+      "title_ko": "오케스트레이터 실행 기록을 커밋해 Claude에게 전달",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "Unity compile errors and build results already reach Claude on their own: sync-and-run.ps1 commits Reports/errors/latest.txt and Reports/build-status/latest.txt every 15 minutes and Claude reads them from the fork. Orchestrator runs have no such channel - when `team run` or `serve` or `codex --doctor` fails, the output dies on the PC console and the human has to retype it into a chat window. Three separate bugs on 2026-09-02 (WinError 2, a cp949 UnicodeDecodeError, and CODEX_LIMITED discarding a finished run) were all diagnosed that way. Apply the pattern that already works to the orchestrator.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/runlog.py",
@@ -475,9 +496,16 @@
         "READ FIRST: scripts/dev/collect-errors.ps1 and scripts/dev/report-build-status.ps1 for the report format, and scripts/desktop/sync-and-run.ps1 lines 120-145 for how those two get committed. Do not invent a new mechanism next to a working one.",
         "ALLOWLIST WARNING, learned the hard way: Reports/runs/* is in your allowlist because running the orchestrator to test your own change WRITES there, and the allowlist check reads `git status --porcelain --untracked-files=all`. Without it listed, testing your work correctly would be reported as going out of bounds and the task would come back BLOCKED. See CODEX-BOARD1.",
         "This does not make the loop fully autonomous and should not pretend to. Claude still cannot press the button - the run has to be started on the PC. What it removes is the human retyping an error message. The remaining gap (starting a run without a human) is a separate decision about running Codex from the self-hosted Actions runner, and is not in scope here.",
-        "Do not log prompts sent to Codex. They can be long, they are reconstructable from the board, and the run log is meant to be read at a glance."
+        "Do not log prompts sent to Codex. They can be long, they are reconstructable from the board, and the run log is meant to be read at a glance.",
+        "2026-09-03: DONE BY CLAUDE, not Codex, at the user's direction to fix the whole development loop in one pass. company/orchestrator/runlog.py records every subcommand (except serve) into Reports/runs/<stamp>-<command>.txt and Reports/runs/latest.txt, wrapped at the single dispatch point in main.py. Values of every blocked_env_keys entry and of gemini_api_key_env are replaced with [REDACTED:<NAME>] before writing - tested with a fake key on both the stdout path and the exception path. A write failure is printed to stderr and never changes the exit code - tested with a file where the directory should be. Capped at 50 entries, oldest evicted. sync-and-run.ps1 now stages Reports/runs before its dirty check and commits it. 13 tests.",
+        "REVIEW, not DONE: no run has produced a real Reports/runs/latest.txt on the PC yet. The first `team run` after this lands is the proof; the dashboard's 'PC 연결' section shows 확인 불가 until then."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "AI_GAME_COMPANY/company/orchestrator/runlog.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_runlog.py",
+        "scripts/desktop/sync-and-run.ps1"
+      ],
       "last_run": ""
     }
   ]
