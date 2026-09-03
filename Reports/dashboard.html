@@ -229,6 +229,8 @@ section{margin-top:44px;}
 .live--failed{background:var(--blocked-soft); border-color:var(--blocked);}
 .live--failed .live-phase{color:var(--blocked);}
 
+.kv-note{margin-top:10px; font-size:12px; line-height:1.6; color:var(--muted);}
+
 /* ---- board ---- */
 .board{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px;}
 .lane{background:var(--surface); border:1px solid var(--line); border-radius:3px;
@@ -398,7 +400,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
       <div class="sub">연동된 AI가 지금 무엇을 할 수 있고, 무엇이 막고 있는가</div>
     </div>
     <div class="stamp mono">
-      생성 2026-09-03 00:21<br>
+      생성 2026-09-03 08:27<br>
       DESKTOP-A7IU1E9 · RAM 15.7 GB<br>
       Unity 6000.5.9f1 · OK<br>
       읽기 전용 · 제어는 PC에서 &#x27;orchestrator serve&#x27; 로 엽니다
@@ -407,7 +409,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
 
   <div class="verdict">
     <b>2개 작업 가능</b>
-    <span>2개 대기 · 3개 사용 불가 · 1개 확인 불가</span>
+    <span>3개 대기 · 2개 사용 불가 · 1개 확인 불가</span>
     <span>설치된 것과 실제로 돌아가는 것은 다릅니다. 아래 각 줄은 그 판단의 근거 파일을 함께 표시합니다.</span>
   </div>
   
@@ -417,7 +419,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
       <h2>부서 사무실</h2>
       <span class="note">움직임과 자세가 실제 상태를 나타냅니다 · 캐릭터를 누르면 로스터로 이동</span>
     </div>
-    <div class="office"><div class="office-building"><div class="office-room office-room--dev"><div class="office-room-head"><h3>기획개발실</h3><span class="office-room-count">2명 중 1명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--dev office-agent--ready" href="#agent-claude-code" title="Claude Code - 작업 가능" aria-label="Claude Code - 작업 가능"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--on" x="39" y="9" width="34" height="22" rx="2"/><rect class="office-cursor" x="55" y="16" width="2" height="8"/><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><g class="office-body"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb office-arm-left" d="M45 66l-9 9"/><path class="office-limb office-arm-right" d="M67 66l9 9"/></g></svg><span class="office-agent-name">Claude Code</span><span class="office-agent-state">작업 가능</span></a><a class="office-agent office-agent--dev office-agent--gated" href="#agent-codex-cli" title="Codex CLI - 대기 중 · 사람 확인 필요" aria-label="Codex CLI - 대기 중 · 사람 확인 필요"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--wait" x="39" y="9" width="34" height="22" rx="2"/><g class="office-alert"><circle class="office-alert-bubble" cx="86" cy="17" r="10"/><path class="office-alert-mark" d="M84 11h4l-1 8h-2zm0 10h4v4h-4z"/></g><g transform="translate(-23 5)"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 65l-5 14M67 65l5 14"/></g></svg><span class="office-agent-name">Codex CLI</span><span class="office-agent-state">대기 중 · 사람 확인 필요</span></a></div></div><div class="office-room office-room--design"><div class="office-room-head"><h3>디자인실</h3><span class="office-room-count">3명 중 1명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--design office-agent--gated" href="#agent-gemini" title="Gemini - 대기 중 · 사람 확인 필요" aria-label="Gemini - 대기 중 · 사람 확인 필요"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--wait" x="39" y="9" width="34" height="22" rx="2"/><g class="office-alert"><circle class="office-alert-bubble" cx="86" cy="17" r="10"/><path class="office-alert-mark" d="M84 11h4l-1 8h-2zm0 10h4v4h-4z"/></g><g transform="translate(-23 5)"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 65l-5 14M67 65l5 14"/></g></svg><span class="office-agent-name">Gemini</span><span class="office-agent-state">대기 중 · 사람 확인 필요</span></a><a class="office-agent office-agent--design office-agent--ready" href="#agent-stable-diffusion-1-5-ip-adapter" title="Stable Diffusion 1.5 + IP-Adapter - 작업 가능" aria-label="Stable Diffusion 1.5 + IP-Adapter - 작업 가능"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--on" x="39" y="9" width="34" height="22" rx="2"/><rect class="office-cursor" x="55" y="16" width="2" height="8"/><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><g class="office-body"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb office-arm-left" d="M45 66l-9 9"/><path class="office-limb office-arm-right" d="M67 66l9 9"/></g></svg><span class="office-agent-name">Stable Diffusion 1.5 + IP-Adapter</span><span class="office-agent-state">작업 가능</span></a><a class="office-agent office-agent--design office-agent--blocked" href="#agent-qwen-image" title="Qwen-Image - 사용 불가" aria-label="Qwen-Image - 사용 불가"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen" x="39" y="9" width="34" height="22" rx="2"/><g class="office-chair--pushed"><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 67l-7 12M67 67l7 12"/></g></svg><span class="office-agent-name">Qwen-Image</span><span class="office-agent-state">사용 불가</span></a></div></div><div class="office-room office-room--lab"><div class="office-room-head"><h3>사내 연구소</h3><span class="office-room-count">1명 중 0명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--lab office-agent--blocked" href="#agent-ollama-gemma4-26b" title="Ollama · gemma4:26b - 사용 불가" aria-label="Ollama · gemma4:26b - 사용 불가"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen" x="39" y="9" width="34" height="22" rx="2"/><g class="office-chair--pushed"><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 67l-7 12M67 67l7 12"/></g></svg><span class="office-agent-name">Ollama · gemma4:26b</span><span class="office-agent-state">사용 불가</span></a></div></div><div class="office-room office-room--modeling"><div class="office-room-head"><h3>3D 모델링실</h3><span class="office-room-count">1명 중 0명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--modeling office-agent--unknown" href="#agent-blender" title="Blender - 확인 불가" aria-label="Blender - 확인 불가"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><g class="office-silhouette"><circle cx="56" cy="52" r="10"/><path d="M42 81V66q14-10 28 0v15M45 66l-7 12M67 66l7 12"/></g></svg><span class="office-agent-name">Blender</span><span class="office-agent-state">확인 불가</span></a></div></div></div><div class="office-room office-room--outsource"><div class="office-room-head"><h3>외주</h3><span class="office-room-count">1명 중 0명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--outsource office-agent--blocked" href="#agent-유료-api-openai-anthropic-google-등" title="유료 API (OpenAI · Anthropic · Google 등) - 사용 불가" aria-label="유료 API (OpenAI · Anthropic · Google 등) - 사용 불가"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen" x="39" y="9" width="34" height="22" rx="2"/><g class="office-chair--pushed"><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 67l-7 12M67 67l7 12"/></g></svg><span class="office-agent-name">유료 API (OpenAI · Anthropic · Google 등)</span><span class="office-agent-state">사용 불가</span></a></div></div></div>
+    <div class="office"><div class="office-building"><div class="office-room office-room--dev"><div class="office-room-head"><h3>기획개발실</h3><span class="office-room-count">2명 중 1명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--dev office-agent--ready" href="#agent-claude-code" title="Claude Code - 작업 가능" aria-label="Claude Code - 작업 가능"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--on" x="39" y="9" width="34" height="22" rx="2"/><rect class="office-cursor" x="55" y="16" width="2" height="8"/><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><g class="office-body"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb office-arm-left" d="M45 66l-9 9"/><path class="office-limb office-arm-right" d="M67 66l9 9"/></g></svg><span class="office-agent-name">Claude Code</span><span class="office-agent-state">작업 가능</span></a><a class="office-agent office-agent--dev office-agent--gated" href="#agent-codex-cli" title="Codex CLI - 대기 중 · 사람 확인 필요" aria-label="Codex CLI - 대기 중 · 사람 확인 필요"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--wait" x="39" y="9" width="34" height="22" rx="2"/><g class="office-alert"><circle class="office-alert-bubble" cx="86" cy="17" r="10"/><path class="office-alert-mark" d="M84 11h4l-1 8h-2zm0 10h4v4h-4z"/></g><g transform="translate(-23 5)"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 65l-5 14M67 65l5 14"/></g></svg><span class="office-agent-name">Codex CLI</span><span class="office-agent-state">대기 중 · 사람 확인 필요</span></a></div></div><div class="office-room office-room--design"><div class="office-room-head"><h3>디자인실</h3><span class="office-room-count">3명 중 1명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--design office-agent--gated" href="#agent-gemini" title="Gemini - 대기 중 · 사람 확인 필요" aria-label="Gemini - 대기 중 · 사람 확인 필요"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--wait" x="39" y="9" width="34" height="22" rx="2"/><g class="office-alert"><circle class="office-alert-bubble" cx="86" cy="17" r="10"/><path class="office-alert-mark" d="M84 11h4l-1 8h-2zm0 10h4v4h-4z"/></g><g transform="translate(-23 5)"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 65l-5 14M67 65l5 14"/></g></svg><span class="office-agent-name">Gemini</span><span class="office-agent-state">대기 중 · 사람 확인 필요</span></a><a class="office-agent office-agent--design office-agent--ready" href="#agent-stable-diffusion-1-5-ip-adapter" title="Stable Diffusion 1.5 + IP-Adapter - 작업 가능" aria-label="Stable Diffusion 1.5 + IP-Adapter - 작업 가능"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--on" x="39" y="9" width="34" height="22" rx="2"/><rect class="office-cursor" x="55" y="16" width="2" height="8"/><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><g class="office-body"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb office-arm-left" d="M45 66l-9 9"/><path class="office-limb office-arm-right" d="M67 66l9 9"/></g></svg><span class="office-agent-name">Stable Diffusion 1.5 + IP-Adapter</span><span class="office-agent-state">작업 가능</span></a><a class="office-agent office-agent--design office-agent--blocked" href="#agent-qwen-image" title="Qwen-Image - 사용 불가" aria-label="Qwen-Image - 사용 불가"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen" x="39" y="9" width="34" height="22" rx="2"/><g class="office-chair--pushed"><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 67l-7 12M67 67l7 12"/></g></svg><span class="office-agent-name">Qwen-Image</span><span class="office-agent-state">사용 불가</span></a></div></div><div class="office-room office-room--lab"><div class="office-room-head"><h3>사내 연구소</h3><span class="office-room-count">1명 중 0명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--lab office-agent--gated" href="#agent-ollama-로컬-llm" title="Ollama (로컬 LLM) - 대기 중 · 사람 확인 필요" aria-label="Ollama (로컬 LLM) - 대기 중 · 사람 확인 필요"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen office-screen--wait" x="39" y="9" width="34" height="22" rx="2"/><g class="office-alert"><circle class="office-alert-bubble" cx="86" cy="17" r="10"/><path class="office-alert-mark" d="M84 11h4l-1 8h-2zm0 10h4v4h-4z"/></g><g transform="translate(-23 5)"><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 65l-5 14M67 65l5 14"/></g></svg><span class="office-agent-name">Ollama (로컬 LLM)</span><span class="office-agent-state">대기 중 · 사람 확인 필요</span></a></div></div><div class="office-room office-room--modeling"><div class="office-room-head"><h3>3D 모델링실</h3><span class="office-room-count">1명 중 0명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--modeling office-agent--unknown" href="#agent-blender" title="Blender - 확인 불가" aria-label="Blender - 확인 불가"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><g class="office-silhouette"><circle cx="56" cy="52" r="10"/><path d="M42 81V66q14-10 28 0v15M45 66l-7 12M67 66l7 12"/></g></svg><span class="office-agent-name">Blender</span><span class="office-agent-state">확인 불가</span></a></div></div></div><div class="office-room office-room--outsource"><div class="office-room-head"><h3>외주</h3><span class="office-room-count">1명 중 0명 작업 중</span></div><div class="office-seats"><a class="office-agent office-agent--outsource office-agent--blocked" href="#agent-유료-api-openai-anthropic-google-등" title="유료 API (OpenAI · Anthropic · Google 등) - 사용 불가" aria-label="유료 API (OpenAI · Anthropic · Google 등) - 사용 불가"><svg class="office-character" viewBox="0 0 112 90" aria-hidden="true"><rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/><path class="office-desk" d="M20 43v38M92 43v38"/><rect class="office-screen" x="39" y="9" width="34" height="22" rx="2"/><g class="office-chair--pushed"><path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/><circle class="office-face" cx="56" cy="52" r="10"/><path class="office-person" d="M42 66q14-10 28 0v15H42z"/><path class="office-limb" d="M45 67l-7 12M67 67l7 12"/></g></svg><span class="office-agent-name">유료 API (OpenAI · Anthropic · Google 등)</span><span class="office-agent-state">사용 불가</span></a></div></div></div>
   </section>
 
   <section>
@@ -461,17 +463,17 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         <div class="detail">initial_gemini_login 게이트가 남아 있습니다. GEMINI_API_KEY에 키가 없습니다.</div>
         <div class="ev"><span class="k">근거</span><code>config/company_policy.json</code></div>
       </div>
-      <div class="row s-blocked" id="agent-ollama-gemma4-26b">
+      <div class="row s-gated" id="agent-ollama-로컬-llm">
         <div>
-          <div class="who">Ollama · gemma4:26b</div>
+          <div class="who">Ollama (로컬 LLM)</div>
           <div class="role">로컬 추론</div>
         </div>
         <div style="text-align:right">
-          <span class="pill">사용 불가</span>
+          <span class="pill">대기 중</span>
           <div class="ver mono">ollama version is 0.33.2</div>
         </div>
-        <div class="detail">라이선스 UNKNOWN · 17.3 GB 모델 / 전체 RAM 15.7 GB - 적재 불가</div>
-        <div class="ev"><span class="k">근거</span><code>config/HARDWARE_PROFILE.json</code><code>config/LICENSE_REGISTRY.json</code></div>
+        <div class="detail">설치된 모델이 없습니다. 라이선스 확인 후 3B급 모델을 받아야 합니다.</div>
+        <div class="ev"><span class="k">근거</span><code>config/HARDWARE_PROFILE.json</code></div>
       </div>
       <div class="row s-ready" id="agent-stable-diffusion-1-5-ip-adapter">
         <div>
@@ -528,11 +530,11 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
     </div>
     <div class="queue">
       <div class="q-lane">
-        <h3>Codex<span class="q-tally">대기 6</span></h3>
+        <h3>Codex<span class="q-tally">대기 4</span></h3>
         <div class="q-item q-item--waiting">
           <span class="q-seat" aria-hidden="true">1</span>
           <div class="q-head">
-            <span class="q-title">Give the character arms and legs that move</span>
+            <span class="q-title" title="Give the character arms and legs that move">캐릭터 팔다리 움직임</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="q-id mono">CODEX-ANIM1</div>
@@ -541,7 +543,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         <div class="q-item q-item--waiting">
           <span class="q-seat" aria-hidden="true">2</span>
           <div class="q-head">
-            <span class="q-title">ParallaxBackground so the level can have background art</span>
+            <span class="q-title" title="ParallaxBackground so the level can have background art">ParallaxBackground 배경 아트 레이어</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="q-id mono">CODEX-BG1</div>
@@ -550,40 +552,33 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         <div class="q-item q-item--waiting">
           <span class="q-seat" aria-hidden="true">3</span>
           <div class="q-head">
-            <span class="q-title">Three bugs in the board runner, found by running it for real</span>
-            <span class="tag s-todo">대기</span>
-          </div>
-          <div class="q-id mono">CODEX-BOARD1</div>
-          
-        </div>
-        <div class="q-item q-item--waiting">
-          <span class="q-seat" aria-hidden="true">4</span>
-          <div class="q-head">
-            <span class="q-title">orchestrator test - run the Unity test suites locally</span>
+            <span class="q-title" title="orchestrator test - run the Unity test suites locally">orchestrator test - Unity 테스트 로컬 실행</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="q-id mono">CODEX-TESTCMD1</div>
           
         </div>
         <div class="q-item q-item--waiting">
-          <span class="q-seat" aria-hidden="true">5</span>
+          <span class="q-seat" aria-hidden="true">4</span>
           <div class="q-head">
-            <span class="q-title">A control per AI in the panel, and honest silence where there is none</span>
+            <span class="q-title" title="A control per AI in the panel, and honest silence where there is none">AI별 제어 버튼, 없으면 정직하게 없음 표시</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="q-id mono">CODEX-AICTL1</div>
           
         </div>
-        <div class="q-item q-item--waiting">
-          <span class="q-seat" aria-hidden="true">6</span>
-          <div class="q-head">
-            <span class="q-title">Every orchestrator run leaves a committed log, so failures reach Claude without copy-paste</span>
-            <span class="tag s-todo">대기</span>
-          </div>
-          <div class="q-id mono">CODEX-RUNLOG1</div>
-          
-        </div>
       </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>PC 연결</h2>
+      <span class="note">이 두 파일이 PC에서 Claude로 오는 유일한 통로입니다 · 없으면 확인 불가</span>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3>PC 자동 동기화</h3><div class="kv"><span class="k">상태</span><span class="v"><span style="color:var(--unknown)">확인 불가</span></span></div><div class="kv-note">Reports/sync-status/latest.txt 가 없습니다. PC의 sync-and-run.ps1 이 이 파일을 쓰기 전이거나, 예약 작업이 돌지 않았습니다.</div></div>
+      <div class="panel"><h3>마지막 오케스트레이터 실행</h3><div class="kv"><span class="k">상태</span><span class="v"><span style="color:var(--unknown)">확인 불가</span></span></div><div class="kv-note">Reports/runs/latest.txt 가 없습니다. 오케스트레이터가 이 기록을 남기는 버전으로 아직 실행되지 않았습니다.</div></div>
     </div>
   </section>
 
@@ -597,7 +592,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         <h3>Claude<span class="count">2개</span></h3>
         <div class="task">
           <div class="t">
-            <span class="title">Casual/Korean UI layout in SceneGenerator</span>
+            <span class="title" title="Casual/Korean UI layout in SceneGenerator">SceneGenerator 캐주얼·한국어 UI 레이아웃</span>
             <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CLAUDE-UI1</div>
@@ -605,7 +600,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">Split distance from coins in the economy</span>
+            <span class="title" title="Split distance from coins in the economy">경제 분리: 거리 점수와 코인</span>
             <span class="tag s-done">완료</span>
           </div>
           <div class="id mono">CLAUDE-ECON</div>
@@ -616,7 +611,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         <h3>Codex<span class="count">13개</span></h3>
         <div class="task">
           <div class="t">
-            <span class="title">Map the four Kenney button colours</span>
+            <span class="title" title="Map the four Kenney button colours">Kenney 버튼 4색 매핑</span>
             <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-ART1</div>
@@ -624,7 +619,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">PlayMode tests for the distance/coin split</span>
+            <span class="title" title="PlayMode tests for the distance/coin split">거리/코인 분리 PlayMode 테스트</span>
             <span class="tag s-done">완료</span>
           </div>
           <div class="id mono">CODEX-TEST1</div>
@@ -632,7 +627,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">Give the character arms and legs that move</span>
+            <span class="title" title="Give the character arms and legs that move">캐릭터 팔다리 움직임</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="id mono">CODEX-ANIM1</div>
@@ -640,7 +635,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">Gemini design adapter (free tier only, never escalates)</span>
+            <span class="title" title="Gemini design adapter (free tier only, never escalates)">Gemini 디자인 어댑터 (무료 등급 전용)</span>
             <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-GEMINI1</div>
@@ -648,7 +643,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">Department office view on the dashboard</span>
+            <span class="title" title="Department office view on the dashboard">대시보드 부서 사무실 뷰</span>
             <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-OFFICE1</div>
@@ -656,7 +651,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">ParallaxBackground so the level can have background art</span>
+            <span class="title" title="ParallaxBackground so the level can have background art">ParallaxBackground 배경 아트 레이어</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="id mono">CODEX-BG1</div>
@@ -664,15 +659,15 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">Three bugs in the board runner, found by running it for real</span>
-            <span class="tag s-todo">대기</span>
+            <span class="title" title="Three bugs in the board runner, found by running it for real">작업판 러너 버그 3건 수정</span>
+            <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-BOARD1</div>
           <div class="files mono">teamwork.py · test_teamwork.py</div>
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">orchestrator test - run the Unity test suites locally</span>
+            <span class="title" title="orchestrator test - run the Unity test suites locally">orchestrator test - Unity 테스트 로컬 실행</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="id mono">CODEX-TESTCMD1</div>
@@ -680,7 +675,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">A start button on every waiting task, not one dropdown</span>
+            <span class="title" title="A start button on every waiting task, not one dropdown">대기 작업마다 시작 버튼</span>
             <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-START1</div>
@@ -688,7 +683,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">Choose which Ollama model is in use, without breaking the licence gate</span>
+            <span class="title" title="Choose which Ollama model is in use, without breaking the licence gate">Ollama 사용 모델 선택 (라이선스 게이트 유지)</span>
             <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-OLLAMA1</div>
@@ -696,7 +691,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">A control per AI in the panel, and honest silence where there is none</span>
+            <span class="title" title="A control per AI in the panel, and honest silence where there is none">AI별 제어 버튼, 없으면 정직하게 없음 표시</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="id mono">CODEX-AICTL1</div>
@@ -704,7 +699,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">The page contradicts itself: &#x27;Codex 실행 중&#x27; at the top, &#x27;대기 중&#x27; below</span>
+            <span class="title" title="The page contradicts itself: &#x27;Codex 실행 중&#x27; at the top, &#x27;대기 중&#x27; below">실행 중 표시 모순 해소 (패널 vs 사무실 뷰)</span>
             <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-LIVE1</div>
@@ -712,8 +707,8 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
         <div class="task">
           <div class="t">
-            <span class="title">Every orchestrator run leaves a committed log, so failures reach Claude without copy-paste</span>
-            <span class="tag s-todo">대기</span>
+            <span class="title" title="Every orchestrator run leaves a committed log, so failures reach Claude without copy-paste">오케스트레이터 실행 기록을 커밋해 Claude에게 전달</span>
+            <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-RUNLOG1</div>
           <div class="files mono">runlog.py · main.py · test_runlog.py · sync-and-run.ps1 외 1개</div>
@@ -790,14 +785,14 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
   <section>
     <div class="head"><h2>최근 작업</h2></div>
     <div class="log mono">
+      <div><span class="sha mono">1a97593</span><span class="when mono">2026-09-03</span><span class="what">Merge the fork: refreshed hardware profile (no Ollama models) and CLI probes</span></div>
+      <div><span class="sha mono">4e5eb0c</span><span class="when mono">2026-09-03</span><span class="what">fix: the development loop - sync reports itself, runs leave a log, board runner stops blocking on tool churn</span></div>
+      <div><span class="sha mono">f198460</span><span class="when mono">2026-09-03</span><span class="what">feat: a Korean progress summary while an AI works, and a queue that says what is next</span></div>
+      <div><span class="sha mono">9ec5c9d</span><span class="when mono">2026-09-03</span><span class="what">chore: update AI_GAME_COMPANY hardware/CLI profile</span></div>
       <div><span class="sha mono">e3e4f85</span><span class="when mono">2026-09-02</span><span class="what">chore: the machine has no Ollama models, and CODEX-AICTL1 is unblocked</span></div>
+      <div><span class="sha mono">b9a861f</span><span class="when mono">2026-09-03</span><span class="what">chore: trigger Game Factory Pipeline for game01</span></div>
       <div><span class="sha mono">fe09c6b</span><span class="when mono">2026-09-02</span><span class="what">spec: CODEX-RUNLOG1 - orchestrator failures should reach Claude on their own</span></div>
       <div><span class="sha mono">7fc5252</span><span class="when mono">2026-09-02</span><span class="what">Merge the fork&#x27;s branch, and correct four stale task statuses</span></div>
-      <div><span class="sha mono">960404d</span><span class="when mono">2026-09-02</span><span class="what">chore: CODEX-OFFICE1 -&gt; review, the run that finished was misreported</span></div>
-      <div><span class="sha mono">2ee03eb</span><span class="when mono">2026-09-03</span><span class="what">Merge remote-tracking branch &#x27;upstream/claude/delete-current-content-mgn4xm&#x27; into claude/delete-current-content-mgn4xm</span></div>
-      <div><span class="sha mono">45521c0</span><span class="when mono">2026-09-03</span><span class="what">feat: office view dashboard + ollama model switching (Codex)</span></div>
-      <div><span class="sha mono">ed2eaf0</span><span class="when mono">2026-09-02</span><span class="what">fix: a Codex limit warning no longer discards a finished run</span></div>
-      <div><span class="sha mono">64a814a</span><span class="when mono">2026-09-03</span><span class="what">Merge remote-tracking branch &#x27;upstream/claude/delete-current-content-mgn4xm&#x27; into claude/delete-current-content-mgn4xm</span></div>
     </div>
   </section>
 
