@@ -250,6 +250,24 @@ Codex 작업 실행 / 빌드 / Codex 진단 / 변경 파일 확인을 브라우�
 읽지 않는다.** 각 AI 줄마다 그 상태를 읽어온 파일을 함께 보여준다. "설치됨"은 근거가
 아니다 - 라이선스 미확인 + RAM 초과로 못 돌아가는 모델도 설치는 되어 있다.
 
+## PC 원격 제어 (pc-control.yml) - Claude가 PC에서 명령을 돌리는 유일한 길
+
+2026-09-03 사용자 지시("너가 직접 돌려. 안되면 방법 찾아서 실행해")로 만들었다. Claude Code 컨테이너는
+PC에 닿을 수 없고, 포크에는 이 세션의 자격 증명이 없다(403). 유일하게 되는 길은 **gojo3105-a11에 등록된
+self-hosted 러너에게 워크플로를 보내는 것**이다. `.github/workflows/pc-control.yml`이 그 채널이다.
+
+- 러너 조건: PC에 **두 번째 러너**를 `C:\actions-runner-control`에 설치, **라벨 `pc-control`**, 그리고
+  **NETWORK SERVICE가 아니라 사용자 계정으로 실행**(`04-register-github-runner.ps1 -WindowsLogonAccount`).
+  서비스 계정은 `C:\Dory_tycoon`, 포크용 git 자격 증명, Codex 로그인 중 어느 것도 갖고 있지 않다.
+- 기존 4개 빌드 워크플로에는 `if: github.repository_owner != 'gojo3105-a11'`이 붙어 있다. 러너가 생기면
+  그 워크플로들이 upstream에서도 돌기 시작해 같은 PC에서 Unity 빌드 두 개가 겹치기 때문이다. **CI 빌드는 포크,
+  upstream 러너는 제어 채널.** 이 둘을 섞지 않는다.
+- 동작은 `status / sync / dashboard / team-run / codex-doctor` 다섯 개로 고정. 입력이 명령이 되는 경로는 없고,
+  task id는 server.py의 SAFE_ID와 같은 패턴으로 검사한 뒤에만 argv에 들어간다.
+- **`status`가 기본이고 아무것도 건드리지 않는다.** `stash_dirty`는 별도 opt-in이며, `status` 결과를 읽어
+  무엇이 stash되는지 본 뒤에만 켠다. 삭제는 절대 없다 - stash는 `git stash list`로 복구된다.
+- 결과 읽기: `mcp__github__get_job_logs`로 이 세션에서 직접 읽는다. 사용자가 붙여넣을 필요가 없다.
+
 ## Codex와 함께 개발하기 (공유 작업판)
 
 Codex는 리뷰어가 아니라 **공동 개발자**다. `AI_GAME_COMPANY/config/TASKBOARD.json`이

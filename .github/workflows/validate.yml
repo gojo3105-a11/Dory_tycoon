@@ -17,6 +17,10 @@ on:
 
 jobs:
   validate:
+    # CI builds run on the FORK's runner only. The runner registered on this
+    # repository is the pc-control channel (see pc-control.yml) and must not
+    # start Unity builds beside it on the same machine.
+    if: github.repository_owner != 'gojo3105-a11'
     runs-on: [self-hosted, Windows]
     steps:
       - uses: actions/checkout@v4

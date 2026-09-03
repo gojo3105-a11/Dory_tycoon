@@ -11,6 +11,16 @@
   script right after generating it.
 .PARAMETER InstallDir
   Where to extract the runner. Defaults to C:\actions-runner.
+.PARAMETER Labels
+  Comma-separated runner labels. The pc-control runner (see
+  .github/workflows/pc-control.yml) needs "self-hosted,Windows,pc-control".
+.PARAMETER WindowsLogonAccount
+  Run the service as this Windows account (e.g. "DESKTOP-A7IU1E9\vasco")
+  instead of NETWORK SERVICE. Required for the pc-control runner: it has to
+  reach C:\Dory_tycoon, the user's stored git credentials for the fork, and
+  the user's Codex login, none of which a service account has. You will be
+  prompted for the account password; it is passed to config.cmd and not
+  stored by this script.
 .NOTES
   Unverified against a real Windows machine. If the runner package's exact
   service-install command has changed, GitHub's own "New self-hosted
@@ -27,7 +37,9 @@ param(
 
     [string]$InstallDir = "C:\actions-runner",
 
-    [string]$Labels = "self-hosted,Windows"
+    [string]$Labels = "self-hosted,Windows",
+
+    [string]$WindowsLogonAccount = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -51,7 +63,16 @@ Expand-Archive -Path $zipPath -DestinationPath $InstallDir -Force
 Push-Location $InstallDir
 try {
     Write-Host "Configuring runner for $RepoUrl..."
-    & .\config.cmd --url $RepoUrl --token $Token --labels $Labels --unattended --runasservice
+    $configArgs = @("--url", $RepoUrl, "--token", $Token, "--labels", $Labels, "--unattended", "--runasservice")
+    if ($WindowsLogonAccount) {
+        # A second runner on the same PC must not reuse the first one's name.
+        $configArgs += @("--name", "$env:COMPUTERNAME-pc-control")
+        $secure = Read-Host -Prompt "Password for $WindowsLogonAccount" -AsSecureString
+        $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+            [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+        $configArgs += @("--windowslogonaccount", $WindowsLogonAccount, "--windowslogonpassword", $plain)
+    }
+    & .\config.cmd @configArgs
 
     Write-Host "Verifying service..."
     Get-Service -Name "actions.runner.*" -ErrorAction SilentlyContinue | Format-Table -AutoSize
