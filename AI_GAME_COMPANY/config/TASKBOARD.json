@@ -566,6 +566,78 @@
       "changed_files": [],
       "last_run": "",
       "title_ko": "배경 레이어 생성 + 씬에 연결"
+    },
+    {
+      "id": "CLAUDE-VERBS1",
+      "title": "Slide and double jump - the runner's second verb",
+      "owner": "claude",
+      "status": "review",
+      "goal": "Tap-to-jump alone asks the same question at every obstacle, so a level can only vary its rhythm. Add a downward-swipe slide, a double jump, and an overhead obstacle that only the slide clears.",
+      "files": [
+        "Assets/GameFactory/Core/InputSystem.cs",
+        "Assets/GameFactory/Core/GameSpec/GameSpecData.cs",
+        "Assets/GameFactory/Gameplay/Runner/RunnerPlayerController.cs",
+        "Assets/GameFactory/Gameplay/Runner/RunnerCharacterMotion.cs",
+        "Assets/GameFactory/Gameplay/Runner/ObstacleSpawner.cs",
+        "Assets/GameFactory/Gameplay/Runner/CoinSpawner.cs",
+        "Assets/GameFactory/Gameplay/Runner/RunnerGameInitializer.cs",
+        "Assets/GameFactory/Editor/PrefabGenerator.cs",
+        "Assets/GameFactory/Editor/SceneGenerator.cs",
+        "Assets/GameFactory/Editor/GameFactoryGenerator.cs",
+        "GameSpecs/game01.json",
+        "docs/GAME_SPEC.md"
+      ],
+      "acceptance": [
+        "DONE only after the APK is on a phone and both verbs are confirmed by eye: the duck fits under a bar, a standing run into one kills, the second jump does not leave the screen.",
+        "mechanics.slide false must generate exactly the game it generated before - no overhead prefab, no bar spawns."
+      ],
+      "depends_on": [],
+      "notes": [
+        "DONE BY CLAUDE - user instruction 2026-09-05 '쿠키런 기능 접목시켜'. Rule 1 exception, recorded in CLAUDE.md section 2.",
+        "Commit 6369c5d. Not compiled: no Unity in the Claude Code container.",
+        "Geometry, for whoever tunes it next: player art 1.5 units tall, ground surface y=-0.5, bar underside at 0.66 x player height (y=0.49), ducked head y=0.25, standing head y=1.0. Jump reaches 1.762 up and 3.84 forward, so the gap is 6.2-11.5.",
+        "The obstacle spawner deliberately runs 16 units ahead while the coin spawner runs 12. That ordering is what lets CoinSpawner's clearance probe see a bar before it drops a coin inside one. Do not equalise them."
+      ],
+      "changed_files": [],
+      "last_run": "",
+      "title_ko": "슬라이드 + 이단 점프 (두 번째 조작)"
+    },
+    {
+      "id": "CODEX-ENERGY1",
+      "title": "Energy gauge and jelly pickups - the endless runner's second half",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "The run currently ends only on contact with an obstacle, so a careful player runs forever and the coin has no urgency. Add a draining energy gauge that ends the run at zero and pickups that refill it, so distance becomes something the player has to earn rather than merely survive.",
+      "files": [
+        "Assets/GameFactory/Gameplay/Runner/RunnerEnergy.cs",
+        "Assets/GameFactory/Gameplay/Runner/Coin.cs",
+        "Assets/GameFactory/Gameplay/Runner/RunnerGameInitializer.cs",
+        "Assets/GameFactory/Core/GameSpec/GameSpecData.cs",
+        "Assets/GameFactory/Core/GameSpec/GameSpecValidator.cs",
+        "Assets/GameFactory/UI/GameUIController.cs",
+        "Assets/GameFactory/Editor/SceneGenerator.cs",
+        "docs/GAME_SPEC.md"
+      ],
+      "acceptance": [
+        "A new runtime component RunnerEnergy drains a normalised 0-1 value at a spec-driven rate per second while GameManager is Playing, and calls GameManager.TriggerGameOver() once at zero - not every frame.",
+        "Collecting a coin refills a spec-driven amount, clamped at 1. Coin.cs must keep its existing currency behaviour: the pickup pays coins AND energy, it does not stop paying coins.",
+        "A gauge on the HUD shows the value. SceneGenerator builds it at edit time following the file's existing helpers (CreatePanel/CreateRect, the Margin constant, the cream/gold palette) and GameUIController drives its fill at runtime. Structure at edit time, numbers at runtime - do not put either in the other.",
+        "New GameSpec fields under a new 'energy' section: enabled, drainPerSecond, refillPerPickup. Add them to GameSpecData, GameSpecValidator and docs/GAME_SPEC.md together. Validator: drainPerSecond and refillPerPickup must be > 0 when enabled is true.",
+        "energy.enabled false must generate exactly what is generated today: no gauge on the HUD, no component in the scene, death only on obstacle contact. The feature is additive.",
+        "Pause must not drain. Anything on Time.deltaTime while GameManager is Paused is a bug - check the state, do not assume timeScale.",
+        "RunnerEnergy is a RUNTIME script and must never reference UnityEditor."
+      ],
+      "depends_on": [],
+      "notes": [
+        "This is the half of the benchmark the slide work did not cover. CLAUDE-VERBS1 added the two verbs (jump/slide); this adds the pressure that makes them matter.",
+        "Read RunnerDistanceTracker.cs first - it is the closest existing shape: a small runtime component that watches the player and reports to the UI, wired by SceneGenerator.",
+        "GameUIController already owns the HUD references via SetHudReferences. Extend that call rather than inventing a second wiring path.",
+        "Do not rename or repurpose the coin. The economy, the shop and the save file all depend on it as currency; energy is a second thing the same pickup gives.",
+        "Balance suggestion, not a requirement: a full gauge should last roughly 12-15 seconds, and coins spawn every 3 units at speed 6, so a refill near 0.12 keeps a clean run alive without making the gauge decorative."
+      ],
+      "changed_files": [],
+      "last_run": "",
+      "title_ko": "에너지 게이지 + 젤리(코인) 회복"
     }
   ]
 }
