@@ -33,6 +33,15 @@ namespace GameFactory.Gameplay.Runner
         [Tooltip("Forward lean while running, in degrees.")]
         [SerializeField] private float runLean = 5f;
 
+        [Header("Limbs")]
+        [Tooltip("Maximum limb rotation during the grounded run cycle, in degrees.")]
+        [SerializeField] private float limbSwing = 13f;
+        [Tooltip("Arm angle held while airborne, in degrees.")]
+        [SerializeField] private float jumpArmAngle = 18f;
+        [Tooltip("Leg angle held while airborne, in degrees.")]
+        [SerializeField] private float jumpLegAngle = 11f;
+        [SerializeField] private Color limbColor = new Color(0.95f, 0.87f, 0.75f, 1f);
+
         [Header("Air")]
         [Tooltip("Vertical speed that produces the full stretch or squash.")]
         [SerializeField] private float velocityForFullStretch = 12f;
@@ -58,6 +67,12 @@ namespace GameFactory.Gameplay.Runner
         // Half the sprite's height in world units. The pivot is Center, so a
         // squash lifts the feet by exactly this much times the scale lost.
         private float spriteHalfHeight;
+
+        private Transform leftArm;
+        private Transform rightArm;
+        private Transform leftLeg;
+        private Transform rightLeg;
+        private static Sprite limbSprite;
 
         private float bobPhase;
         private float landTimer;
@@ -85,6 +100,8 @@ namespace GameFactory.Gameplay.Runner
             spriteHalfHeight = renderer != null && renderer.sprite != null
                 ? renderer.sprite.bounds.extents.y * baseScale.y
                 : 0.5f;
+
+            CreateLimbs(renderer);
         }
 
         private void OnDisable()
@@ -94,6 +111,7 @@ namespace GameFactory.Gameplay.Runner
             transform.localScale = baseScale;
             transform.localPosition = baseLocalPosition;
             transform.localRotation = Quaternion.identity;
+            SetLimbAngles(0f, 0f, 0f, 0f);
         }
 
         private void LateUpdate()
@@ -113,6 +131,10 @@ namespace GameFactory.Gameplay.Runner
             Vector2 targetScale = Vector2.one;
             float targetAngle = 0f;
             float bobOffset = 0f;
+            float leftArmAngle = 0f;
+            float rightArmAngle = 0f;
+            float leftLegAngle = 0f;
+            float rightLegAngle = 0f;
 
             if (dead)
             {
@@ -131,6 +153,14 @@ namespace GameFactory.Gameplay.Runner
                 float squash = Mathf.Max(0f, -bob) * bobSquash;
                 targetScale = new Vector2(1f + squash, 1f - squash);
                 targetAngle = -runLean;
+
+                float swing = bob * limbSwing;
+                // Diagonal pairs share a phase so the tiny silhouette still
+                // reads as a coordinated run rather than four flailing parts.
+                leftArmAngle = swing;
+                rightLegAngle = swing;
+                rightArmAngle = -swing;
+                leftLegAngle = -swing;
             }
             else
             {
@@ -141,6 +171,11 @@ namespace GameFactory.Gameplay.Runner
                 targetScale = new Vector2(1f - stretch, 1f + stretch);
                 targetAngle = -runLean + vertical * airTilt;
                 bobPhase = 0f;
+
+                leftArmAngle = -jumpArmAngle;
+                rightArmAngle = jumpArmAngle;
+                leftLegAngle = -jumpLegAngle;
+                rightLegAngle = jumpLegAngle;
             }
 
             if (landTimer > 0f)
@@ -166,6 +201,76 @@ namespace GameFactory.Gameplay.Runner
             float footCompensation = (1f - currentScale.y) * spriteHalfHeight;
             transform.localPosition = baseLocalPosition
                 + new Vector3(0f, bobOffset - footCompensation, 0f);
+
+            SetLimbAngles(leftArmAngle, rightArmAngle, leftLegAngle, rightLegAngle);
+        }
+
+        private void CreateLimbs(SpriteRenderer bodyRenderer)
+        {
+            if (bodyRenderer == null || bodyRenderer.sprite == null) return;
+
+            if (limbSprite == null)
+            {
+                Texture2D texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+                texture.name = "Runner Limb Texture";
+                texture.hideFlags = HideFlags.HideAndDontSave;
+                texture.filterMode = FilterMode.Point;
+                texture.SetPixel(0, 0, Color.white);
+                texture.Apply(false, true);
+
+                limbSprite = Sprite.Create(
+                    texture, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 1f), 1f);
+                limbSprite.name = "Runner Limb Sprite";
+                limbSprite.hideFlags = HideFlags.HideAndDontSave;
+            }
+
+            Vector2 bodySize = bodyRenderer.sprite.bounds.size;
+            float armWidth = bodySize.x * 0.075f;
+            float armLength = bodySize.y * 0.25f;
+            float legWidth = bodySize.x * 0.09f;
+            float legLength = bodySize.y * 0.23f;
+
+            leftArm = CreateLimb(
+                "Left Arm", new Vector2(-bodySize.x * 0.31f, bodySize.y * 0.19f),
+                new Vector2(armWidth, armLength), bodyRenderer);
+            rightArm = CreateLimb(
+                "Right Arm", new Vector2(bodySize.x * 0.31f, bodySize.y * 0.19f),
+                new Vector2(armWidth, armLength), bodyRenderer);
+            leftLeg = CreateLimb(
+                "Left Leg", new Vector2(-bodySize.x * 0.14f, -bodySize.y * 0.26f),
+                new Vector2(legWidth, legLength), bodyRenderer);
+            rightLeg = CreateLimb(
+                "Right Leg", new Vector2(bodySize.x * 0.14f, -bodySize.y * 0.26f),
+                new Vector2(legWidth, legLength), bodyRenderer);
+        }
+
+        private Transform CreateLimb(
+            string limbName, Vector2 jointPosition, Vector2 size, SpriteRenderer bodyRenderer)
+        {
+            GameObject limb = new GameObject(limbName);
+            Transform limbTransform = limb.transform;
+            limbTransform.SetParent(transform, false);
+            limbTransform.localPosition = jointPosition;
+            limbTransform.localScale = new Vector3(size.x, size.y, 1f);
+
+            SpriteRenderer limbRenderer = limb.AddComponent<SpriteRenderer>();
+            limbRenderer.sprite = limbSprite;
+            limbRenderer.color = limbColor;
+            limbRenderer.sortingLayerID = bodyRenderer.sortingLayerID;
+            limbRenderer.sortingOrder = bodyRenderer.sortingOrder - 1;
+            return limbTransform;
+        }
+
+        private void SetLimbAngles(
+            float leftArmDegrees, float rightArmDegrees,
+            float leftLegDegrees, float rightLegDegrees)
+        {
+            if (leftArm == null) return;
+
+            leftArm.localRotation = Quaternion.Euler(0f, 0f, leftArmDegrees);
+            rightArm.localRotation = Quaternion.Euler(0f, 0f, rightArmDegrees);
+            leftLeg.localRotation = Quaternion.Euler(0f, 0f, leftLegDegrees);
+            rightLeg.localRotation = Quaternion.Euler(0f, 0f, rightLegDegrees);
         }
     }
 }

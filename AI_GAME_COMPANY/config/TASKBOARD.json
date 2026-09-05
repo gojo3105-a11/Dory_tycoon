@@ -121,7 +121,7 @@
       "title": "Give the character arms and legs that move",
       "title_ko": "캐릭터 팔다리 움직임",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "The character is one sprite with squash/stretch and a bob. The user asked whether the arms and legs move - they do not. Add procedural limbs that run while grounded and hold a pose in the air, driven from the existing RunnerCharacterMotion so no new Update loop is introduced.",
       "files": [
         "Assets/GameFactory/Gameplay/Runner/RunnerCharacterMotion.cs"
@@ -138,9 +138,12 @@
         "Read the whole of RunnerCharacterMotion.cs first. It already tracks grounded state and vertical velocity from RunnerPlayerController, and it already compensates the foot position when the sprite squashes - reuse those, do not recompute them.",
         "Sorting: a SpriteRenderer child needs a lower sortingOrder than the body to draw behind it.",
         "Keep it subtle. This is a 136x192 sprite on a phone; limbs that swing far read as broken, not lively.",
-        "2026-09-03 00:47 UTC: Codex RAN THIS TASK and finished (Reports/runs/20260903T004724...txt). The run then died with UnicodeEncodeError: cp949 while PRINTING the summary - an em dash in Codex's message that the Korean Windows console cannot encode. run_task had already saved REVIEW, but Codex's edits from that run were then swept into the PC stash named 'codex RUNLOG1 attempt' on 2026-09-05 (git stash push -u before pulling upstream). That stash holds finished work from FOUR runs - do not drop it. Export with `git stash show -p > Reports/codex-attempts.diff`, commit, push, and Claude will review and merge what is good."
+        "2026-09-03 00:47 UTC: Codex RAN THIS TASK and finished (Reports/runs/20260903T004724...txt). The run then died with UnicodeEncodeError: cp949 while PRINTING the summary - an em dash in Codex's message that the Korean Windows console cannot encode. run_task had already saved REVIEW, but Codex's edits from that run were then swept into the PC stash named 'codex RUNLOG1 attempt' on 2026-09-05 (git stash push -u before pulling upstream). That stash holds finished work from FOUR runs - do not drop it. Export with `git stash show -p > Reports/codex-attempts.diff`, commit, push, and Claude will review and merge what is good.",
+        "2026-09-05: Codex's finished ANIM1 code RECOVERED from the PC stash (Reports/codex-attempts.diff) and applied to this branch by Claude. Read against the acceptance criteria: four limb GameObjects created once in CreateLimbs from one shared 1x1 sprite (no art file); diagonal pairs share a phase (left arm with right leg); airborne holds a jump pose and the run cycle resumes on landing; sortingOrder = body - 1 so limbs draw behind; Update only sets four localRotations - no per-frame allocation; nothing touches PrefabGenerator or a collider. No UnityEditor reference, no obsolete API. REVIEW, not DONE: NOT compiled - the first `orchestrator build` after this lands is the check, and the 136x192 sprite must be looked at on a device for limb size (limbSwing 13 deg was Codex's choice of 'subtle')."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "Assets/GameFactory/Gameplay/Runner/RunnerCharacterMotion.cs"
+      ],
       "last_run": ""
     },
     {
@@ -418,7 +421,8 @@
         "CODEX-START1 and CODEX-OFFICE1 also edit dashboard.py. Only one job runs at a time, so whichever runs later just builds on the earlier work - do not attempt their tasks here.",
         "2026-09-02: this task NO LONGER depends on CODEX-OLLAMA1. That dependency existed so this task would not wire a button to an API that did not exist yet; `ollama --list` and `--use` are now in main.py and `--list` was run on the build PC. CODEX-OLLAMA1 stays at review rather than done because `--use` cannot be exercised end to end - see the next note - and blocking this task on a check that cannot be performed would deadlock it.",
         "THE MACHINE HAS NO OLLAMA MODELS AT ALL, verified 2026-09-02: `ollama rm gemma4:26b` said \"model not found\" and `orchestrator ollama --list` printed \"no models installed\". So the only Ollama state you can build against today is the empty one, which is why it is an acceptance criterion above. Do NOT trust HARDWARE_PROFILE.json here - it still lists gemma4:26b 17.33 GB from a 2026-09-01 scan and is stale. Read the inventory from OllamaClient at render time, not from the profile; the profile is for RAM sizes.",
-        "2026-09-02 23:46 UTC: Codex RAN THIS TASK and finished (Reports/runs/20260902T234645...txt), then the same cp949 UnicodeEncodeError killed the report while printing the summary. Codex's edits from that run were then swept into the PC stash named 'codex RUNLOG1 attempt' on 2026-09-05 (git stash push -u before pulling upstream). That stash holds finished work from FOUR runs - do not drop it. Export with `git stash show -p > Reports/codex-attempts.diff`, commit, push, and Claude will review and merge what is good."
+        "2026-09-02 23:46 UTC: Codex RAN THIS TASK and finished (Reports/runs/20260902T234645...txt), then the same cp949 UnicodeEncodeError killed the report while printing the summary. Codex's edits from that run were then swept into the PC stash named 'codex RUNLOG1 attempt' on 2026-09-05 (git stash push -u before pulling upstream). That stash holds finished work from FOUR runs - do not drop it. Export with `git stash show -p > Reports/codex-attempts.diff`, commit, push, and Claude will review and merge what is good.",
+        "2026-09-05, from the recovered stash: Codex's 2026-09-02 run of this task was marked BLOCKED only because its OWN run-log files (Reports/runs/*.txt, written by a concurrent `dashboard` action) landed in the diff - the same class of false block as packages-lock.json. Reports/* are now TOOL_OWNED in teamwork.py. Codex's dashboard.py (+224) and server.py (+151) edits are in Reports/codex-attempts.diff, based on the pre-2026-09-03 dashboard.py; they need rebasing onto the current file and a security read of the server.py part before any of it lands. Not applied yet."
       ],
       "changed_files": [],
       "last_run": ""
@@ -455,7 +459,8 @@
         "2026-09-03: DONE BY CLAUDE, not Codex. The user asked directly for a Korean progress summary while an AI is working and for a queue list, and doing either needed the live job in the renderer - which is this task's own mechanism - so all four defects were fixed in the same pass rather than leaving a seam. Rule 1 (all code to Codex) was set aside by the user for these two items specifically; it still stands for everything else.",
         "What landed: (1) render() takes live_job and _office_html draws that agent working, so a gated-on-paper Codex that is demonstrably running no longer reads as idle. (2) One guard in render() drops live_job whenever there is no control token, so the static file cannot carry a running state - tested. (3) A gated agent's office caption is '대기 중 · 사람 확인 필요'; STATE_LABEL is untouched so the roster keeps the plain four. (4) The busy indicator no longer appends '실행 중' to a label that already ends in 실행. Plus the new progress.py summariser and the 작업 대기열 section. 314 Python tests pass; Reports/dashboard.html regenerated.",
         "STILL REVIEW, and one real limitation to know: build progress is coarse. run_pipeline collects every step and main.py prints the results only after Unity returns, so during a build there is no incremental output at all and the summariser can honestly say no more than 'Unity 실행 중' plus elapsed time. It flags that phase as slow and says out loud that no output will appear, rather than looking hung. Making it finer means printing per step from run_pipeline, which is a change to the build path and was left out of this pass.",
-        "2026-09-03 00:11 UTC: Codex ALSO ran this task and finished (Reports/runs/20260903T001124...txt) before the cp949 crash - so two implementations exist: Claude's (this branch) and Codex's (in the PC stash). Claude's is what is live; Codex's should be diffed against it, not discarded unseen."
+        "2026-09-03 00:11 UTC: Codex ALSO ran this task and finished (Reports/runs/20260903T001124...txt) before the cp949 crash - so two implementations exist: Claude's (this branch) and Codex's (in the PC stash). Claude's is what is live; Codex's should be diffed against it, not discarded unseen.",
+        "2026-09-05: Codex's run was likewise false-BLOCKED by Reports/runs churn. Its version stays in Reports/codex-attempts.diff for comparison; Claude's version is live."
       ],
       "changed_files": [
         "AI_GAME_COMPANY/company/orchestrator/progress.py",
