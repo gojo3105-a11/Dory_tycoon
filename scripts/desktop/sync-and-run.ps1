@@ -262,6 +262,30 @@ try {
         }
     }
 
+    # The shared task board is rewritten by every `team run` (status todo ->
+    # in_progress -> review/blocked, plus the run's notes). Those edits are
+    # the handoff itself - exactly what Claude needs to see - yet as a dirty
+    # tracked file they blocked the next sync, and the one after, until a
+    # person committed by hand. The very first live run after the fix did
+    # this at 09:51 on 2026-09-05. Committed here as housekeeping, but ONLY
+    # when the file still parses: a half-typed hand edit must not be
+    # committed mid-keystroke.
+    $boardFile = "AI_GAME_COMPANY/config/TASKBOARD.json"
+    $boardState = Invoke-Git @("status", "--porcelain", "--untracked-files=no", "--", $boardFile)
+    if ($boardState -match '^\s*M\s') {
+        $boardPath = Join-Path $RepoPath ($boardFile -replace "/", "\")
+        $parses = $true
+        try { Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json | Out-Null } catch { $parses = $false }
+        if ($parses) {
+            Write-Log "$boardFile changed (a run updated task status) - committing it so the handoff reaches upstream."
+            Invoke-Git @("add", "--", $boardFile) | Out-Null
+            Invoke-Git @("commit", "-m", "chore: task board updated by a run") | Out-Null
+        }
+        else {
+            Write-Log "$boardFile changed but does not parse as JSON - leaving it for a person (it will block the sync)."
+        }
+    }
+
     # Refuse to merge over uncommitted edits to tracked files rather than
     # risk losing them. Untracked files are deliberately tolerated: running
     # the generator locally leaves Assets/GeneratedGames and friends lying
