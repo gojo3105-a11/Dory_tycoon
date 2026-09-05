@@ -223,11 +223,21 @@ def read_header_fields(path: Path) -> dict[str, str]:
     except OSError:
         return {}
     for line in text.splitlines():
-        if line.startswith("## "):
+        # Stop where the captured program output begins - that body can
+        # contain anything, including lines that look like headers. A
+        # '## Result' section is still header material and is read through:
+        # the first run-log writer on the PC (Codex's) put its fields there.
+        if line.startswith("## ") and "result" not in line.lower():
             break
-        match = re.match(r"^([A-Za-z][A-Za-z-]*):\s*(.*)$", line)
+        match = re.match(r"^([A-Za-z][A-Za-z -]*?):\s*(.*)$", line)
         if match:
-            fields[match.group(1)] = match.group(2).strip()
+            fields[match.group(1).strip()] = match.group(2).strip()
+    # Aliases from that earlier writer, so its records still read.
+    if "Outcome" not in fields and "Status" in fields:
+        fields["Outcome"] = {"SUCCESS": "OK", "FAILURE": "FAILED"}.get(
+            fields["Status"].upper(), fields["Status"])
+    if "Exit" not in fields and "Exit code" in fields:
+        fields["Exit"] = fields["Exit code"]
     return fields
 
 

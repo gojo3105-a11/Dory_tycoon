@@ -66,7 +66,14 @@ class _Tee(io.TextIOBase):
         self._budget = budget
 
     def write(self, text: str) -> int:  # type: ignore[override]
-        written = self._real.write(text)
+        try:
+            written = self._real.write(text)
+        except UnicodeEncodeError:
+            # A cp949 console cannot show an em dash. Degrade the glyph on
+            # the terminal, keep the exact text in the record, keep running.
+            encoding = getattr(self._real, "encoding", None) or "ascii"
+            safe = text.encode(encoding, errors="replace").decode(encoding, errors="replace")
+            written = self._real.write(safe)
         self._sink.append(text)
         self._budget[0] += len(text)
         if self._budget[0] > MAX_BUFFER_CHARS:

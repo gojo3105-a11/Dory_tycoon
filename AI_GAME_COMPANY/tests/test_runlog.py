@@ -164,6 +164,38 @@ class RecordingTests(unittest.TestCase):
         self.assertIs(before_err, sys.stderr)
 
 
+class ConsoleEncodingTests(unittest.TestCase):
+    """The cp949 case: a Korean Windows console raised UnicodeEncodeError while
+    PRINTING a finished run's summary, and a 215-second Codex run's report
+    died with it. The tee must degrade the glyph on screen and keep going."""
+
+    class Cp949Console(io.TextIOBase):
+        encoding = "cp949"
+
+        def __init__(self):
+            self.shown = []
+
+        def write(self, text):
+            text.encode("cp949")          # raises on an em dash, like the real console
+            self.shown.append(text)
+            return len(text)
+
+    def test_an_unencodable_glyph_is_degraded_on_screen_and_kept_in_the_record(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            recorder = runlog.Recorder(Path(tmp), environ={})
+            console = self.Cp949Console()
+            real_out = sys.stdout
+            sys.stdout = console
+            try:
+                code = recorder.run("team", ["team"], lambda: (print("codex said \u2014 done"), 0)[1])
+            finally:
+                sys.stdout = real_out
+            self.assertEqual(0, code)
+            self.assertTrue(any("codex said ? done" in t for t in console.shown), console.shown)
+            latest = (Path(tmp) / "latest.txt").read_text(encoding="utf-8")
+            self.assertIn("codex said \u2014 done", latest)
+
+
 class ParseTests(unittest.TestCase):
     def test_reads_the_header_and_stops_at_the_body(self):
         text = ("# Orchestrator run report\n\nGenerated: 2026-09-03 10:00:00\n"

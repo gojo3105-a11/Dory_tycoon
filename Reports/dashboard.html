@@ -400,7 +400,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
       <div class="sub">연동된 AI가 지금 무엇을 할 수 있고, 무엇이 막고 있는가</div>
     </div>
     <div class="stamp mono">
-      생성 2026-09-03 08:27<br>
+      생성 2026-09-05 00:49<br>
       DESKTOP-A7IU1E9 · RAM 15.7 GB<br>
       Unity 6000.5.9f1 · OK<br>
       읽기 전용 · 제어는 PC에서 &#x27;orchestrator serve&#x27; 로 엽니다
@@ -577,8 +577,8 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
       <span class="note">이 두 파일이 PC에서 Claude로 오는 유일한 통로입니다 · 없으면 확인 불가</span>
     </div>
     <div class="grid2">
-      <div class="panel"><h3>PC 자동 동기화</h3><div class="kv"><span class="k">상태</span><span class="v"><span style="color:var(--unknown)">확인 불가</span></span></div><div class="kv-note">Reports/sync-status/latest.txt 가 없습니다. PC의 sync-and-run.ps1 이 이 파일을 쓰기 전이거나, 예약 작업이 돌지 않았습니다.</div></div>
-      <div class="panel"><h3>마지막 오케스트레이터 실행</h3><div class="kv"><span class="k">상태</span><span class="v"><span style="color:var(--unknown)">확인 불가</span></span></div><div class="kv-note">Reports/runs/latest.txt 가 없습니다. 오케스트레이터가 이 기록을 남기는 버전으로 아직 실행되지 않았습니다.</div></div>
+      <div class="panel"><h3>PC 자동 동기화</h3><div class="kv"><span class="k">상태</span><span class="v"><span class="big" style="color:var(--ok)">동기화됨</span></span></div><div class="kv"><span class="k">마지막 실행</span><span class="v"><span class="mono">2026-09-05 09:42:45</span></span></div><div class="kv"><span class="k">마지막 성공</span><span class="v"><span class="mono">2026-09-05 09:42:45</span></span></div><div class="kv"><span class="k">커밋</span><span class="v"><span class="mono">PC bc54c61 · Claude 1ad903c <span style="color:var(--gate)">· 다름</span></span></span></div></div>
+      <div class="panel"><h3>마지막 오케스트레이터 실행</h3><div class="kv"><span class="k">결과</span><span class="v"><span class="big" style="color:var(--blocked)">실패</span></span></div><div class="kv"><span class="k">명령</span><span class="v"><span class="mono">orchestrator team run --task CODEX-ANIM1</span></span></div><div class="kv"><span class="k">실행 시각</span><span class="v"><span class="mono">2026-09-03 00:47:24 UTC</span></span></div><div class="kv"><span class="k">상세</span><span class="v"><span class="mono">종료 코드 1 · 215.547 seconds</span></span></div><div class="kv-note">전체 출력은 Reports/runs/latest.txt 에 있습니다. Claude가 포크에서 직접 읽으므로 붙여넣을 필요가 없습니다.</div></div>
     </div>
   </section>
 
@@ -726,15 +726,16 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
       <div class="panel">
         <h3>검증된 빌드</h3>
         <div class="kv"><span class="k">game01</span><span class="v"><span class="big">17.32 MB</span><br><span class="mono" style="font-size:11.5px;color:var(--muted)">sha256:7F81E6F18E29EA94</span></span></div>
+        <div class="kv"><span class="k">game01</span><span class="v"><span class="big">17.32 MB</span><br><span class="mono" style="font-size:11.5px;color:var(--muted)">sha256:B6B79D90F3FEC97A</span></span></div>
         <div class="kv"><span class="k">빌드 시각</span><span class="v mono">2026-09-02 20:25:21</span></div>
         <div class="kv"><span class="k">리포트 시각</span>
-          <span class="v mono">2026-09-03 07:41:34</span></div>
+          <span class="v mono">2026-09-05 09:42:40</span></div>
       </div>
       <div class="panel">
         <h3>Unity 에러</h3>
         <div class="kv"><span class="k">컴파일 에러</span><span class="v big" style="color:var(--ok)">0</span></div><div class="kv"><span class="k">Obsolete API 경고</span><span class="v big" style="color:var(--ok)">0</span></div><div class="kv"><span class="k">런타임 예외</span><span class="v big" style="color:var(--ok)">0</span></div>
         <div class="kv"><span class="k">리포트 시각</span>
-          <span class="v mono">2026-09-03 07:41:30</span></div>
+          <span class="v mono">2026-09-05 09:42:40</span></div>
       </div>
     </div>
   </section>
@@ -785,14 +786,14 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
   <section>
     <div class="head"><h2>최근 작업</h2></div>
     <div class="log mono">
-      <div><span class="sha mono">1a97593</span><span class="when mono">2026-09-03</span><span class="what">Merge the fork: refreshed hardware profile (no Ollama models) and CLI probes</span></div>
-      <div><span class="sha mono">4e5eb0c</span><span class="when mono">2026-09-03</span><span class="what">fix: the development loop - sync reports itself, runs leave a log, board runner stops blocking on tool churn</span></div>
-      <div><span class="sha mono">f198460</span><span class="when mono">2026-09-03</span><span class="what">feat: a Korean progress summary while an AI works, and a queue that says what is next</span></div>
-      <div><span class="sha mono">9ec5c9d</span><span class="when mono">2026-09-03</span><span class="what">chore: update AI_GAME_COMPANY hardware/CLI profile</span></div>
-      <div><span class="sha mono">e3e4f85</span><span class="when mono">2026-09-02</span><span class="what">chore: the machine has no Ollama models, and CODEX-AICTL1 is unblocked</span></div>
-      <div><span class="sha mono">b9a861f</span><span class="when mono">2026-09-03</span><span class="what">chore: trigger Game Factory Pipeline for game01</span></div>
-      <div><span class="sha mono">fe09c6b</span><span class="when mono">2026-09-02</span><span class="what">spec: CODEX-RUNLOG1 - orchestrator failures should reach Claude on their own</span></div>
-      <div><span class="sha mono">7fc5252</span><span class="when mono">2026-09-02</span><span class="what">Merge the fork&#x27;s branch, and correct four stale task statuses</span></div>
+      <div><span class="sha mono">c2d388a</span><span class="when mono">2026-09-05</span><span class="what">chore: auto-sync status OK</span></div>
+      <div><span class="sha mono">bc54c61</span><span class="when mono">2026-09-05</span><span class="what">chore: update build status report</span></div>
+      <div><span class="sha mono">0f9d1f6</span><span class="when mono">2026-09-05</span><span class="what">chore: update Unity error report (0 compile error(s), 0 build failure(s))</span></div>
+      <div><span class="sha mono">2bf0a86</span><span class="when mono">2026-09-05</span><span class="what">Merge branch &#x27;claude/delete-current-content-mgn4xm&#x27; of https://github.com/gojo3105-a11/Dory_tycoon into claude/delete-current-content-mgn4xm</span></div>
+      <div><span class="sha mono">3f24354</span><span class="when mono">2026-09-05</span><span class="what">chore: update build status report</span></div>
+      <div><span class="sha mono">885f631</span><span class="when mono">2026-09-05</span><span class="what">chore: update Unity error report (0 compile error(s), 0 build failure(s))</span></div>
+      <div><span class="sha mono">13cf015</span><span class="when mono">2026-09-04</span><span class="what">chore: update build status report</span></div>
+      <div><span class="sha mono">417f144</span><span class="when mono">2026-09-04</span><span class="what">chore: update Unity error report (0 compile error(s), 0 build failure(s))</span></div>
     </div>
   </section>
 
