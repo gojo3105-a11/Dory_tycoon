@@ -1,0 +1,14 @@
+﻿# Auto-sync status
+
+Generated: 2026-09-05 09:42:45
+Outcome: OK
+Reason: Merged upstream/claude/delete-current-content-mgn4xm and pushed to origin/claude/delete-current-content-mgn4xm
+Last-Success: 2026-09-05 09:42:45
+Local-Head: bc54c61
+Upstream-Head: 1ad903c
+Branch: claude/delete-current-content-mgn4xm
+
+Written by scripts/desktop/sync-and-run.ps1 on every run. Outcome is one of
+OK (merged and pushed), UP-TO-DATE (nothing new), BLOCKED (refused to merge
+over local edits - see Reason), FAILED (git or network error - see Reason).
+
