@@ -44,12 +44,19 @@ namespace GameFactory.Gameplay.Runner
 
             if (player != null)
             {
-                player.Configure(spec.player.moveSpeed, spec.player.jumpPower, spec.mechanics.gravitySwitch);
+                player.Configure(spec.player.moveSpeed, spec.player.jumpPower,
+                                 spec.mechanics.gravitySwitch, spec.player.gravityScale);
             }
 
             if (obstacleSpawner != null)
             {
-                obstacleSpawner.Configure(spec.level.length, spec.level.difficulty);
+                // The spawner is told how far a jump reaches, not just how hard
+                // the level should be. Spacing that ignores the arc is what
+                // made obstacles unclearable however the difficulty was set.
+                obstacleSpawner.Configure(
+                    spec.level.length, spec.level.difficulty,
+                    RunnerPlayerController.JumpDistance(
+                        spec.player.moveSpeed, spec.player.jumpPower, spec.player.gravityScale));
             }
 
             if (coinSpawner != null)

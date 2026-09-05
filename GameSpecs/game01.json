@@ -6,7 +6,8 @@
   },
   "player": {
     "moveSpeed": 6,
-    "jumpPower": 10
+    "jumpPower": 11,
+    "gravityScale": 3.5
   },
   "mechanics": {
     "jump": true,

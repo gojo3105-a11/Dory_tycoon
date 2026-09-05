@@ -12,6 +12,8 @@ namespace GameFactory.Gameplay.Runner
     {
         [SerializeField] private float moveSpeed = 6f;
         [SerializeField] private float jumpPower = 10f;
+        [Tooltip("Multiplier on Unity's gravity. See GameSpec player.gravityScale.")]
+        [SerializeField] private float gravityScale = 3.5f;
         [SerializeField] private bool gravitySwitchEnabled;
         [SerializeField] private LayerMask groundLayer;
         [SerializeField] private Transform groundCheck;
@@ -38,11 +40,25 @@ namespace GameFactory.Gameplay.Runner
         public float VerticalVelocity => body != null ? body.linearVelocity.y : 0f;
 
         /// <summary>Applies GameSpec-driven tuning. Called at runtime by RunnerGameInitializer.</summary>
-        public void Configure(float speed, float jump, bool useGravitySwitch)
+        public void Configure(float speed, float jump, bool useGravitySwitch,
+                              float gravity = 3.5f)
         {
             moveSpeed = speed;
             jumpPower = jump;
             gravitySwitchEnabled = useGravitySwitch;
+            gravityScale = Mathf.Max(0.1f, gravity);
+            if (body != null) body.gravityScale = gravityScale;
+        }
+
+        /// <summary>Forward distance a jump covers, in world units.
+
+        /// The level generator needs this: spacing obstacles without knowing
+        /// how far a jump actually reaches is what made them unclearable.
+        /// </summary>
+        public static float JumpDistance(float speed, float jump, float gravity)
+        {
+            float g = Mathf.Abs(Physics2D.gravity.y) * Mathf.Max(0.1f, gravity);
+            return speed * (2f * jump / g);
         }
 
         /// <summary>Wires structural references. Called at edit time by SceneGenerator.</summary>
@@ -55,6 +71,10 @@ namespace GameFactory.Gameplay.Runner
         private void Awake()
         {
             body = GetComponent<Rigidbody2D>();
+            // Applied here as well as in Configure: Awake runs before the
+            // initializer reads the spec, and a single frame at gravity 1 is
+            // enough to visibly float the character on the title screen.
+            body.gravityScale = gravityScale;
             cameraFollow = Camera.main != null ? Camera.main.GetComponent<CameraFollow2D>() : null;
             GravitySwitchController.ResetToDefault();
         }

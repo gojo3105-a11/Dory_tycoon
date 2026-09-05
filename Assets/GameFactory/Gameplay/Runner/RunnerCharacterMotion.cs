@@ -23,23 +23,30 @@ namespace GameFactory.Gameplay.Runner
     [DisallowMultipleComponent]
     public class RunnerCharacterMotion : MonoBehaviour
     {
+        // AMPLITUDES. These were four to five times smaller until 2026-09-05,
+        // because the task that added them said "keep it subtle - limbs that
+        // swing far read as broken". That was my note and it was wrong for the
+        // screen this runs on: the player reported "the image just slides
+        // sideways", meaning none of it registered at all. On a phone, at this
+        // sprite size, subtle IS invisible. A runner has to read as running
+        // from a glance at arm's length.
         [Header("Run")]
         [Tooltip("Bounces per second while grounded.")]
         [SerializeField] private float bobFrequency = 4.5f;
         [Tooltip("Vertical travel of the bob, in world units.")]
-        [SerializeField] private float bobHeight = 0.045f;
+        [SerializeField] private float bobHeight = 0.16f;
         [Tooltip("How much the body squashes at the bottom of each bob, 0-1.")]
-        [SerializeField] private float bobSquash = 0.055f;
+        [SerializeField] private float bobSquash = 0.12f;
         [Tooltip("Forward lean while running, in degrees.")]
-        [SerializeField] private float runLean = 5f;
+        [SerializeField] private float runLean = 8f;
 
         [Header("Limbs")]
         [Tooltip("Maximum limb rotation during the grounded run cycle, in degrees.")]
-        [SerializeField] private float limbSwing = 13f;
+        [SerializeField] private float limbSwing = 34f;
         [Tooltip("Arm angle held while airborne, in degrees.")]
-        [SerializeField] private float jumpArmAngle = 18f;
+        [SerializeField] private float jumpArmAngle = 40f;
         [Tooltip("Leg angle held while airborne, in degrees.")]
-        [SerializeField] private float jumpLegAngle = 11f;
+        [SerializeField] private float jumpLegAngle = 26f;
         [SerializeField] private Color limbColor = new Color(0.95f, 0.87f, 0.75f, 1f);
 
         [Header("Air")]
@@ -52,7 +59,7 @@ namespace GameFactory.Gameplay.Runner
 
         [Header("Landing")]
         [Tooltip("Squash applied the instant the feet touch down, 0-1.")]
-        [SerializeField] private float landSquash = 0.22f;
+        [SerializeField] private float landSquash = 0.28f;
         [Tooltip("Seconds for the landing squash to spring back.")]
         [SerializeField] private float landRecovery = 0.18f;
 
@@ -226,9 +233,9 @@ namespace GameFactory.Gameplay.Runner
 
             Vector2 bodySize = bodyRenderer.sprite.bounds.size;
             float armWidth = bodySize.x * 0.075f;
-            float armLength = bodySize.y * 0.25f;
+            float armLength = bodySize.y * 0.30f;
             float legWidth = bodySize.x * 0.09f;
-            float legLength = bodySize.y * 0.23f;
+            float legLength = bodySize.y * 0.30f;
 
             leftArm = CreateLimb(
                 "Left Arm", new Vector2(-bodySize.x * 0.31f, bodySize.y * 0.19f),
@@ -236,11 +243,14 @@ namespace GameFactory.Gameplay.Runner
             rightArm = CreateLimb(
                 "Right Arm", new Vector2(bodySize.x * 0.31f, bodySize.y * 0.19f),
                 new Vector2(armWidth, armLength), bodyRenderer);
+            // Joints pushed to the lower edge so the legs extend BELOW the
+            // silhouette. Tucked inside it they are covered by the body even
+            // when drawn in front, which is half of why nothing was visible.
             leftLeg = CreateLimb(
-                "Left Leg", new Vector2(-bodySize.x * 0.14f, -bodySize.y * 0.26f),
+                "Left Leg", new Vector2(-bodySize.x * 0.16f, -bodySize.y * 0.34f),
                 new Vector2(legWidth, legLength), bodyRenderer);
             rightLeg = CreateLimb(
-                "Right Leg", new Vector2(bodySize.x * 0.14f, -bodySize.y * 0.26f),
+                "Right Leg", new Vector2(bodySize.x * 0.16f, -bodySize.y * 0.34f),
                 new Vector2(legWidth, legLength), bodyRenderer);
         }
 
@@ -257,7 +267,11 @@ namespace GameFactory.Gameplay.Runner
             limbRenderer.sprite = limbSprite;
             limbRenderer.color = limbColor;
             limbRenderer.sortingLayerID = bodyRenderer.sortingLayerID;
-            limbRenderer.sortingOrder = bodyRenderer.sortingOrder - 1;
+            // IN FRONT of the body, not behind it. 도리 is an opaque cut-out
+            // PNG and the limb joints sit inside its silhouette, so drawing
+            // them behind hid every one of them completely - which is why the
+            // character read as a sliding decal with no animation at all.
+            limbRenderer.sortingOrder = bodyRenderer.sortingOrder + 1;
             return limbTransform;
         }
 

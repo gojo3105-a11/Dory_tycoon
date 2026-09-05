@@ -25,15 +25,32 @@ namespace GameFactory.Gameplay.Runner
             groundY = ground;
         }
 
-        /// <summary>Applies GameSpec-driven tuning. Called at runtime by RunnerGameInitializer.</summary>
-        public void Configure(float levelLength, string difficulty)
+        // A gap must be longer than the jump that has to clear it, or the
+        // player lands on the next obstacle no matter how well they time it.
+        // 1.6x leaves room to land, recover and take off again; 3.0x is the
+        // longest breather before the level reads as empty.
+        private const float MinGapPerJump = 1.6f;
+        private const float MaxGapPerJump = 3.0f;
+
+        /// <summary>Applies GameSpec-driven tuning. Called at runtime by RunnerGameInitializer.
+        ///
+        /// jumpDistance is how far one jump actually carries the player, from
+        /// RunnerPlayerController.JumpDistance. Spacing was a pair of fixed
+        /// numbers before, so with the real arc of 12.2 units against a 4-8
+        /// gap a single jump sailed over two or three obstacles.
+        /// </summary>
+        public void Configure(float levelLength, string difficulty, float jumpDistance = 0f)
         {
-            float scale = string.Equals(difficulty, "Hard", StringComparison.OrdinalIgnoreCase) ? 0.7f
-                : string.Equals(difficulty, "Easy", StringComparison.OrdinalIgnoreCase) ? 1.3f
+            float scale = string.Equals(difficulty, "Hard", StringComparison.OrdinalIgnoreCase) ? 0.8f
+                : string.Equals(difficulty, "Easy", StringComparison.OrdinalIgnoreCase) ? 1.25f
                 : 1f;
 
-            minGap = Mathf.Max(2f, 4f * scale);
-            maxGap = Mathf.Max(minGap + 1f, 8f * scale);
+            // Falling back to the old constants when the arc is unknown keeps
+            // an older scene working rather than spacing everything at zero.
+            float reach = jumpDistance > 0.1f ? jumpDistance : 2.5f;
+
+            minGap = Mathf.Max(2f, reach * MinGapPerJump * scale);
+            maxGap = Mathf.Max(minGap + reach * 0.5f, reach * MaxGapPerJump * scale);
         }
 
         private void Awake()
