@@ -55,6 +55,19 @@ namespace GameFactory.Core.Spec
     {
         public bool jump = true;
         public bool doubleJump;
+
+        /// <summary>
+        /// Ducking under overhead obstacles - the runner genre's second verb.
+        ///
+        /// WHY IT MATTERS. With jump alone every obstacle asks the same
+        /// question, "press now?", and the level reads as one note repeated.
+        /// A duck makes the level a conversation: things to go over, things to
+        /// go under, and the player has to read which is coming. The overhead
+        /// obstacles that require it are only spawned when this is true, so an
+        /// older spec without the field still generates a playable game.
+        /// </summary>
+        public bool slide;
+
         public bool dash;
         public bool wallJump;
         public bool gravitySwitch;

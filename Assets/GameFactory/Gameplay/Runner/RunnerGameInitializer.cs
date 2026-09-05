@@ -45,7 +45,8 @@ namespace GameFactory.Gameplay.Runner
             if (player != null)
             {
                 player.Configure(spec.player.moveSpeed, spec.player.jumpPower,
-                                 spec.mechanics.gravitySwitch, spec.player.gravityScale);
+                                 spec.mechanics.gravitySwitch, spec.player.gravityScale,
+                                 spec.mechanics.doubleJump, spec.mechanics.slide);
             }
 
             if (obstacleSpawner != null)
@@ -53,10 +54,14 @@ namespace GameFactory.Gameplay.Runner
                 // The spawner is told how far a jump reaches, not just how hard
                 // the level should be. Spacing that ignores the arc is what
                 // made obstacles unclearable however the difficulty was set.
+                // Overhead bars are gated on the same flag that gives the
+                // player the slide: an obstacle with no verb to answer it is
+                // not difficulty, it is a wall.
                 obstacleSpawner.Configure(
                     spec.level.length, spec.level.difficulty,
                     RunnerPlayerController.JumpDistance(
-                        spec.player.moveSpeed, spec.player.jumpPower, spec.player.gravityScale));
+                        spec.player.moveSpeed, spec.player.jumpPower, spec.player.gravityScale),
+                    spec.mechanics.slide);
             }
 
             if (coinSpawner != null)

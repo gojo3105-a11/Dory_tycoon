@@ -93,8 +93,8 @@ Dictionary/다형성은 사용하지 않는다. 필드 정의는
 ```json
 {
   "game": { "id": "game01", "title": "Factory Runner", "genre": "Runner" },
-  "player": { "moveSpeed": 6, "jumpPower": 10 },
-  "mechanics": { "jump": true, "doubleJump": false, "dash": false, "gravitySwitch": true },
+  "player": { "moveSpeed": 6, "jumpPower": 11, "gravityScale": 3.5 },
+  "mechanics": { "jump": true, "doubleJump": true, "slide": true, "dash": false, "gravitySwitch": true },
   "level": { "levelCount": 1, "difficulty": "Medium", "procedural": true, "length": 120 },
   "enemy": { "enabled": false, "types": 0 },
   "special": { "mechanic": "GravitySwitch" },

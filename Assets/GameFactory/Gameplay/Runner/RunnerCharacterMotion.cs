@@ -49,6 +49,18 @@ namespace GameFactory.Gameplay.Runner
         [SerializeField] private float jumpLegAngle = 26f;
         [SerializeField] private Color limbColor = new Color(0.95f, 0.87f, 0.75f, 1f);
 
+        [Header("Slide")]
+        // The squash itself is NOT tuned here - it is read from the controller,
+        // because the visible height and the hitbox height have to be the same
+        // number. A character drawn standing over a ducked hitbox slips under
+        // an overhead bar looking like it clipped straight through it.
+        [Tooltip("Forward lean while sliding, in degrees.")]
+        [SerializeField] private float slideLean = 26f;
+        [Tooltip("How far the legs are thrown forward during a slide, in degrees.")]
+        [SerializeField] private float slideLegAngle = 74f;
+        [Tooltip("How far the arms tuck back during a slide, in degrees.")]
+        [SerializeField] private float slideArmAngle = 46f;
+
         [Header("Air")]
         [Tooltip("Vertical speed that produces the full stretch or squash.")]
         [SerializeField] private float velocityForFullStretch = 12f;
@@ -149,6 +161,23 @@ namespace GameFactory.Gameplay.Runner
                 // than paused.
                 targetScale = new Vector2(1f + landSquash, 1f - landSquash);
                 targetAngle = -25f;
+            }
+            else if (controller.IsSliding)
+            {
+                // Squashed to exactly the height the collider shrank to, and
+                // widened by part of what it lost, so the duck reads as a body
+                // compressing rather than a sprite scaled down.
+                float squash = 1f - Mathf.Clamp(controller.SlideHeightFraction, 0.2f, 0.95f);
+                targetScale = new Vector2(1f + squash * 0.55f, 1f - squash);
+                targetAngle = -slideLean;
+                bobPhase = 0f;
+
+                // Legs out front, arms swept back - the shape of someone
+                // sliding feet-first, and unmistakable against the run cycle.
+                leftLegAngle = -slideLegAngle;
+                rightLegAngle = -slideLegAngle * 0.82f;
+                leftArmAngle = slideArmAngle;
+                rightArmAngle = slideArmAngle * 0.82f;
             }
             else if (grounded)
             {

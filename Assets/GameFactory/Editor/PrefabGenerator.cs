@@ -13,19 +13,32 @@ namespace GameFactory.Editor
         public GameObject Player { get; }
         public GameObject GroundTile { get; }
         public GameObject Obstacle { get; }
+        /// <summary>The bar that hangs at head height and has to be slid under. Null when the GameSpec has no slide.</summary>
+        public GameObject ObstacleOverhead { get; }
         public GameObject Coin { get; }
         /// <summary>Null when the GameSpec does not use the GravitySwitch mechanic.</summary>
         public GameObject GravityZone { get; }
         public int GroundLayer { get; }
 
-        public RunnerPrefabSet(GameObject player, GameObject groundTile, GameObject obstacle, GameObject coin, GameObject gravityZone, int groundLayer)
+        /// <summary>
+        /// The player collider's standing height, in world units. The scene
+        /// generator needs it to hang the overhead bar: too high and the player
+        /// runs under it standing up, too low and no duck fits through.
+        /// </summary>
+        public float PlayerHeight { get; }
+
+        public RunnerPrefabSet(GameObject player, GameObject groundTile, GameObject obstacle,
+            GameObject obstacleOverhead, GameObject coin, GameObject gravityZone,
+            int groundLayer, float playerHeight)
         {
             Player = player;
             GroundTile = groundTile;
             Obstacle = obstacle;
+            ObstacleOverhead = obstacleOverhead;
             Coin = coin;
             GravityZone = gravityZone;
             GroundLayer = groundLayer;
+            PlayerHeight = playerHeight;
         }
     }
 
@@ -47,6 +60,16 @@ namespace GameFactory.Editor
         /// </summary>
         private const string SharedArtFolder = "Assets/Common/Art/Runner";
 
+        /// <summary>
+        /// How tall the hanging bar is, in world units. Deliberately far taller
+        /// than a jump: the camera is 10 units high, the arc of a jump is under
+        /// 2, so a bar this size cannot be cleared by going over it. That is
+        /// the point - it is the one obstacle the jump does not answer.
+        /// </summary>
+        public const float OverheadObstacleHeight = 4.5f;
+
+        private const float OverheadObstacleWidth = 1.2f;
+
         public static RunnerPrefabSet GenerateRunnerPrefabs(GameSpec spec, string assetFolder)
         {
             int groundLayer = TagLayerUtility.EnsureLayer("Ground");
@@ -55,10 +78,15 @@ namespace GameFactory.Editor
             GameObject player = CreatePlayerPrefab(spec, assetFolder, groundLayer);
             GameObject groundTile = CreateGroundTilePrefab(spec, assetFolder, 10f, groundLayer);
             GameObject obstacle = CreateObstaclePrefab(assetFolder);
+            GameObject obstacleOverhead = spec.mechanics.slide ? CreateOverheadObstaclePrefab(assetFolder) : null;
             GameObject coin = CreateCoinPrefab(assetFolder);
             GameObject gravityZone = spec.mechanics.gravitySwitch ? CreateGravityZonePrefab(assetFolder) : null;
 
-            return new RunnerPrefabSet(player, groundTile, obstacle, coin, gravityZone, groundLayer);
+            BoxCollider2D playerBox = player != null ? player.GetComponent<BoxCollider2D>() : null;
+            float playerHeight = playerBox != null ? playerBox.size.y : 1f;
+
+            return new RunnerPrefabSet(player, groundTile, obstacle, obstacleOverhead, coin,
+                gravityZone, groundLayer, playerHeight);
         }
 
         private static GameObject CreatePlayerPrefab(GameSpec spec, string assetFolder, int groundLayer)
@@ -178,6 +206,35 @@ namespace GameFactory.Editor
             col.size = SpriteWorldSize(sr.sprite, Vector2.one);
 
             return SaveAsPrefab(go, assetFolder, "Obstacle.prefab");
+        }
+
+        /// <summary>
+        /// The bar that hangs at head height. Same "Obstacle" tag as the ground
+        /// one, so it kills on contact through exactly the same code path - the
+        /// only difference is where the spawner hangs it and which verb clears it.
+        ///
+        /// Drawn tiled rather than stretched, the way the ground tile is: a
+        /// 64px sprite scaled to 4.5 units tall would be a blurred smear, and
+        /// tiling keeps whatever texture real art brings at its own size.
+        /// </summary>
+        private static GameObject CreateOverheadObstaclePrefab(string assetFolder)
+        {
+            GameObject go = new GameObject("ObstacleOverhead");
+            go.tag = "Obstacle";
+
+            Vector2 size = new Vector2(OverheadObstacleWidth, OverheadObstacleHeight);
+
+            SpriteRenderer sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = ResolveSprite("obstacle_overhead", assetFolder, "obstacle_overhead_sprite.png",
+                new Color(0.72f, 0.36f, 0.12f));
+            sr.drawMode = SpriteDrawMode.Tiled;
+            sr.size = size;
+
+            BoxCollider2D col = go.AddComponent<BoxCollider2D>();
+            col.isTrigger = true;
+            col.size = size;
+
+            return SaveAsPrefab(go, assetFolder, "ObstacleOverhead.prefab");
         }
 
         private static GameObject CreateCoinPrefab(string assetFolder)

@@ -11,7 +11,8 @@
   },
   "mechanics": {
     "jump": true,
-    "doubleJump": false,
+    "doubleJump": true,
+    "slide": true,
     "dash": false,
     "wallJump": false,
     "gravitySwitch": true,
