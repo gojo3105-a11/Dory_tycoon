@@ -352,12 +352,52 @@ try {
     catch {
         $mergeError = $_
 
-        # Leave the repo exactly as it was so a human can resolve it calmly.
-        # A failed abort must not mask why the merge failed in the first place.
-        try { Invoke-Git @("merge", "--abort") | Out-Null } catch { Write-Log "merge --abort also failed: $_" }
+        # THE BOARD IS EXPECTED TO CONFLICT. Claude writes specs and review
+        # notes upstream while every `team run` here writes status and notes
+        # locally, so git sees one file changed on both sides and stops. That
+        # stopped this sync three times in a row on 2026-09-05, and a stopped
+        # sync is how a whole day of work once went unnoticed. When the board
+        # is the ONLY conflict, merge it properly with the three-way tool and
+        # carry on; anything else still stops for a person.
+        $resolved = $false
+        $boardRel = "AI_GAME_COMPANY/config/TASKBOARD.json"
+        try {
+            $conflicts = (Invoke-Git @("diff", "--name-only", "--diff-filter=U")) -split "\r?\n" | Where-Object { $_ }
+            if ($conflicts.Count -eq 1 -and $conflicts[0] -eq $boardRel) {
+                $tmp = Join-Path $env:TEMP "taskboard-merge-$PID"
+                New-Item -ItemType Directory -Path $tmp -Force | Out-Null
+                # :1 base, :2 ours (this clone), :3 theirs (upstream).
+                foreach ($stage in @(1, 2, 3)) {
+                    $text = Invoke-Git @("show", ":${stage}:$boardRel")
+                    Set-Content -Path (Join-Path $tmp "$stage.json") -Value $text -Encoding UTF8
+                }
+                $merger = Join-Path $RepoPath "AI_GAME_COMPANY\tools\merge-taskboard.py"
+                $target = Join-Path $RepoPath ($boardRel -replace "/", "\")
+                & python $merger (Join-Path $tmp "1.json") (Join-Path $tmp "2.json") (Join-Path $tmp "3.json") $target
+                if ($LASTEXITCODE -eq 0) {
+                    Invoke-Git @("add", "--", $boardRel) | Out-Null
+                    Invoke-Git @("commit", "--no-edit") | Out-Null
+                    Write-Log "Task board conflict merged automatically (both sides kept)."
+                    $resolved = $true
+                }
+                else {
+                    Write-Log "merge-taskboard.py refused (exit $LASTEXITCODE) - leaving it for a person."
+                }
+                Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+        catch {
+            Write-Log "Board auto-merge attempt failed: $_"
+        }
 
-        Write-SyncStatus "FAILED" "Merge of $UpstreamRemote/$Branch failed: $mergeError"
-        throw "Merge failed - stopping (tried to restore the original state). This needs a human:`n`n$mergeError"
+        if (-not $resolved) {
+            # Leave the repo exactly as it was so a human can resolve it calmly.
+            # A failed abort must not mask why the merge failed in the first place.
+            try { Invoke-Git @("merge", "--abort") | Out-Null } catch { Write-Log "merge --abort also failed: $_" }
+
+            Write-SyncStatus "FAILED" "Merge of $UpstreamRemote/$Branch failed: $mergeError"
+            throw "Merge failed - stopping (tried to restore the original state). This needs a human:`n`n$mergeError"
+        }
     }
 
     $after = Invoke-Git @("rev-parse", "HEAD")
