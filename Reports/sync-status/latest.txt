@@ -1,10 +1,10 @@
 ﻿# Auto-sync status
 
-Generated: 2026-09-05 09:47:29
-Outcome: UP-TO-DATE
-Reason: Nothing new on upstream/claude/delete-current-content-mgn4xm
+Generated: 2026-09-05 09:55:50
+Outcome: BLOCKED
+Reason: Uncommitted changes to tracked files: M AI_GAME_COMPANY/config/TASKBOARD.json
 Last-Success: 2026-09-05 09:47:29
-Local-Head: c2d388a
+Local-Head: 7407e31
 Upstream-Head: 1ad903c
 Branch: claude/delete-current-content-mgn4xm
 
