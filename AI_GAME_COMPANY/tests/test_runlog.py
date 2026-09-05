@@ -139,11 +139,20 @@ class RecordingTests(unittest.TestCase):
             code = recorder.run("team", ["team"], lambda: 3)
         self.assertEqual(3, code)
 
-    def test_serve_is_not_recorded(self):
-        calls = []
-        self.run_quietly("serve", lambda: calls.append(1) or 0)
-        self.assertEqual([1], calls)
-        self.assertFalse(self.dir.exists())
+    def test_serve_is_recorded_because_a_failed_start_must_leave_a_trace(self):
+        # Excluding serve hid the one failure the user actually hit: the
+        # control panel not coming up left nothing for Claude to read.
+        def cannot_bind():
+            print("ERROR: 127.0.0.1:8765 could not be opened")
+            return 2
+
+        self.assertEqual(2, self.run_quietly("serve", cannot_bind))
+        text = self.latest()
+        self.assertIn("Outcome: FAILED", text)
+        self.assertIn("could not be opened", text)
+
+    def test_no_command_is_skipped(self):
+        self.assertEqual((), runlog.SKIP_COMMANDS)
 
     def test_the_output_tail_is_bounded(self):
         def chatty():

@@ -53,8 +53,14 @@ MAX_BUFFER_CHARS = 64_000
 # would otherwise be redacted out of every line that contains it.
 MIN_SECRET_LENGTH = 8
 
-# Long-running and interactive; its "run" ends when a person presses Ctrl+C.
-SKIP_COMMANDS = ("serve",)
+# Nothing is skipped. `serve` was excluded here at first because it runs for
+# hours and ends only at Ctrl+C - but a serve that DIES AT STARTUP is exactly
+# the failure worth having on record, and excluding it meant the one command
+# the user reported as broken left no trace at all. Its record is written when
+# it exits, and both the buffer and the written tail are bounded, so a long
+# healthy session costs nothing. Kept as a constant so the mechanism is still
+# there if a command ever genuinely should not be recorded.
+SKIP_COMMANDS: tuple[str, ...] = ()
 
 
 class _Tee(io.TextIOBase):

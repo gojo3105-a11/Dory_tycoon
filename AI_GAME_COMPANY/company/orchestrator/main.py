@@ -245,6 +245,11 @@ def cmd_serve(args: argparse.Namespace) -> int:
     """
     from company.orchestrator.server import serve
 
+    # Reported plainly rather than left to a traceback: this is the command
+    # people run by hand, and the one that fails with "No module named
+    # 'company'" when started from the repository root instead of here.
+    print(f"  working directory: {Path.cwd()}")
+    print(f"  package root:      {COMPANY_ROOT}")
     return serve(REPO_ROOT, COMPANY_ROOT, port=args.port)
 
 
