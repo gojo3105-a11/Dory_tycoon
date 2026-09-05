@@ -308,6 +308,23 @@ class ToolChurnTests(RepoTestCase):
         # Not silently dropped: it is on the run, just not on the task.
         self.assertNotIn("Packages/packages-lock.json", self.board.get("T1").changed_files)
 
+    def test_run_log_and_report_files_written_during_the_run_do_not_block(self):
+        # The orchestrator's own run log, and the sync's reports, keep being
+        # written while Codex works. AICTL1 and LIVE1 were both false-blocked
+        # by exactly this on 2026-09-02.
+        agent = FakeCodexAgent(self.repo, {
+            "src/allowed.cs": "// work\n",
+            "Reports/runs/20260902T234127Z-a661c4dd.txt": "# run\n",
+            "Reports/runs/latest.txt": "# run\n",
+            "Reports/sync-status/latest.txt": "Outcome: OK\n",
+        })
+        run = run_task(self.board, "T1", agent, self.repo)
+
+        self.assertTrue(run.ok, run.outside_allowlist)
+        self.assertEqual(["src/allowed.cs"], run.changed)
+        self.assertEqual(3, len(run.tool_churn))
+        self.assertEqual(REVIEW, self.board.get("T1").status)
+
     def test_a_real_stray_file_still_blocks(self):
         agent = FakeCodexAgent(self.repo, {
             "src/allowed.cs": "// work\n",

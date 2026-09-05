@@ -192,6 +192,14 @@ class TaskBoard:
 # change to one is still visible rather than silently dropped.
 TOOL_OWNED_PATHS: tuple[str, ...] = (
     "Packages/packages-lock.json",
+    # Written by the orchestrator's own run log and by the scheduled sync's
+    # report scripts, which keep running while Codex works. On 2026-09-02
+    # two finished Codex runs (AICTL1, LIVE1) were reported BLOCKED because
+    # a concurrent `dashboard` action wrote Reports/runs/*.txt into the diff.
+    "Reports/runs/*",
+    "Reports/sync-status/*",
+    "Reports/errors/*",
+    "Reports/build-status/*",
 )
 
 

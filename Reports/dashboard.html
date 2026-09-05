@@ -400,7 +400,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
       <div class="sub">연동된 AI가 지금 무엇을 할 수 있고, 무엇이 막고 있는가</div>
     </div>
     <div class="stamp mono">
-      생성 2026-09-03 08:27<br>
+      생성 2026-09-05 01:57<br>
       DESKTOP-A7IU1E9 · RAM 15.7 GB<br>
       Unity 6000.5.9f1 · OK<br>
       읽기 전용 · 제어는 PC에서 &#x27;orchestrator serve&#x27; 로 엽니다
@@ -530,27 +530,9 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
     </div>
     <div class="queue">
       <div class="q-lane">
-        <h3>Codex<span class="q-tally">대기 4</span></h3>
+        <h3>Codex<span class="q-tally">대기 3</span></h3>
         <div class="q-item q-item--waiting">
           <span class="q-seat" aria-hidden="true">1</span>
-          <div class="q-head">
-            <span class="q-title" title="Give the character arms and legs that move">캐릭터 팔다리 움직임</span>
-            <span class="tag s-todo">대기</span>
-          </div>
-          <div class="q-id mono">CODEX-ANIM1</div>
-          
-        </div>
-        <div class="q-item q-item--waiting">
-          <span class="q-seat" aria-hidden="true">2</span>
-          <div class="q-head">
-            <span class="q-title" title="ParallaxBackground so the level can have background art">ParallaxBackground 배경 아트 레이어</span>
-            <span class="tag s-todo">대기</span>
-          </div>
-          <div class="q-id mono">CODEX-BG1</div>
-          
-        </div>
-        <div class="q-item q-item--waiting">
-          <span class="q-seat" aria-hidden="true">3</span>
           <div class="q-head">
             <span class="q-title" title="orchestrator test - run the Unity test suites locally">orchestrator test - Unity 테스트 로컬 실행</span>
             <span class="tag s-todo">대기</span>
@@ -559,12 +541,21 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
           
         </div>
         <div class="q-item q-item--waiting">
-          <span class="q-seat" aria-hidden="true">4</span>
+          <span class="q-seat" aria-hidden="true">2</span>
           <div class="q-head">
             <span class="q-title" title="A control per AI in the panel, and honest silence where there is none">AI별 제어 버튼, 없으면 정직하게 없음 표시</span>
             <span class="tag s-todo">대기</span>
           </div>
           <div class="q-id mono">CODEX-AICTL1</div>
+          
+        </div>
+        <div class="q-item q-item--waiting">
+          <span class="q-seat" aria-hidden="true">3</span>
+          <div class="q-head">
+            <span class="q-title" title="Generate the parallax background layers and wire them into the scene">배경 레이어 생성 + 씬에 연결</span>
+            <span class="tag s-todo">대기</span>
+          </div>
+          <div class="q-id mono">CODEX-BGWIRE1</div>
           
         </div>
       </div>
@@ -577,8 +568,8 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
       <span class="note">이 두 파일이 PC에서 Claude로 오는 유일한 통로입니다 · 없으면 확인 불가</span>
     </div>
     <div class="grid2">
-      <div class="panel"><h3>PC 자동 동기화</h3><div class="kv"><span class="k">상태</span><span class="v"><span style="color:var(--unknown)">확인 불가</span></span></div><div class="kv-note">Reports/sync-status/latest.txt 가 없습니다. PC의 sync-and-run.ps1 이 이 파일을 쓰기 전이거나, 예약 작업이 돌지 않았습니다.</div></div>
-      <div class="panel"><h3>마지막 오케스트레이터 실행</h3><div class="kv"><span class="k">상태</span><span class="v"><span style="color:var(--unknown)">확인 불가</span></span></div><div class="kv-note">Reports/runs/latest.txt 가 없습니다. 오케스트레이터가 이 기록을 남기는 버전으로 아직 실행되지 않았습니다.</div></div>
+      <div class="panel"><h3>PC 자동 동기화</h3><div class="kv"><span class="k">상태</span><span class="v"><span class="big" style="color:var(--blocked)">실패</span></span></div><div class="kv"><span class="k">마지막 실행</span><span class="v"><span class="mono">2026-09-05 10:40:50</span></span></div><div class="kv"><span class="k">마지막 성공</span><span class="v"><span class="mono">2026-09-05 09:47:29</span></span></div><div class="kv"><span class="k">커밋</span><span class="v"><span class="mono">PC 60ecf04 · Claude ac1a357 <span style="color:var(--gate)">· 다름</span></span></span></div><div class="kv-note" style="color:var(--blocked)">Merge of upstream/claude/delete-current-content-mgn4xm failed: git merge --no-edit upstream/claude/delete-current-content-mgn4xm failed (exit 1): | Auto-merging AI_GAME_COMPANY/config/TASKBOARD.json | CONFLICT (content): Merge conflict in AI_GAME_COMPANY/config/TASKBOARD.json | Automatic merge failed; fix conflicts and then commit the result.</div></div>
+      <div class="panel"><h3>마지막 오케스트레이터 실행</h3><div class="kv"><span class="k">결과</span><span class="v"><span class="big" style="color:var(--blocked)">예외 발생</span></span></div><div class="kv"><span class="k">명령</span><span class="v"><span class="mono">team run --task CODEX-BG1</span></span></div><div class="kv"><span class="k">실행 시각</span><span class="v"><span class="mono">2026-09-05 09:51:54</span></span></div><div class="kv"><span class="k">상세</span><span class="v"><span class="mono">종료 코드 1 · 2분 6초</span></span></div><div class="kv-note">전체 출력은 Reports/runs/latest.txt 에 있습니다. Claude가 포크에서 직접 읽으므로 붙여넣을 필요가 없습니다.</div></div>
     </div>
   </section>
 
@@ -608,7 +599,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         </div>
       </div>
       <div class="lane">
-        <h3>Codex<span class="count">13개</span></h3>
+        <h3>Codex<span class="count">14개</span></h3>
         <div class="task">
           <div class="t">
             <span class="title" title="Map the four Kenney button colours">Kenney 버튼 4색 매핑</span>
@@ -628,7 +619,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         <div class="task">
           <div class="t">
             <span class="title" title="Give the character arms and legs that move">캐릭터 팔다리 움직임</span>
-            <span class="tag s-todo">대기</span>
+            <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-ANIM1</div>
           <div class="files mono">RunnerCharacterMotion.cs</div>
@@ -652,7 +643,7 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
         <div class="task">
           <div class="t">
             <span class="title" title="ParallaxBackground so the level can have background art">ParallaxBackground 배경 아트 레이어</span>
-            <span class="tag s-todo">대기</span>
+            <span class="tag s-review">검토 필요</span>
           </div>
           <div class="id mono">CODEX-BG1</div>
           <div class="files mono">ParallaxBackground.cs</div>
@@ -713,6 +704,14 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
           <div class="id mono">CODEX-RUNLOG1</div>
           <div class="files mono">runlog.py · main.py · test_runlog.py · sync-and-run.ps1 외 1개</div>
         </div>
+        <div class="task">
+          <div class="t">
+            <span class="title" title="Generate the parallax background layers and wire them into the scene">배경 레이어 생성 + 씬에 연결</span>
+            <span class="tag s-todo">대기</span>
+          </div>
+          <div class="id mono">CODEX-BGWIRE1</div>
+          <div class="files mono">SceneGenerator.cs · art-mapping.json · SharedArtImporter.cs</div>
+        </div>
       </div>
     </div>
   </section>
@@ -726,15 +725,16 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
       <div class="panel">
         <h3>검증된 빌드</h3>
         <div class="kv"><span class="k">game01</span><span class="v"><span class="big">17.32 MB</span><br><span class="mono" style="font-size:11.5px;color:var(--muted)">sha256:7F81E6F18E29EA94</span></span></div>
+        <div class="kv"><span class="k">game01</span><span class="v"><span class="big">17.32 MB</span><br><span class="mono" style="font-size:11.5px;color:var(--muted)">sha256:B6B79D90F3FEC97A</span></span></div>
         <div class="kv"><span class="k">빌드 시각</span><span class="v mono">2026-09-02 20:25:21</span></div>
         <div class="kv"><span class="k">리포트 시각</span>
-          <span class="v mono">2026-09-03 07:41:34</span></div>
+          <span class="v mono">2026-09-05 09:42:40</span></div>
       </div>
       <div class="panel">
         <h3>Unity 에러</h3>
         <div class="kv"><span class="k">컴파일 에러</span><span class="v big" style="color:var(--ok)">0</span></div><div class="kv"><span class="k">Obsolete API 경고</span><span class="v big" style="color:var(--ok)">0</span></div><div class="kv"><span class="k">런타임 예외</span><span class="v big" style="color:var(--ok)">0</span></div>
         <div class="kv"><span class="k">리포트 시각</span>
-          <span class="v mono">2026-09-03 07:41:30</span></div>
+          <span class="v mono">2026-09-05 09:42:40</span></div>
       </div>
     </div>
   </section>
@@ -785,14 +785,14 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
   <section>
     <div class="head"><h2>최근 작업</h2></div>
     <div class="log mono">
-      <div><span class="sha mono">1a97593</span><span class="when mono">2026-09-03</span><span class="what">Merge the fork: refreshed hardware profile (no Ollama models) and CLI probes</span></div>
-      <div><span class="sha mono">4e5eb0c</span><span class="when mono">2026-09-03</span><span class="what">fix: the development loop - sync reports itself, runs leave a log, board runner stops blocking on tool churn</span></div>
-      <div><span class="sha mono">f198460</span><span class="when mono">2026-09-03</span><span class="what">feat: a Korean progress summary while an AI works, and a queue that says what is next</span></div>
-      <div><span class="sha mono">9ec5c9d</span><span class="when mono">2026-09-03</span><span class="what">chore: update AI_GAME_COMPANY hardware/CLI profile</span></div>
-      <div><span class="sha mono">e3e4f85</span><span class="when mono">2026-09-02</span><span class="what">chore: the machine has no Ollama models, and CODEX-AICTL1 is unblocked</span></div>
-      <div><span class="sha mono">b9a861f</span><span class="when mono">2026-09-03</span><span class="what">chore: trigger Game Factory Pipeline for game01</span></div>
-      <div><span class="sha mono">fe09c6b</span><span class="when mono">2026-09-02</span><span class="what">spec: CODEX-RUNLOG1 - orchestrator failures should reach Claude on their own</span></div>
-      <div><span class="sha mono">7fc5252</span><span class="when mono">2026-09-02</span><span class="what">Merge the fork&#x27;s branch, and correct four stale task statuses</span></div>
+      <div><span class="sha mono">ac1a357</span><span class="when mono">2026-09-05</span><span class="what">feat: recover Codex&#x27;s finished ANIM1 from the PC stash; report files are tool churn</span></div>
+      <div><span class="sha mono">5ace5c7</span><span class="when mono">2026-09-05</span><span class="what">fix: the sync commits a board that a run updated, instead of blocking on it</span></div>
+      <div><span class="sha mono">48b2b54</span><span class="when mono">2026-09-05</span><span class="what">Merge branch &#x27;fork-check&#x27; into claude/delete-current-content-mgn4xm</span></div>
+      <div><span class="sha mono">2ce8cd9</span><span class="when mono">2026-09-05</span><span class="what">chore: auto-sync status BLOCKED</span></div>
+      <div><span class="sha mono">7407e31</span><span class="when mono">2026-09-05</span><span class="what">chore: orchestrator run log</span></div>
+      <div><span class="sha mono">466213c</span><span class="when mono">2026-09-05</span><span class="what">codex attempts from 09-03 for review</span></div>
+      <div><span class="sha mono">01064d4</span><span class="when mono">2026-09-05</span><span class="what">fix: a cp949 console no longer kills a finished run&#x27;s report</span></div>
+      <div><span class="sha mono">aea2417</span><span class="when mono">2026-09-05</span><span class="what">chore: auto-sync status UP-TO-DATE</span></div>
     </div>
   </section>
 

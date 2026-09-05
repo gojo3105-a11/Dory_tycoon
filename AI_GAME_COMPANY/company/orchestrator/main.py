@@ -522,7 +522,27 @@ def cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _utf8_console() -> None:
+    """Make stdout/stderr UTF-8 with replacement, never raising on a glyph.
+
+    On Korean Windows the console is cp949. A `team run` on CODEX-ANIM1 ran
+    for 215 seconds, finished, and then died with UnicodeEncodeError while
+    PRINTING Codex's summary because it contained an em dash - the work was
+    done, the report of it crashed. Python 3.7+ can reconfigure the streams;
+    a stream that cannot be reconfigured is left alone rather than replaced.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _utf8_console()
     parser = argparse.ArgumentParser(prog="orchestrator")
     sub = parser.add_subparsers(dest="command", required=True)
 
