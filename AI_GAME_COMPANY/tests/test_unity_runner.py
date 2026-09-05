@@ -30,6 +30,7 @@ from company.orchestrator.unity_runner import (  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "game-factory.yml"
+TEST_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "test.yml"
 REAL_POLICY = REPO_ROOT / "AI_GAME_COMPANY" / "config" / "company_policy.json"
 
 
@@ -228,6 +229,108 @@ class InvocationTests(unittest.TestCase):
         self.assertEqual(len(results), 1)          # generate only
         self.assertEqual(results[0].step, "generate")
         self.assertIsNone(apk)
+
+    def test_test_flags_match_the_workflow(self):
+        if not TEST_WORKFLOW.is_file():
+            self.skipTest("test workflow not present")
+        workflow = TEST_WORKFLOW.read_text(encoding="utf-8")
+
+        self.runner.test("editmode")
+        script = self.fake.scripts[0]
+        for value in ("-runTests", "-testPlatform", "EditMode", "-testResults",
+                      "unity-test-editmode.xml", "-logFile"):
+            self.assertIn(value, workflow)
+            self.assertIn(value, script)
+        self.assertIn("-TestResultsPath", script)
+        self.assertNotIn("-SentinelName", script)
+        self.assertNotIn("-executeMethod", script)
+
+    def test_playmode_uses_the_proven_platform_name(self):
+        self.runner.test("playmode")
+        script = self.fake.scripts[0]
+        self.assertIn("'-testPlatform', 'PlayMode'", script)
+        self.assertIn("'-runTests'", script)
+
+    def test_missing_test_xml_fails_even_when_unity_exits_zero(self):
+        result = self.runner.test("editmode")
+        self.assertFalse(result.ok)
+        self.assertIn("XML is missing", result.detail)
+
+    def test_failing_xml_fails_and_reports_test_names(self):
+        xml_path = self.root / "Logs" / "unity-test-playmode.xml"
+
+        def write_failure(_path, _text):
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
+            xml_path.write_text(
+                '<test-run passed="2" failed="1" skipped="3">'
+                '<test-suite><test-case name="ShortName" fullname="Games.Loses" '
+                'result="Failed">'
+                '<failure><message>Expected alive but was dead</message></failure>'
+                '</test-case></test-suite></test-run>',
+                encoding="utf-8",
+            )
+            return 0, "", ""
+
+        runner = UnityRunner(repo_root=self.root, policy=Policy.load(REAL_POLICY),
+                             runner=write_failure)
+        result = runner.test("playmode")
+        self.assertFalse(result.ok)
+        self.assertEqual((result.passed, result.failed, result.skipped), (2, 1, 3))
+        self.assertEqual(result.failures,
+                         [("Games.Loses", "Expected alive but was dead")])
+        self.assertIn("Games.Loses", result.detail)
+        self.assertIn("Expected alive but was dead", result.detail)
+
+    def test_passing_xml_passes(self):
+        xml_path = self.root / "Logs" / "unity-test-editmode.xml"
+
+        def write_success(_path, _text):
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
+            xml_path.write_text(
+                '<test-run passed="7" failed="0" skipped="1" />', encoding="utf-8"
+            )
+            return 0, "", ""
+
+        runner = UnityRunner(repo_root=self.root, policy=Policy.load(REAL_POLICY),
+                             runner=write_success)
+        result = runner.test("editmode")
+        self.assertTrue(result.ok)
+        self.assertEqual((result.passed, result.failed, result.skipped), (7, 0, 1))
+
+    def test_unparsable_xml_fails(self):
+        xml_path = self.root / "Logs" / "unity-test-editmode.xml"
+
+        def write_bad_xml(_path, _text):
+            xml_path.parent.mkdir(parents=True, exist_ok=True)
+            xml_path.write_text("<test-run", encoding="utf-8")
+            return 0, "", ""
+
+        runner = UnityRunner(repo_root=self.root, policy=Policy.load(REAL_POLICY),
+                             runner=write_bad_xml)
+        result = runner.test("editmode")
+        self.assertFalse(result.ok)
+        self.assertIn("XML is unparsable", result.detail)
+
+    def test_run_tests_generates_before_playmode(self):
+        calls = []
+
+        def capture_and_write(_path, script):
+            calls.append(script)
+            if "'-testPlatform'" in script:
+                xml_path = self.root / "Logs" / "unity-test-playmode.xml"
+                xml_path.parent.mkdir(parents=True, exist_ok=True)
+                xml_path.write_text(
+                    '<test-run passed="1" failed="0" skipped="0" />', encoding="utf-8"
+                )
+            return 0, "", ""
+
+        runner = UnityRunner(repo_root=self.root, policy=Policy.load(REAL_POLICY),
+                             runner=capture_and_write)
+        results = runner.run_tests("game01", "playmode")
+        self.assertEqual([result.step for result in results],
+                         ["generate", "test-playmode"])
+        self.assertIn(ENTRY_GENERATE, calls[0])
+        self.assertIn("'PlayMode'", calls[1])
 
 
 class BuildVerificationTests(unittest.TestCase):

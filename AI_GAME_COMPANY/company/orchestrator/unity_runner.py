@@ -26,6 +26,7 @@ from __future__ import annotations
 import subprocess
 import time
 import uuid
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -55,6 +56,11 @@ class UnityResult:
     stdout: str = ""
     stderr: str = ""
     detail: str = ""
+    test_results_path: Path | None = None
+    passed: int | None = None
+    failed: int | None = None
+    skipped: int | None = None
+    failures: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -85,19 +91,21 @@ class UnityRunner:
 
     # ---- invocation building ---------------------------------------------
 
-    def unity_args(self, entry_method: str, log_name: str,
+    def unity_args(self, entry_method: str | None, log_name: str,
                    extra: list[str] | None = None) -> list[str]:
         """The -batchmode argument list, matching the working workflow exactly."""
         args = [
             "-batchmode", "-nographics",
             "-projectPath", str(self.repo_root),
-            "-executeMethod", entry_method,
         ]
+        if entry_method is not None:
+            args += ["-executeMethod", entry_method]
         args += extra or []
         args += ["-logFile", str(self.repo_root / "Logs" / f"{log_name}.log")]
         return args
 
-    def build_wrapper_script(self, sentinel_name: str, unity_args: list[str],
+    def build_wrapper_script(self, sentinel_name: str | None, unity_args: list[str],
+                             test_results_path: Path | None = None,
                              timeout_minutes: int | None = None) -> str:
         """The generated .ps1 that calls wait-for-unity.ps1."""
         quoted = ", ".join(ps_quote(a) for a in unity_args)
@@ -105,12 +113,17 @@ class UnityRunner:
         unity_line = ""
         if self.unity_path:
             unity_line = f"$env:UNITY_PATH = {ps_quote(self.unity_path)}\r\n"
+        selector = (
+            f"-TestResultsPath {ps_quote(test_results_path)} "
+            if test_results_path is not None
+            else f"-SentinelName {ps_quote(sentinel_name or '')} "
+        )
         return (
             "$ErrorActionPreference = 'Stop'\r\n"
             f"{unity_line}"
             f"Set-Location {ps_quote(self.repo_root)}\r\n"
             f"& {ps_quote(self.repo_root / WAIT_SCRIPT)} "
-            f"-SentinelName {ps_quote(sentinel_name)} "
+            f"{selector}"
             f"-TimeoutMinutes {int(timeout)} "
             f"-UnityArgs @({quoted})\r\n"
             "exit $LASTEXITCODE\r\n"
@@ -154,11 +167,14 @@ class UnityRunner:
         )
         return completed.returncode, completed.stdout, completed.stderr, script_path
 
-    def _step(self, step: str, sentinel: str, entry: str, log_name: str,
+    def _step(self, step: str, sentinel: str | None, entry: str | None, log_name: str,
               extra: list[str] | None = None,
+              test_results_path: Path | None = None,
               timeout_minutes: int | None = None) -> UnityResult:
         args = self.unity_args(entry, log_name, extra)
-        script = self.build_wrapper_script(sentinel, args, timeout_minutes)
+        script = self.build_wrapper_script(
+            sentinel, args, test_results_path, timeout_minutes
+        )
 
         try:
             code, out, err, script_path = self._run_powershell(script, timeout_minutes)
@@ -214,6 +230,81 @@ class UnityRunner:
             extra=["-gameId", game_id, "-buildType", "apk"],
             timeout_minutes=60,
         )
+
+    def test(self, platform: str) -> UnityResult:
+        """Run and verify one Unity test platform using the CI invocation."""
+        platforms = {"editmode": "EditMode", "playmode": "PlayMode"}
+        key = platform.lower()
+        if key not in platforms:
+            raise ValueError(f"unknown Unity test platform: {platform}")
+
+        xml_relative = Path("Logs") / f"unity-test-{key}.xml"
+        xml_path = self.repo_root / xml_relative
+        result = self._step(
+            f"test-{key}", None, None, f"unity-test-{key}",
+            extra=[
+                "-runTests", "-testPlatform", platforms[key],
+                "-testResults", str(xml_path),
+            ],
+            test_results_path=xml_relative,
+        )
+        result.test_results_path = xml_path
+        self._apply_test_results(result)
+        return result
+
+    def _apply_test_results(self, result: UnityResult) -> None:
+        """Make the NUnit XML, rather than Unity's exit alone, authoritative."""
+        path = result.test_results_path
+        if path is None or not path.is_file():
+            result.ok = False
+            result.detail = f"{result.step} failed: NUnit XML is missing: {path}"
+            return
+
+        try:
+            root = ET.parse(path).getroot()
+            if root.tag != "test-run":
+                raise ValueError(f"expected test-run root, found {root.tag}")
+            result.passed = int(root.attrib["passed"])
+            result.failed = int(root.attrib["failed"])
+            result.skipped = int(root.attrib["skipped"])
+        except (ET.ParseError, OSError, KeyError, TypeError, ValueError) as exc:
+            result.ok = False
+            result.detail = f"{result.step} failed: NUnit XML is unparsable: {exc}"
+            return
+
+        result.failures = []
+        for case in root.iter("test-case"):
+            if case.attrib.get("result", "").lower() != "failed":
+                continue
+            name = case.attrib.get("fullname") or case.attrib.get("name") or "(unnamed test)"
+            message_node = case.find("./failure/message")
+            message = "" if message_node is None else "".join(message_node.itertext()).strip()
+            result.failures.append((name, message or "(no failure message)"))
+
+        process_ok = result.exit_code == 0
+        result.ok = process_ok and result.failed == 0
+        if result.failed:
+            failure_details = "; ".join(
+                f"{name}: {message}" for name, message in result.failures
+            )
+            result.detail = f"{result.step} reported {result.failed} failed test(s)"
+            if failure_details:
+                result.detail += f": {failure_details}"
+        elif not process_ok:
+            result.detail = f"{result.step} exited {result.exit_code} despite passing NUnit XML"
+
+    def run_tests(self, game_id: str, platform: str = "both") -> list[UnityResult]:
+        """Generate the test scene, then run the requested Unity test suites."""
+        if platform not in ("editmode", "playmode", "both"):
+            raise ValueError(f"unknown Unity test selection: {platform}")
+
+        results = [self.generate(game_id)]
+        if not results[0].ok:
+            return results
+
+        selected = ("editmode", "playmode") if platform == "both" else (platform,)
+        results.extend(self.test(item) for item in selected)
+        return results
 
     # ---- verification ----------------------------------------------------
 

@@ -459,6 +459,48 @@ def cmd_build(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_test(args: argparse.Namespace) -> int:
+    """Generate the scene and run locally verified Unity test suites."""
+    policy = _load_policy()
+    unity_path = args.unity_path or UnityRunner.unity_path_from_profile(
+        CONFIG_DIR / "HARDWARE_PROFILE.json"
+    )
+    if not unity_path:
+        print("ERROR: no Unity editor path.")
+        print("  Run AI_GAME_COMPANY/tools/detect-environment.ps1, or pass --unity-path.")
+        print("  Section 38: the editor is not assumed to be anywhere without evidence.")
+        return 2
+
+    print(f"=== LOCAL UNITY TESTS: {args.game} ({args.platform}) ===")
+    print(f"  Unity: {unity_path}\n")
+    runner = UnityRunner(repo_root=REPO_ROOT, policy=policy, unity_path=unity_path)
+    results = runner.run_tests(args.game, args.platform)
+
+    for result in results:
+        mark = "[ OK ]" if result.ok else "[FAIL]"
+        print(f"  {mark} {result.step:17} exit={result.exit_code}")
+        if result.log_path:
+            print(f"         log: {result.log_path}")
+        if result.test_results_path:
+            print(f"         results: {result.test_results_path}")
+        if result.passed is not None:
+            print(f"         passed={result.passed} failed={result.failed} skipped={result.skipped}")
+        for name, message in result.failures:
+            print(f"         FAIL: {name}")
+            print(f"               {message}")
+        if result.detail:
+            print(f"         {result.detail}")
+        if not result.ok and result.stderr.strip():
+            print(f"         stderr: {result.stderr.strip()[:400]}")
+
+    if not results or any(not result.ok for result in results):
+        print("\nTESTS_FAILED - Unity exit alone is not proof that tests passed.")
+        return 1
+
+    print("\nTESTS_PASSED - NUnit XML reports zero failures.")
+    return 0
+
+
 def _narrative_path(game_id: str) -> Path:
     return COMPANY_ROOT / "games" / game_id / "narrative.json"
 
@@ -590,6 +632,14 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--unity-path", default=None,
                        help="Unity.exe path; defaults to the one in HARDWARE_PROFILE.json")
     build.set_defaults(func=cmd_build)
+
+    test = sub.add_parser("test", help="generate the scene and run Unity tests locally")
+    test.add_argument("--platform", choices=("editmode", "playmode", "both"),
+                      default="both")
+    test.add_argument("--game", default="game01")
+    test.add_argument("--unity-path", default=None,
+                      help="Unity.exe path; defaults to the one in HARDWARE_PROFILE.json")
+    test.set_defaults(func=cmd_test)
 
     gate = sub.add_parser("gate", help="may this game be called COMPLETE?")
     gate.add_argument("--game", default="game01")

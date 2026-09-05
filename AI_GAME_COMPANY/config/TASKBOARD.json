@@ -295,7 +295,7 @@
       "id": "CODEX-TESTCMD1",
       "title": "orchestrator test - run the Unity test suites locally",
       "owner": "codex",
-      "status": "todo",
+      "status": "in_progress",
       "goal": "There is no way to run the Unity tests from the orchestrator. run_pipeline deliberately does generate/validate/build and leaves tests to the workflow, but the self-hosted runner is not always up, and a task like CODEX-TEST1 that WRITES tests cannot be verified without running them. PlayMode test assemblies are also excluded from a player build, so `orchestrator build` does not even compile them - a syntax error in a test file passes the build and is caught by nobody. Add the missing step.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/unity_runner.py",
@@ -397,7 +397,7 @@
       "id": "CODEX-AICTL1",
       "title": "A control per AI in the panel, and honest silence where there is none",
       "owner": "codex",
-      "status": "todo",
+      "status": "in_progress",
       "goal": "The control panel can only drive Codex and Unity. Give each connected AI its own control - and give the ones with no adapter no control at all, stated as such, because a button that cannot work misrepresents what this project can do.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
@@ -525,7 +525,6 @@
     {
       "id": "CODEX-BGWIRE1",
       "title": "Generate the parallax background layers and wire them into the scene",
-      "title_ko": "배경 레이어 생성 + 씬에 연결",
       "owner": "codex",
       "status": "todo",
       "goal": "CODEX-BG1 delivered ParallaxBackground.cs and it is sound, but nothing calls SetLayers, so every generated scene still has an empty sky. Build the layer objects at generation time from the CC0 background art already staged and approved, and wire them to the component.",
@@ -551,7 +550,8 @@
         "Do not change ParallaxBackground.cs. If it genuinely needs a change, stop and say so in your final message rather than editing outside this allowlist."
       ],
       "changed_files": [],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "배경 레이어 생성 + 씬에 연결"
     }
   ]
 }
