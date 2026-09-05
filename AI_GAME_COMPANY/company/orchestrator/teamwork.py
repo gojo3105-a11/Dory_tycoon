@@ -425,14 +425,21 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
     try:
         result = codex.implement(build_prompt(task, board, repo_root),
                                  timeout_seconds=timeout_seconds)
-    except Exception as exc:
-        # Whatever went wrong, the board must not be left claiming the task is
-        # still being worked on. It said IN_PROGRESS a moment ago, and without
-        # this a quota error or a timeout freezes it there forever - the next
-        # person reads "in progress" and waits for a run that already died.
-        # Re-raised, because the caller still has to report the failure.
+    except BaseException as exc:
+        # BaseException, not Exception: Ctrl+C raises KeyboardInterrupt, which
+        # is NOT an Exception, so the narrower catch let an interrupted run
+        # leave the board saying IN_PROGRESS forever. That happened for real
+        # to CODEX-AICTL1 on 2026-09-05 - the board claimed work was in flight
+        # while nothing was running. Whatever ends the run, the board must
+        # stop claiming otherwise. Re-raised: the caller still reports it.
+        if isinstance(exc, KeyboardInterrupt):
+            reason = ("BLOCKED: stopped by the user (Ctrl+C) before the run reported back. "
+                      "Codex may already have edited files - check `git status` before "
+                      "re-running, or its work will be mixed into the next run's diff.")
+        else:
+            reason = f"BLOCKED: the run raised {type(exc).__name__}: {exc}"
         task.status = BLOCKED
-        task.notes.append(f"BLOCKED: the run raised {type(exc).__name__}: {exc}"[:600])
+        task.notes.append(reason[:600])
         board.save()
         raise
 

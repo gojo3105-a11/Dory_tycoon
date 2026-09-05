@@ -226,6 +226,23 @@ class RunTaskTests(RepoTestCase):
         self.assertEqual(BLOCKED, reloaded.get("T1").status)
         self.assertIn("quota exhausted", " ".join(reloaded.get("T1").notes))
 
+    def test_ctrl_c_does_not_leave_the_task_claiming_to_be_in_progress(self):
+        # KeyboardInterrupt is a BaseException, so a narrower catch missed it
+        # and CODEX-AICTL1 sat at in_progress with nothing running.
+        class Interrupted:
+            def implement(self, prompt, timeout_seconds=None):
+                raise KeyboardInterrupt
+
+        with self.assertRaises(KeyboardInterrupt):
+            run_task(self.board, "T1", Interrupted(), self.repo)
+
+        task = TaskBoard.load(self.board.path).get("T1")
+        self.assertEqual(BLOCKED, task.status)
+        self.assertNotEqual(IN_PROGRESS, task.status)
+        self.assertTrue(any("Ctrl+C" in note for note in task.notes), task.notes)
+        # And it says to look at the tree, because Codex may have written files.
+        self.assertTrue(any("git status" in note for note in task.notes), task.notes)
+
     def test_refuses_a_task_owned_by_claude(self):
         self.board.tasks[0].owner = "claude"
         self.board.save()

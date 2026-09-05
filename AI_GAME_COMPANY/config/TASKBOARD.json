@@ -295,7 +295,7 @@
       "id": "CODEX-TESTCMD1",
       "title": "orchestrator test - run the Unity test suites locally",
       "owner": "codex",
-      "status": "in_progress",
+      "status": "review",
       "goal": "There is no way to run the Unity tests from the orchestrator. run_pipeline deliberately does generate/validate/build and leaves tests to the workflow, but the self-hosted runner is not always up, and a task like CODEX-TEST1 that WRITES tests cannot be verified without running them. PlayMode test assemblies are also excluded from a player build, so `orchestrator build` does not even compile them - a syntax error in a test file passes the build and is caught by nobody. Add the missing step.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/unity_runner.py",
@@ -314,9 +314,15 @@
       "notes": [
         "Read unity_runner.py fully first. It already has the sentinel/exitcode handling, the timeout budget, and _run_powershell - the new step is another _step call, not new plumbing.",
         "wait-for-unity.ps1 reads the editor path from $env:UNITY_PATH, which unity_runner already exports. Only ONE of -SentinelName/-TestResultsPath/-CompileLogPath is required, and the test steps in test.yml pass -TestResultsPath - that is sufficient and is the pattern to follow.",
-        "Do not change .github/workflows/test.yml. It works, and it is not in your allowlist."
+        "Do not change .github/workflows/test.yml. It works, and it is not in your allowlist.",
+        "2026-09-05 RUN + REVIEWED BY CLAUDE. Codex wrote all three allowlisted files and the work is sound. The point of the task is met exactly: _apply_test_results parses the NUnit XML and makes IT authoritative - a missing or unparsable XML is a failure, ok requires exit 0 AND failed == 0, and each failing test is named with its message. `orchestrator test --platform editmode|playmode|both` generates the scene first, stops if generation fails, and prints TESTS_FAILED rather than a bare exit code. Flags are the ones the workflow already proves work (-runTests -testPlatform -testResults); nothing was invented. test_unity_runner.py grew from 28 to 39 tests, all passing.",
+        "STILL REVIEW, and one thing is unverified for an honest reason: no run record exists for this task, so the run's own ending was never recorded - the code is complete but nobody has watched `orchestrator test` drive a real Unity. Running it once on the PC is the check, and it is also the first chance to see PlayMode results without the GitHub runner."
       ],
-      "changed_files": [],
+      "changed_files": [
+        "AI_GAME_COMPANY/company/orchestrator/unity_runner.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "AI_GAME_COMPANY/tests/test_unity_runner.py"
+      ],
       "last_run": "",
       "title_ko": "orchestrator test - Unity 테스트 로컬 실행"
     },
@@ -397,7 +403,7 @@
       "id": "CODEX-AICTL1",
       "title": "A control per AI in the panel, and honest silence where there is none",
       "owner": "codex",
-      "status": "in_progress",
+      "status": "blocked",
       "goal": "The control panel can only drive Codex and Unity. Give each connected AI its own control - and give the ones with no adapter no control at all, stated as such, because a button that cannot work misrepresents what this project can do.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",
@@ -425,7 +431,8 @@
         "2026-09-02: this task NO LONGER depends on CODEX-OLLAMA1. That dependency existed so this task would not wire a button to an API that did not exist yet; `ollama --list` and `--use` are now in main.py and `--list` was run on the build PC. CODEX-OLLAMA1 stays at review rather than done because `--use` cannot be exercised end to end - see the next note - and blocking this task on a check that cannot be performed would deadlock it.",
         "THE MACHINE HAS NO OLLAMA MODELS AT ALL, verified 2026-09-02: `ollama rm gemma4:26b` said \"model not found\" and `orchestrator ollama --list` printed \"no models installed\". So the only Ollama state you can build against today is the empty one, which is why it is an acceptance criterion above. Do NOT trust HARDWARE_PROFILE.json here - it still lists gemma4:26b 17.33 GB from a 2026-09-01 scan and is stale. Read the inventory from OllamaClient at render time, not from the profile; the profile is for RAM sizes.",
         "2026-09-02 23:46 UTC: Codex RAN THIS TASK and finished (Reports/runs/20260902T234645...txt), then the same cp949 UnicodeEncodeError killed the report while printing the summary. Codex's edits from that run were then swept into the PC stash named 'codex RUNLOG1 attempt' on 2026-09-05 (git stash push -u before pulling upstream). That stash holds finished work from FOUR runs - do not drop it. Export with `git stash show -p > Reports/codex-attempts.diff`, commit, push, and Claude will review and merge what is good.",
-        "2026-09-05, from the recovered stash: Codex's 2026-09-02 run of this task was marked BLOCKED only because its OWN run-log files (Reports/runs/*.txt, written by a concurrent `dashboard` action) landed in the diff - the same class of false block as packages-lock.json. Reports/* are now TOOL_OWNED in teamwork.py. Codex's dashboard.py (+224) and server.py (+151) edits are in Reports/codex-attempts.diff, based on the pre-2026-09-03 dashboard.py; they need rebasing onto the current file and a security read of the server.py part before any of it lands. Not applied yet."
+        "2026-09-05, from the recovered stash: Codex's 2026-09-02 run of this task was marked BLOCKED only because its OWN run-log files (Reports/runs/*.txt, written by a concurrent `dashboard` action) landed in the diff - the same class of false block as packages-lock.json. Reports/* are now TOOL_OWNED in teamwork.py. Codex's dashboard.py (+224) and server.py (+151) edits are in Reports/codex-attempts.diff, based on the pre-2026-09-03 dashboard.py; they need rebasing onto the current file and a security read of the server.py part before any of it lands. Not applied yet.",
+        "2026-09-05 11:00: run stopped by the user with Ctrl+C after 1분 35초 (Reports/runs/20260905-110050-team.txt, exit 130). The board was left saying in_progress because run_task caught Exception and KeyboardInterrupt is not one - fixed in this commit, and the status corrected here by hand. Check `git status` on the PC before re-running: Codex may have edited dashboard.py or server.py in that 95 seconds, and those edits would otherwise be swept into the next run's diff and blamed on it."
       ],
       "changed_files": [],
       "last_run": "",
