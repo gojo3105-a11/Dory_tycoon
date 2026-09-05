@@ -406,7 +406,7 @@
       "id": "CODEX-AICTL1",
       "title": "A control per AI in the panel, and honest silence where there is none",
       "owner": "codex",
-      "status": "blocked",
+      "status": "in_progress",
       "goal": "The control panel can only drive Codex and Unity. Give each connected AI its own control - and give the ones with no adapter no control at all, stated as such, because a button that cannot work misrepresents what this project can do.",
       "files": [
         "AI_GAME_COMPANY/company/orchestrator/dashboard.py",

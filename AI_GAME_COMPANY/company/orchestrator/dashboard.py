@@ -13,9 +13,11 @@ That is section 38 made visible: a claim with nothing behind it is not a
 status, and a dashboard that quietly upgrades "not checked" to "OK" is worse
 than no dashboard.
 
-Nothing here probes the network or launches a tool. It reads committed files
-and, for Gemini, reports only whether the policy-named environment variable
-contains a key; the key itself is never retained or rendered.
+Nothing here launches a tool. The served control panel asks the loopback-only
+Ollama API for its current installed-model inventory; everything else reads
+committed files. For Gemini it reports only whether the policy-named
+environment variable contains a key; the key itself is never retained or
+rendered.
 """
 
 from __future__ import annotations
@@ -33,6 +35,8 @@ from pathlib import Path
 from typing import Any
 
 from company.orchestrator import progress as progress_mod
+from company.orchestrator.hardware import HardwareProfile
+from company.orchestrator.ollama_client import OllamaClient, OllamaUnavailable
 from company.orchestrator.teamwork import Task, TaskBoard
 
 # Optional: only used to shrink the multi-megabyte reference photos. Absent on
@@ -119,6 +123,11 @@ class Snapshot:
     # Empty dict = file absent, which renders as 확인 불가 - never as fine.
     sync_status: dict[str, str] = field(default_factory=dict)
     last_run: dict[str, str] = field(default_factory=dict)
+    ollama_models: list[dict[str, Any]] = field(default_factory=list)
+    ollama_error: str = ""
+    gemini_adapter: bool = False
+    blender_adapter: bool = False
+    image_adapter: bool = False
 
 
 # ---- reading -------------------------------------------------------------
@@ -140,6 +149,47 @@ def _licence_status(registry: dict[str, Any]) -> dict[str, str]:
         for entry in registry.get("entries", [])
         if isinstance(entry, dict)
     }
+
+
+def read_live_ollama_models(
+    company_root: Path, profile: dict[str, Any], policy: dict[str, Any],
+    licences: dict[str, str],
+) -> tuple[list[dict[str, Any]], str]:
+    """Read installed models from Ollama itself, never the stale scan inventory."""
+    try:
+        client = OllamaClient(
+            local_only=policy.get("ollama_local_only") is True,
+            registry_path=company_root / "config" / "LICENSE_REGISTRY.json",
+            state_path=company_root / "company" / "state" / "company_state.json",
+            timeout=2.0,
+        )
+        installed = client.list_models()
+        if not installed:
+            return [], ""
+        active = client.active_model()
+        approved = client.approved_models()
+    except (OSError, ValueError, OllamaUnavailable) as exc:
+        return [], str(exc)
+
+    hardware = HardwareProfile(profile)
+    rows = []
+    for model in installed:
+        licence = "APPROVED" if model.name in approved else licences.get(
+            model.name, "UNKNOWN")
+        fit, fit_reason = hardware.model_fit(model.size_gb)
+        reasons = []
+        if licence != "APPROVED":
+            reasons.append(f"라이선스 {licence}")
+        if fit not in ("VIABLE", "LIMITED"):
+            reasons.append(f"RAM {fit}: {fit_reason}")
+        rows.append({
+            "name": model.name,
+            "size_gb": model.size_gb,
+            "active": model.name == active,
+            "enabled": not reasons,
+            "reason": " · ".join(reasons),
+        })
+    return rows, ""
 
 
 def _report_timestamp(text: str) -> str:
@@ -634,7 +684,7 @@ def read_art_plan(repo_root: Path) -> dict[str, Any]:
             "declined": declined, "source": "AI_GAME_COMPANY/config/art-mapping.json"}
 
 
-def collect(repo_root: Path) -> Snapshot:
+def collect(repo_root: Path, *, live_ollama: bool = False) -> Snapshot:
     company_root = repo_root / "AI_GAME_COMPANY"
     config = company_root / "config"
 
@@ -656,6 +706,8 @@ def collect(repo_root: Path) -> Snapshot:
         missing.append("Reports/build-status/latest.txt")
 
     licences = _licence_status(registry)
+    ollama_models, ollama_error = (read_live_ollama_models(
+        company_root, profile, policy, licences) if live_ollama else ([], ""))
     reports = repo_root / "Reports"
     return Snapshot(
         sync_status=read_header_fields(reports / "sync-status" / "latest.txt"),
@@ -675,6 +727,13 @@ def collect(repo_root: Path) -> Snapshot:
         gallery=read_gallery(repo_root),
         art_plan=read_art_plan(repo_root),
         missing=missing,
+        ollama_models=ollama_models,
+        ollama_error=ollama_error,
+        gemini_adapter=(company_root / "company" / "orchestrator" /
+                        "gemini_client.py").is_file(),
+        blender_adapter=(company_root / "company" / "orchestrator" /
+                         "blender_runner.py").is_file(),
+        image_adapter=(company_root / "tools" / "generate-sprite.py").is_file(),
     )
 
 
@@ -1016,6 +1075,15 @@ section{margin-top:44px;}
 .ctl{background:var(--surface); border:1px solid var(--line); border-radius:3px;
      border-left:4px solid var(--accent); padding:18px 20px 20px;}
 .ctl .acts{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+.control-grid{display:grid; gap:10px; margin-bottom:14px;}
+.control-row{display:grid; grid-template-columns:minmax(120px,.35fr) minmax(0,1.65fr);
+  gap:14px; align-items:center; padding:11px 12px; background:var(--surface-2);
+  border:1px solid var(--line); border-radius:3px;}
+.control-name{font-weight:700; color:var(--ink);}
+.control-body{display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-width:0;}
+.control-note{font-size:12px; color:var(--muted);}
+.control-reasons{flex-basis:100%; display:grid; gap:3px; font-size:11.5px;
+  color:var(--blocked);}
 .btn{font-family:'Archivo','Noto Sans KR',sans-serif; font-size:13.5px; font-weight:600;
      padding:9px 16px; border-radius:2px; cursor:pointer; color:var(--surface);
      background:var(--accent); border:1px solid var(--accent);}
@@ -1028,6 +1096,7 @@ section{margin-top:44px;}
   background:var(--surface-2); color:var(--ink); border:1px solid var(--line);
   border-right:0; border-radius:2px 0 0 2px; max-width:230px;}
 .combo .btn{border-radius:0 2px 2px 0;}
+@media(max-width:620px){.control-row{grid-template-columns:1fr; gap:7px;}}
 .term{margin-top:14px; background:var(--sunk); border:1px solid var(--line); border-radius:2px;
       padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:12px;
       line-height:1.65; white-space:pre-wrap; word-break:break-word;
@@ -1613,6 +1682,75 @@ def _control_html(snapshot: Snapshot, token: str,
         f'<option value="{e(g["id"])}">{e(g["id"])}</option>'
         for g in snapshot.games if g["spec"]) or '<option value="">GameSpec 없음</option>'
 
+    if snapshot.ollama_error:
+        ollama_control = (
+            '<span class="control-note">설치 목록 확인 실패: '
+            f'{e(snapshot.ollama_error)}</span>')
+    elif not snapshot.ollama_models:
+        ollama_control = '<span class="control-note">설치된 모델 없음</span>'
+    else:
+        enabled_models = [model for model in snapshot.ollama_models if model["enabled"]]
+        selected = next((model["name"] for model in enabled_models
+                         if model.get("active")),
+                        enabled_models[0]["name"] if enabled_models else "")
+        options = []
+        reasons = []
+        for model in snapshot.ollama_models:
+            disabled = "" if model["enabled"] else " disabled"
+            selected_attr = " selected" if model["name"] == selected else ""
+            active = " · 사용 중" if model.get("active") else ""
+            reason = f' · {model["reason"]}' if model.get("reason") else ""
+            options.append(
+                f'<option value="{e(model["name"])}"{disabled}{selected_attr}>'
+                f'{e(model["name"])}{e(active)}{e(reason)}</option>')
+            if model.get("reason"):
+                reasons.append(
+                    f'<span>{e(model["name"])} — {e(model["reason"])}</span>')
+        button_disabled = "" if enabled_models else ' disabled data-blocked="true"'
+        ollama_control = (
+            '<div class="combo"><select id="ollama-model" '
+            f'aria-label="설치된 Ollama 모델">{"".join(options)}</select>'
+            '<button class="btn" data-act="ollama-use" data-arg="ollama-model"'
+            f'{button_disabled}>모델 사용</button></div>'
+            f'<div class="control-reasons">{"".join(reasons)}</div>')
+
+    image_allowed = (
+        snapshot.image_adapter
+        and snapshot.policy.get("allow_local_image_generation") is True
+        and snapshot.licences.get("stable-diffusion-v1-5") == "APPROVED"
+    )
+    if image_allowed:
+        image_control = (
+            '<div class="combo"><select id="image-preset" aria-label="이미지 프리셋">'
+            '<option value="runner-idle">러너 · 대기</option>'
+            '<option value="runner-run">러너 · 달리기</option>'
+            '<option value="runner-jump">러너 · 점프</option></select>'
+            '<button class="btn" data-act="image-generate" data-arg="image-preset">'
+            '이미지 생성</button></div>')
+    elif not snapshot.image_adapter:
+        image_control = '<span class="control-note">generate-sprite.py 없음</span>'
+    else:
+        image_control = '<span class="control-note">정책 또는 모델 라이선스가 허용하지 않음</span>'
+
+    if snapshot.gemini_adapter:
+        gemini_agent = next(
+            (agent for agent in snapshot.agents if agent.name == "Gemini"), None)
+        blocked = gemini_agent is None or gemini_agent.state != READY
+        blocked_attr = ' disabled data-blocked="true"' if blocked else ""
+        blocked_note = (
+            f'<span class="control-note">{e(gemini_agent.detail)}</span>'
+            if blocked and gemini_agent else "")
+        gemini_control = (
+            '<div class="combo"><select id="gemini-preset" aria-label="Gemini 조언 프리셋">'
+            '<option value="mobile-ui">모바일 UI 방향</option>'
+            '<option value="sprite-review">스프라이트 검토 기준</option></select>'
+            '<button class="btn" data-act="gemini-design" data-arg="gemini-preset"'
+            f'{blocked_attr}>Gemini 실행</button></div>{blocked_note}')
+    else:
+        gemini_control = '<span class="control-note">gemini_client.py 없음</span>'
+
+    blender_control = '<span class="control-note">blender_runner.py 없음</span>'
+
     # Rendered server-side as well as by the poller: reloading the page during
     # a run must not blank the phase until the first fetch comes back.
     live_panel = _live_html(live_job, panel=True)
@@ -1623,16 +1761,35 @@ def _control_html(snapshot: Snapshot, token: str,
       <span class="note">이 PC에서 실행됩니다 · 커밋과 푸시는 하지 않습니다</span>
     </div>
     <div class="ctl">
+      <div class="control-grid">
+        <div class="control-row">
+          <div class="control-name">Codex</div>
+          <div class="control-body"><div class="combo">
+            <select id="task" aria-label="Codex에게 넘길 작업">{task_options}</select>
+            <button class="btn" data-act="team-run" data-arg="task">Codex 실행</button>
+          </div><button class="btn ghost" data-act="codex-doctor">진단</button></div>
+        </div>
+        <div class="control-row">
+          <div class="control-name">Unity</div>
+          <div class="control-body"><div class="combo">
+            <select id="game" aria-label="빌드할 게임">{game_options}</select>
+            <button class="btn" data-act="build" data-arg="game">빌드</button>
+          </div></div>
+        </div>
+        <div class="control-row"><div class="control-name">Ollama</div>
+          <div class="control-body">{ollama_control}<span class="control-note">다운로드 기능 없음</span></div>
+        </div>
+        <div class="control-row"><div class="control-name">로컬 이미지 생성</div>
+          <div class="control-body">{image_control}</div>
+        </div>
+        <div class="control-row"><div class="control-name">Gemini</div>
+          <div class="control-body">{gemini_control}</div>
+        </div>
+        <div class="control-row"><div class="control-name">Blender</div>
+          <div class="control-body">{blender_control}</div>
+        </div>
+      </div>
       <div class="acts">
-        <div class="combo">
-          <select id="task" aria-label="Codex에게 넘길 작업">{task_options}</select>
-          <button class="btn" data-act="team-run" data-arg="task">Codex 실행</button>
-        </div>
-        <div class="combo">
-          <select id="game" aria-label="빌드할 게임">{game_options}</select>
-          <button class="btn" data-act="build" data-arg="game">빌드</button>
-        </div>
-        <button class="btn ghost" data-act="codex-doctor">Codex 진단</button>
         <button class="btn ghost" data-act="git-status">변경된 파일</button>
         <button class="btn ghost" data-act="dashboard">새로고침</button>
         <span id="busy"></span>
