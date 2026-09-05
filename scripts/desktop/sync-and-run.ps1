@@ -58,6 +58,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $script:LogPath = Join-Path $RepoPath "Logs\auto-sync.log"
+$script:StatusRelativePath = "Reports/sync-status/latest.txt"
+$script:StatusPath = Join-Path $RepoPath ($script:StatusRelativePath -replace "/", "\")
+# Sync status is committed only when the OUTCOME changes, plus a heartbeat
+# past this age. Every run rewriting a timestamp would be 96 commits a day.
+$script:StatusHeartbeatHours = 6
 
 function Write-Log([string]$message) {
     $line = "[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $message
@@ -70,6 +75,85 @@ function Write-Log([string]$message) {
     }
     catch {
         # Logging must never be the reason a sync fails.
+    }
+}
+
+# Writes Reports/sync-status/latest.txt and commits + pushes ONLY that file.
+# This is the answer to "why has nothing changed for eight hours": the log
+# this script keeps is gitignored, so when a sync aborted (a dirty tracked
+# file, a merge conflict, no network) neither Claude nor the dashboard could
+# see it. Reports/ is the one channel that reaches both. Tolerant of every
+# failure - status reporting must never be the reason a sync fails.
+function Write-SyncStatus([string]$outcome, [string]$reason) {
+    try {
+        $now = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        $localHead = ""
+        $upstreamHead = ""
+        try { $localHead = Invoke-Git @("rev-parse", "--short", "HEAD") } catch { }
+        try { $upstreamHead = Invoke-Git @("rev-parse", "--short", "$UpstreamRemote/$Branch") } catch { }
+
+        $previous = ""
+        $previousOutcome = ""
+        $previousReason = ""
+        $previousGenerated = $null
+        $lastSuccess = ""
+        if (Test-Path $script:StatusPath) {
+            $previous = Get-Content $script:StatusPath -Raw -ErrorAction SilentlyContinue
+            if ($previous -match '(?m)^Outcome:\s*(.*)$') { $previousOutcome = $Matches[1].Trim() }
+            if ($previous -match '(?m)^Reason:\s*(.*)$') { $previousReason = $Matches[1].Trim() }
+            if ($previous -match '(?m)^Last-Success:\s*(.*)$') { $lastSuccess = $Matches[1].Trim() }
+            if ($previous -match '(?m)^Generated:\s*(\S+ \S+)') {
+                try { $previousGenerated = [datetime]::ParseExact($Matches[1], "yyyy-MM-dd HH:mm:ss", $null) } catch { }
+            }
+        }
+        if ($outcome -eq "OK" -or $outcome -eq "UP-TO-DATE") { $lastSuccess = $now }
+
+        $oneLineReason = ($reason -replace "\r?\n", " | ").Trim()
+        if ($oneLineReason.Length -gt 600) { $oneLineReason = $oneLineReason.Substring(0, 600) + "..." }
+
+        $text = @(
+            "# Auto-sync status",
+            "",
+            "Generated: $now",
+            "Outcome: $outcome",
+            "Reason: $oneLineReason",
+            "Last-Success: $lastSuccess",
+            "Local-Head: $localHead",
+            "Upstream-Head: $upstreamHead",
+            "Branch: $Branch",
+            "",
+            "Written by scripts/desktop/sync-and-run.ps1 on every run. Outcome is one of",
+            "OK (merged and pushed), UP-TO-DATE (nothing new), BLOCKED (refused to merge",
+            "over local edits - see Reason), FAILED (git or network error - see Reason).",
+            ""
+        ) -join "`r`n"
+
+        $dir = Split-Path $script:StatusPath -Parent
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        Set-Content -Path $script:StatusPath -Value $text -Encoding UTF8
+
+        $unchanged = ($previousOutcome -eq $outcome) -and ($previousReason -eq $oneLineReason)
+        $fresh = $false
+        if ($previousGenerated) {
+            $fresh = ((Get-Date) - $previousGenerated).TotalHours -lt $script:StatusHeartbeatHours
+        }
+        $isTracked = $true
+        try { Invoke-Git @("ls-files", "--error-unmatch", $script:StatusRelativePath) | Out-Null } catch { $isTracked = $false }
+
+        if ($isTracked -and $unchanged -and $fresh) {
+            # Same outcome as last time and the committed copy is recent:
+            # restore it so the tree stays clean for the dirty check.
+            Invoke-Git @("checkout", "--", $script:StatusRelativePath) | Out-Null
+            return
+        }
+
+        Invoke-Git @("add", $script:StatusRelativePath) | Out-Null
+        Invoke-Git @("commit", "-m", "chore: auto-sync status $outcome") | Out-Null
+        Invoke-Git @("push", $OriginRemote, $Branch) -Retries 2 | Out-Null
+        Write-Log "Sync status '$outcome' committed to $script:StatusRelativePath"
+    }
+    catch {
+        Write-Log "Could not record sync status (continuing): $_"
     }
 }
 
@@ -140,6 +224,42 @@ try {
         catch {
             Write-Log "Build status report step failed (continuing with the sync): $_"
         }
+
+        # The orchestrator writes one file per run under Reports/runs/ (see
+        # AI_GAME_COMPANY/company/orchestrator/runlog.py). Committing them here
+        # is what turns "the run failed on the PC console" into something
+        # Claude can read from the fork. Only that directory is staged.
+        try {
+            $runsDir = Join-Path $RepoPath "Reports\runs"
+            if (Test-Path $runsDir) {
+                Invoke-Git @("add", "--", "Reports/runs") | Out-Null
+                $staged = Invoke-Git @("diff", "--cached", "--name-only", "--", "Reports/runs")
+                if ($staged) {
+                    Invoke-Git @("commit", "-m", "chore: orchestrator run log") | Out-Null
+                    Write-Log "Committed orchestrator run log: $(($staged -split "\r?\n").Count) file(s)"
+                }
+            }
+        }
+        catch {
+            Write-Log "Run log commit step failed (continuing with the sync): $_"
+        }
+    }
+
+    # Tracked files that TOOLS rewrite, not people. Unity re-resolves packages
+    # whenever the Editor is open and rewrites packages-lock.json as a side
+    # effect. Left as a hard stop, that one file silently froze every
+    # scheduled sync from the moment the Editor was opened - the same file
+    # that once made the board runner report correct work as BLOCKED. It is
+    # Unity's to write (CLAUDE.md: never hand-edit it), so its churn is
+    # committed as housekeeping, the same treatment ProjectVersion.txt gets.
+    $toolOwned = @("Packages/packages-lock.json")
+    foreach ($toolFile in $toolOwned) {
+        $state = Invoke-Git @("status", "--porcelain", "--untracked-files=no", "--", $toolFile)
+        if ($state -match '^\s*M\s') {
+            Write-Log "$toolFile was rewritten by a tool, not a person - committing it as housekeeping."
+            Invoke-Git @("add", "--", $toolFile) | Out-Null
+            Invoke-Git @("commit", "-m", "chore: tool-regenerated $toolFile") | Out-Null
+        }
     }
 
     # Refuse to merge over uncommitted edits to tracked files rather than
@@ -165,6 +285,7 @@ try {
         $onlyProjectVersion = ($dirtyLines.Count -eq 1) -and ($dirtyLines[0] -match '^\s*M\s+ProjectSettings/ProjectVersion\.txt\s*$')
 
         if (-not $onlyProjectVersion) {
+            Write-SyncStatus "BLOCKED" "Uncommitted changes to tracked files: $dirty"
             throw "Uncommitted changes to tracked files - stopping. Commit or stash them first:`n`n$dirty"
         }
 
@@ -173,6 +294,7 @@ try {
         $newVersionLine = (Get-Content $projectVersionPath) | Where-Object { $_ -like "m_EditorVersion:*" } | Select-Object -First 1
 
         if ($oldVersionLine -ne $newVersionLine) {
+            Write-SyncStatus "BLOCKED" "ProjectVersion.txt m_EditorVersion changed: '$oldVersionLine' -> '$newVersionLine' - needs a human decision"
             throw "ProjectSettings/ProjectVersion.txt's m_EditorVersion changed ('$oldVersionLine' -> '$newVersionLine') - stopping. This needs a human decision, not an automated commit."
         }
 
@@ -210,6 +332,7 @@ try {
         # A failed abort must not mask why the merge failed in the first place.
         try { Invoke-Git @("merge", "--abort") | Out-Null } catch { Write-Log "merge --abort also failed: $_" }
 
+        Write-SyncStatus "FAILED" "Merge of $UpstreamRemote/$Branch failed: $mergeError"
         throw "Merge failed - stopping (tried to restore the original state). This needs a human:`n`n$mergeError"
     }
 
@@ -219,9 +342,12 @@ try {
     Write-Log (Invoke-Git @("push", $OriginRemote, $Branch) -Retries 4)
 
     if ($forkHead -eq $after) {
+        Write-SyncStatus "UP-TO-DATE" "Nothing new on $UpstreamRemote/$Branch"
         Show-Result "Already up to date. Nothing new reached the fork, so no pipeline run was started." "Information"
         exit 0
     }
+
+    Write-SyncStatus "OK" "Merged $UpstreamRemote/$Branch and pushed to $originRef"
 
     if ($forkHead) {
         $commitCount = Invoke-Git @("rev-list", "--count", "$forkHead..$after")
@@ -293,6 +419,21 @@ try {
     exit 0
 }
 catch {
+    # BLOCKED and merge failures already recorded their own status above; this
+    # catches everything else (no remote, no network, git missing) so a sync
+    # that dies before reaching the merge is still visible from the fork.
+    $already = $false
+    try {
+        if (Test-Path $script:StatusPath) {
+            $recent = Get-Content $script:StatusPath -Raw -ErrorAction SilentlyContinue
+            if ($recent -match '(?m)^Generated:\s*(\S+ \S+)') {
+                $when = [datetime]::ParseExact($Matches[1], "yyyy-MM-dd HH:mm:ss", $null)
+                $already = ((Get-Date) - $when).TotalSeconds -lt 120
+            }
+        }
+    } catch { }
+    if (-not $already) { Write-SyncStatus "FAILED" "$_" }
+
     Show-Result "Sync failed:`n`n$_" "Error"
     exit 1
 }

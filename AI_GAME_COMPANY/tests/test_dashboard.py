@@ -20,6 +20,7 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from company.orchestrator import dashboard as dash  # noqa: E402
+from company.orchestrator import progress as prog  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 COMPANY_CONFIG = REPO / "AI_GAME_COMPANY" / "config"
@@ -284,10 +285,22 @@ class GameProgressTests(unittest.TestCase):
 
 
 class RenderTests(unittest.TestCase):
-    def task_page(self, tasks, served=True):
+    def task_page(self, tasks, served=True, live_job=None):
         snapshot = dash.collect(REPO)
         snapshot.tasks = tasks
-        return dash.render(snapshot, control_token="test-token" if served else None)
+        return dash.render(snapshot,
+                           control_token="test-token" if served else None,
+                           live_job=live_job)
+
+    @staticmethod
+    def section(page, heading):
+        """One <section> of the page, by its heading.
+
+        The board and the queue both render task buttons, so a count over the
+        whole page stopped answering "how many buttons does the BOARD have".
+        """
+        after = page.split(f"<h2>{heading}</h2>", 1)[1]
+        return after.split("</section>", 1)[0]
 
     def test_served_board_has_buttons_only_for_open_codex_tasks(self):
         page = self.task_page([
@@ -303,9 +316,10 @@ class RenderTests(unittest.TestCase):
             self.assertIn(f'data-arg-value="{task_id}"', page)
         self.assertNotIn('data-arg-value="C-DONE"', page)
         self.assertNotIn('data-arg-value="CLAUDE-TODO"', page)
-        self.assertEqual(4, page.count('class="btn task-run"'))
-        self.assertEqual(1, page.count(">작업 시작</button>"))
-        self.assertEqual(3, page.count(">다시 실행</button>"))
+        board = self.section(page, "공유 작업판")
+        self.assertEqual(4, board.count('class="btn task-run"'))
+        self.assertEqual(1, board.count(">작업 시작</button>"))
+        self.assertEqual(3, board.count(">다시 실행</button>"))
 
     def test_static_board_has_no_task_start_buttons(self):
         page = self.task_page([
@@ -529,6 +543,278 @@ class ArtPlanTests(unittest.TestCase):
             out = Path(tmp) / "sub" / "dashboard.html"
             self.assertEqual(out, dash.write(REPO, out))
             self.assertGreater(out.stat().st_size, 4000)
+
+
+class QueueTests(unittest.TestCase):
+    """The 작업 대기열 section: who is working, and what is next in line.
+
+    Its job is different from the board's. The board lists everything that
+    exists; this answers "what happens next", so anything finished or waiting
+    on a human has no business in it.
+    """
+
+    TASKS = [
+        {"id": "C-RUN", "title": "running one", "owner": "codex", "status": "in_progress"},
+        {"id": "C-NEXT", "title": "next one", "owner": "codex", "status": "todo"},
+        {"id": "C-HELD", "title": "held one", "owner": "codex", "status": "todo",
+         "depends_on": ["C-NEXT"]},
+        {"id": "C-REVIEW", "title": "reviewed one", "owner": "codex", "status": "review"},
+        {"id": "C-DONE", "title": "finished one", "owner": "codex", "status": "done"},
+        {"id": "CL-TODO", "title": "claude one", "owner": "claude", "status": "todo"},
+    ]
+
+    def page(self, served=True, live_job=None, tasks=None):
+        snapshot = dash.collect(REPO)
+        snapshot.tasks = list(self.TASKS if tasks is None else tasks)
+        return dash.render(snapshot,
+                           control_token="tok" if served else None,
+                           live_job=live_job)
+
+    def queue(self, **kwargs):
+        return RenderTests.section(self.page(**kwargs), "작업 대기열")
+
+    def test_finished_and_review_work_is_not_in_the_queue(self):
+        queue = self.queue()
+        self.assertIn("C-NEXT", queue)
+        self.assertNotIn("C-DONE", queue)
+        self.assertNotIn("C-REVIEW", queue)
+
+    def test_each_owner_gets_its_own_lane(self):
+        queue = self.queue()
+        self.assertIn(">Codex<", queue)
+        self.assertIn(">Claude<", queue)
+        self.assertIn("CL-TODO", queue)
+
+    def test_a_dependency_blocked_task_is_separated_and_names_its_blocker(self):
+        queue = self.queue()
+        held = queue.split('data-arg-value="C-HELD"', 1)[1].split("</button>", 1)[0]
+        self.assertIn("disabled", held)
+        self.assertIn("선행 작업: <code>C-NEXT</code>", queue)
+        self.assertIn("선행 대기 1", queue)
+        # And it sorts below the runnable one rather than sitting in its place.
+        self.assertLess(queue.index("C-NEXT"), queue.index("C-HELD"))
+
+    def test_the_static_queue_lists_work_but_offers_no_buttons(self):
+        queue = self.queue(served=False)
+        self.assertIn("C-NEXT", queue)
+        self.assertNotIn("data-act=", queue)
+
+    def test_an_owner_with_no_queued_work_gets_no_lane(self):
+        queue = self.queue(tasks=[
+            {"id": "C-DONE", "title": "done", "owner": "codex", "status": "done"}])
+        self.assertIn("대기 중인 작업이 없습니다", queue)
+
+    def test_an_unknown_owner_still_appears(self):
+        queue = self.queue(tasks=[
+            {"id": "X-1", "title": "stray", "owner": "gemini", "status": "todo"}])
+        self.assertIn("X-1", queue)
+
+    # ---- the live job ----
+
+    @staticmethod
+    def running(action="team-run", arg="C-RUN", output="running codex exec",
+                seconds=125.0, done=False, exit_code=None):
+        summary = prog.summarise(action, output, seconds, done=done,
+                                 exit_code=exit_code)
+        return {"job": "j1", "action": action, "arg": arg, "output": output,
+                "done": done, "exit_code": exit_code,
+                "progress": summary.as_dict()}
+
+    def test_a_running_task_shows_its_korean_phase_and_elapsed_time(self):
+        queue = self.queue(live_job=self.running())
+        self.assertIn("Codex가 코드를 작성하는 중", queue)
+        self.assertIn("2분 5초 경과", queue)
+        self.assertIn("진행 중 1", queue)
+
+    def test_the_phase_is_shown_with_the_line_it_was_read_from(self):
+        queue = self.queue(live_job=self.running(
+            output="=== HANDING C-RUN TO CODEX ===\n"))
+        self.assertIn("작업 명세를 읽고 Codex에게 넘기는 중", queue)
+        # The evidence line, so the summary can be checked rather than trusted.
+        self.assertIn("=== HANDING C-RUN TO CODEX ===", queue)
+
+    def test_a_running_task_offers_no_start_button(self):
+        queue = self.queue(live_job=self.running())
+        self.assertNotIn('data-arg-value="C-RUN"', queue)
+        self.assertIn('data-arg-value="C-NEXT"', queue)
+
+    def test_the_static_page_never_shows_a_live_job(self):
+        # It has no server behind it, so it has no live state to read. Faking
+        # one there would be the same lie as a button that cannot post.
+        page = self.page(served=False, live_job=self.running())
+        self.assertNotIn('<div class="live', page)
+
+    def test_a_board_entry_left_in_progress_by_a_dead_run_says_so(self):
+        # in_progress on the board with nothing running is a stale record, and
+        # calling it "진행 중" would be the exact false claim that cost a day.
+        queue = self.queue(live_job=None)
+        self.assertIn("기록만 진행 중", queue)
+
+
+class LiveAgentTests(unittest.TestCase):
+    """The office view must not contradict the panel above it."""
+
+    def page(self, live_job=None, served=True):
+        snapshot = dash.collect(REPO)
+        return dash.render(snapshot, control_token="tok" if served else None,
+                           live_job=live_job)
+
+    def running_codex(self, done=False, exit_code=None):
+        summary = prog.summarise("team-run", "running codex exec", 30.0,
+                                 done=done, exit_code=exit_code)
+        return {"job": "j", "action": "team-run", "arg": "C-RUN",
+                "output": "running codex exec", "done": done,
+                "exit_code": exit_code, "progress": summary.as_dict()}
+
+    def test_a_codex_run_draws_codex_working_even_though_it_is_gated(self):
+        page = self.page(live_job=self.running_codex())
+        seat = page.split('href="#agent-codex-cli"', 1)[0]
+        self.assertIn("office-agent--working", seat)
+        self.assertIn("Codex CLI - 작업 중", page)
+
+    def test_a_finished_job_stops_claiming_the_agent_is_working(self):
+        page = self.page(live_job=self.running_codex(done=True, exit_code=0))
+        self.assertNotIn('office-agent--working"', page)
+
+    def test_without_a_job_a_gated_agent_says_what_it_waits_for(self):
+        page = self.page(live_job=None)
+        self.assertNotIn('office-agent--working"', page)
+        self.assertIn("대기 중 · 사람 확인 필요", page)
+
+    def test_the_four_roster_labels_are_unchanged(self):
+        # The caption is the office character's; the roster keeps the plain
+        # four so the two are not quietly forked.
+        self.assertEqual("대기 중", dash.STATE_LABEL[dash.GATED])
+
+
+class PcLinkTests(unittest.TestCase):
+    """The 'PC 연결' section: the two files by which the PC reaches Claude.
+
+    Both readers follow the page's founding rule - a missing file is 확인 불가,
+    never a clean bill of health - and a stale sync is called out, because a
+    scheduled task that quietly stopped is exactly how a day got lost.
+    """
+
+    SYNC_BLOCKED = (
+        "# Auto-sync status\n\nGenerated: 2026-09-03 12:00:00\nOutcome: BLOCKED\n"
+        "Reason: Uncommitted changes to tracked files:  M Packages/packages-lock.json\n"
+        "Last-Success: 2026-09-03 08:25:10\nLocal-Head: 9ec5c9d\nUpstream-Head: f198460\n"
+        "Branch: claude/x\n\nWritten by scripts/desktop/sync-and-run.ps1 on every run.\n"
+    )
+    RUN_FAILED = (
+        "# Orchestrator run report\n\nGenerated: 2026-09-03 12:34:56\n"
+        "Command: team run --task CODEX-X\nOutcome: FAILED\nExit: 4\nDuration: 12분 3초\n"
+        "\n## Output (tail)\n\nOutcome: OK (this is body text and must be ignored)\n"
+    )
+
+    def page(self, sync=None, run=None, served=False):
+        snapshot = dash.collect(REPO)
+        snapshot.sync_status = dash.read_header_fields(self.write(sync)) if sync else {}
+        snapshot.last_run = dash.read_header_fields(self.write(run)) if run else {}
+        return RenderTests.section(
+            dash.render(snapshot, control_token="tok" if served else None), "PC 연결")
+
+    def write(self, text):
+        self._tmp = getattr(self, "_tmp", None) or tempfile.TemporaryDirectory()
+        path = Path(self._tmp.name) / f"{abs(hash(text))}.txt"
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def tearDown(self):
+        tmp = getattr(self, "_tmp", None)
+        if tmp:
+            tmp.cleanup()
+
+    def test_missing_files_render_as_unknown_not_ok(self):
+        section = self.page()
+        sync_panel = section.split("PC 자동 동기화", 1)[1].split("마지막 오케스트레이터 실행", 1)[0]
+        run_panel = section.split("마지막 오케스트레이터 실행", 1)[1]
+        self.assertIn("확인 불가", sync_panel)
+        self.assertIn("확인 불가", run_panel)
+        self.assertNotIn("동기화됨", section)
+        self.assertNotIn(">성공<", section)
+
+    def test_a_blocked_sync_shows_the_reason(self):
+        section = self.page(sync=self.SYNC_BLOCKED)
+        self.assertIn("머지 보류", section)
+        self.assertIn("packages-lock.json", section)
+        self.assertIn("2026-09-03 08:25:10", section)   # last success
+        self.assertIn("· 다름", section)                 # heads differ
+
+    def test_a_failed_run_shows_command_and_exit_code(self):
+        section = self.page(run=self.RUN_FAILED)
+        self.assertIn(">실패<", section)
+        self.assertIn("team run --task CODEX-X", section)
+        self.assertIn("종료 코드 4", section)
+        self.assertIn("Reports/runs/latest.txt", section)
+
+    def test_the_header_parser_stops_at_the_body(self):
+        fields = dash.read_header_fields(self.write(self.RUN_FAILED))
+        self.assertEqual("FAILED", fields["Outcome"])
+        self.assertEqual("4", fields["Exit"])
+
+    def test_a_stale_sync_is_called_out(self):
+        from datetime import datetime, timedelta
+        old = (datetime.now() - timedelta(hours=20)).strftime("%Y-%m-%d %H:%M:%S")
+        text = self.SYNC_BLOCKED.replace("2026-09-03 12:00:00", old).replace("BLOCKED", "OK")
+        section = self.page(sync=text)
+        self.assertIn("예약 작업", section)
+        self.assertIn("시간 전", section)
+
+    def test_a_fresh_sync_is_not_called_stale(self):
+        from datetime import datetime
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        text = self.SYNC_BLOCKED.replace("2026-09-03 12:00:00", now).replace("BLOCKED", "OK")
+        section = self.page(sync=text)
+        self.assertNotIn("예약 작업", section)
+        self.assertIn("동기화됨", section)
+
+    def test_hours_since_handles_garbage(self):
+        self.assertIsNone(dash.hours_since("yesterday-ish"))
+        self.assertIsNone(dash.hours_since(""))
+        from datetime import datetime
+        self.assertAlmostEqual(
+            2.0, dash.hours_since("2026-09-03 10:00:00", now=datetime(2026, 9, 3, 12, 0, 0)), places=3)
+
+
+class KoreanTitleTests(unittest.TestCase):
+    """The page is Korean; a task with a title_ko shows it, one without falls back."""
+
+    TASKS = [
+        {"id": "K-1", "title": "English title", "title_ko": "한국어 제목", "owner": "codex",
+         "status": "todo"},
+        {"id": "K-2", "title": "Only English", "owner": "codex", "status": "todo"},
+    ]
+
+    def page(self, served=True):
+        snapshot = dash.collect(REPO)
+        snapshot.tasks = list(self.TASKS)
+        return dash.render(snapshot, control_token="tok" if served else None)
+
+    def test_the_queue_and_board_prefer_the_korean_title(self):
+        page = self.page()
+        queue = RenderTests.section(page, "작업 대기열")
+        board = RenderTests.section(page, "공유 작업판")
+        self.assertIn("한국어 제목", queue)
+        self.assertIn("한국어 제목", board)
+        # The English title survives as a hover so Codex's wording is one
+        # mouse-over away, not lost.
+        self.assertIn('title="English title"', board)
+
+    def test_a_task_without_a_translation_still_shows_its_title(self):
+        page = self.page()
+        self.assertIn("Only English", RenderTests.section(page, "작업 대기열"))
+
+    def test_the_dropdown_uses_the_korean_title_too(self):
+        page = self.page()
+        self.assertIn("K-1 · 한국어 제목", page)
+
+    def test_every_committed_task_has_a_korean_title(self):
+        # The board is what the page shows; an untranslated task is the one
+        # English line on a Korean page, which is how this started.
+        board = json.loads((COMPANY_CONFIG / "TASKBOARD.json").read_text(encoding="utf-8"))
+        missing = [t["id"] for t in board["tasks"] if not t.get("title_ko")]
+        self.assertEqual([], missing)
 
 
 if __name__ == "__main__":

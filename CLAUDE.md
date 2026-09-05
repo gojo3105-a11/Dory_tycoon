@@ -28,6 +28,11 @@ GameSpec(JSON) → Unity Editor 자동 생성기 → Scene/Prefab/Level/UI 생�
    키는 `GEMINI_API_KEY` 환경변수. 아래 제약을 반드시 지킨다.
 3. **관제 화면은 AI를 회사 부서별 캐릭터로 보여준다** (`docs/OFFICE_VIEW_SPEC.md`).
 
+**규칙 1의 예외 기록.** 사용자가 직접 지시한 경우에만 Claude가 코드를 썼다: 2026-09-03 "두 가지 사항은
+너가 직접 고치기"(진행 상황 한글 요약, 작업 대기열 → CODEX-LIVE1까지 함께 종결), 같은 날 "전체 문제 있는
+부분 및 디자인과 개발시스템 수정"(CODEX-RUNLOG1, CODEX-BOARD1, sync-and-run.ps1 상태 파일, 한국어
+작업 제목). 각 작업판 항목의 notes에 "DONE BY CLAUDE"로 남겨두었다. 그 외에는 규칙 1이 그대로다.
+
 **여기서 반드시 알아야 하는 현실 하나:** `codex` CLI는 빌드 PC에만 있고 **Claude Code
 컨테이너에는 없다** (`which codex` → 없음). 그래서 규칙 1을 지키면 Claude는 이 환경에서
 **작업을 큐에 넣는 것까지만** 할 수 있고, PC에서 `orchestrator team run --task <id>`를
@@ -173,6 +178,27 @@ GameSpec의 mechanics/level/enemy/special 조합이 실제로 달라져야 한�
 Editor 쪽 파일은 아예 컴파일되지 않아 에러 목록에 나타나지도 않는다.** Runtime 에러를 먼저 고치고
 다시 확인해야 Editor 에러가 보인다 - 에러 목록이 짧다고 문제가 그것뿐이라고 단정하지 않는다.
 
+**오케스트레이터 실행 결과와 자동 동기화 상태도 같은 방식이다** (2026-09-03 추가). 두 파일이 더 있다:
+
+- **`Reports/runs/latest.txt`** - `python -m company.orchestrator.main <명령>`을 실행할 때마다
+  `company/orchestrator/runlog.py`가 남긴다(`serve` 제외). 명령, 종료 코드, 소요 시간, 출력 꼬리,
+  예외. `Reports/runs/<시각>-<명령>.txt`로 최근 50개 보관. `blocked_env_keys`와 `GEMINI_API_KEY`의
+  **값**은 쓰기 전에 `[REDACTED:<이름>]`으로 치환된다 - 이름만 남는다. 기록 실패는 stderr에만 찍히고
+  명령의 종료 코드를 바꾸지 않는다.
+- **`Reports/sync-status/latest.txt`** - `scripts/desktop/sync-and-run.ps1`이 매 실행마다 쓴다.
+  `Outcome`은 OK / UP-TO-DATE / BLOCKED / FAILED, `Reason`에 이유. 결과가 바뀌었거나 6시간이 지났을
+  때만 커밋한다(15분마다 타임스탬프만 바뀌는 커밋을 하루 96개 만들지 않기 위해). 이 파일이 7시간 넘게
+  갱신되지 않으면 예약 작업 자체가 죽은 것이다.
+
+이 두 파일이 생긴 이유: 2026-09-03 아침, 자동 동기화가 추적 파일 하나가 더러워진 것 때문에 8시간 동안
+아무것도 머지하지 않았는데, 그 사실이 gitignore된 `Logs/auto-sync.log`에만 남아서 아무도 몰랐다. 그리고
+같은 날 `team run` 실패 세 건을 사용자가 콘솔에서 복사해 붙여야 했다. **"pull 하세요" / "에러 붙여주세요"를
+말하기 전에 이 파일들을 먼저 읽는다.** 대시보드의 "PC 연결" 섹션이 같은 두 파일을 보여준다.
+
+`sync-and-run.ps1`은 `Packages/packages-lock.json`이 수정돼 있으면 Unity가 다시 쓴 것으로 보고
+housekeeping 커밋을 만든 뒤 진행한다(`ProjectVersion.txt`와 같은 취급). 다른 추적 파일이 더러우면 여전히
+멈추고, 그 사실을 `sync-status`에 BLOCKED로 남긴다.
+
 이 저장소(`gojo3105-a11/Dory_tycoon`)에는 그 파일들이 사용자가 병합할 때까지 안 들어올 수
 있으므로, 최신 상태는 **사용자 포크에서 직접 읽는다**:
 
@@ -180,6 +206,8 @@ Editor 쪽 파일은 아예 컴파일되지 않아 에러 목록에 나타나지
 git fetch https://github.com/gojo3105/dory_tycoon claude/delete-current-content-mgn4xm:fork-check
 git show fork-check:Reports/errors/latest.txt
 git show fork-check:Reports/build-status/latest.txt
+git show fork-check:Reports/sync-status/latest.txt
+git show fork-check:Reports/runs/latest.txt
 git branch -D fork-check
 ```
 
@@ -196,6 +224,11 @@ python -m company.orchestrator.main serve              # 제어판 (버튼이 �
 `dashboard`는 `Reports/dashboard.html`을 만든다. 커밋된 파일만 읽으므로 빌드 PC에서든
 Unity가 없는 컨테이너에서든 같은 답을 낸다. 이미지(게임 아트 / AI 생성물 / 캐릭터 원본)는
 data URI로 파일 안에 박아 넣으므로, 그 한 파일만 있으면 어디서든 보인다.
+
+**PC에서는 `scripts/desktop/open-control-panel.ps1` 하나로 연다** - upstream을 당기고(sync-and-run.ps1
+`-NoTrigger`), `AI_GAME_COMPANY/`로 들어가 `serve`를 띄우고, 브라우저를 연다. `company` 패키지가
+`AI_GAME_COMPANY/` 안에 있어서 저장소 루트에서 `serve`를 치면 `No module named 'company'`로 죽는데,
+그걸 매번 기억하지 않게 하려는 스크립트다.
 
 `serve`는 같은 화면에 실행 버튼을 붙여서 `http://127.0.0.1:8765` 로 띄운다.
 Codex 작업 실행 / 빌드 / Codex 진단 / 변경 파일 확인을 브라우저에서 누를 수 있다.
@@ -216,6 +249,24 @@ Codex 작업 실행 / 빌드 / Codex 진단 / 변경 파일 확인을 브라우�
 이 화면의 원칙은 하나다: **근거가 없으면 "확인 불가"로 표시하고, 절대 "정상"으로 올려
 읽지 않는다.** 각 AI 줄마다 그 상태를 읽어온 파일을 함께 보여준다. "설치됨"은 근거가
 아니다 - 라이선스 미확인 + RAM 초과로 못 돌아가는 모델도 설치는 되어 있다.
+
+## PC 원격 제어 (pc-control.yml) - Claude가 PC에서 명령을 돌리는 유일한 길
+
+2026-09-03 사용자 지시("너가 직접 돌려. 안되면 방법 찾아서 실행해")로 만들었다. Claude Code 컨테이너는
+PC에 닿을 수 없고, 포크에는 이 세션의 자격 증명이 없다(403). 유일하게 되는 길은 **gojo3105-a11에 등록된
+self-hosted 러너에게 워크플로를 보내는 것**이다. `.github/workflows/pc-control.yml`이 그 채널이다.
+
+- 러너 조건: PC에 **두 번째 러너**를 `C:\actions-runner-control`에 설치, **라벨 `pc-control`**, 그리고
+  **NETWORK SERVICE가 아니라 사용자 계정으로 실행**(`04-register-github-runner.ps1 -WindowsLogonAccount`).
+  서비스 계정은 `C:\Dory_tycoon`, 포크용 git 자격 증명, Codex 로그인 중 어느 것도 갖고 있지 않다.
+- 기존 4개 빌드 워크플로에는 `if: github.repository_owner != 'gojo3105-a11'`이 붙어 있다. 러너가 생기면
+  그 워크플로들이 upstream에서도 돌기 시작해 같은 PC에서 Unity 빌드 두 개가 겹치기 때문이다. **CI 빌드는 포크,
+  upstream 러너는 제어 채널.** 이 둘을 섞지 않는다.
+- 동작은 `status / sync / dashboard / team-run / codex-doctor` 다섯 개로 고정. 입력이 명령이 되는 경로는 없고,
+  task id는 server.py의 SAFE_ID와 같은 패턴으로 검사한 뒤에만 argv에 들어간다.
+- **`status`가 기본이고 아무것도 건드리지 않는다.** `stash_dirty`는 별도 opt-in이며, `status` 결과를 읽어
+  무엇이 stash되는지 본 뒤에만 켠다. 삭제는 절대 없다 - stash는 `git stash list`로 복구된다.
+- 결과 읽기: `mcp__github__get_job_logs`로 이 세션에서 직접 읽는다. 사용자가 붙여넣을 필요가 없다.
 
 ## Codex와 함께 개발하기 (공유 작업판)
 
@@ -277,6 +328,10 @@ Codex는 이 프로젝트를 기억하지 못한 채 매번 시작하므로, CLA
 쉬운 방법을 스스로 선택해서 진행한다.
 
 ## 결과 보고 방식
+
+**2026-09-03 사용자 지시: "항상 결과 요약하고 쉽게 말해."** 모든 답변은 결론 한 줄로 시작한다.
+전문 용어 대신 쉬운 말을 쓰고, 명령은 복사해서 붙일 수 있게 한 덩어리로 준다. 긴 설명은 결론 뒤에 둔다.
+
 
 ```text
 현재 단계:

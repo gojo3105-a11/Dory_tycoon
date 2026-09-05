@@ -1,0 +1,157 @@
+name: PC Control
+
+# The remote-control channel from Claude's session to the build PC.
+#
+# WHY. Claude Code runs in a cloud container with no route to the PC. The
+# only PC->Claude channel is a committed file; until this workflow there was
+# no Claude->PC channel at all, so every sync and every command had to be
+# typed by a person. This runs on a SECOND self-hosted runner registered on
+# THIS repository (gojo3105-a11) with the extra label `pc-control`, installed
+# as the interactive user so it can reach C:\Dory_tycoon, the user's stored
+# git credentials for the fork, and the Codex login. The fork's runner is
+# untouched and keeps doing the Unity CI.
+#
+# RULES, enforced here rather than documented:
+#   - Fixed actions only. There is no input that becomes a command; a task
+#     id is matched against the same SAFE_ID pattern server.py uses before
+#     it reaches argv, and every input is read through env, never
+#     interpolated into a script.
+#   - `status` is the default and touches nothing. Stashing the user's
+#     uncommitted work is a separate opt-in, meant to be used only AFTER a
+#     status run has shown what would be stashed. Nothing is ever deleted:
+#     a stash is recoverable with `git stash list`.
+#   - One job at a time (concurrency group), because the actions here and
+#     the control panel both work on the same clone.
+#   - Inline PowerShell is ASCII only: Windows PowerShell 5.1 reads
+#     non-ASCII in the local codepage and can fail to parse.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: >-
+          status = look only. sync = pull upstream into C:\Dory_tycoon via
+          sync-and-run.ps1 (no pipeline run). dashboard = sync then regenerate
+          Reports/dashboard.html. team-run = sync then hand `task` to Codex.
+          codex-doctor = sync then run the Codex self-check.
+        type: choice
+        options: [status, sync, dashboard, team-run, codex-doctor]
+        default: status
+      task:
+        description: Task id for team-run (e.g. CODEX-ANIM1). Ignored otherwise.
+        type: string
+        default: ''
+      stash_dirty:
+        description: >-
+          Stash uncommitted changes in C:\Dory_tycoon (tracked and untracked)
+          before syncing. Off by default - run `status` first and look.
+        type: boolean
+        default: false
+
+concurrency:
+  group: pc-control
+  cancel-in-progress: false
+
+env:
+  CLONE: 'C:\Dory_tycoon'
+
+jobs:
+  control:
+    # The upstream runner carries `pc-control`; the fork's build runner does
+    # not, so a dispatch here can never land on the CI runner by accident.
+    runs-on: [self-hosted, Windows, pc-control]
+    timeout-minutes: 90
+    env:
+      ACTION: ${{ inputs.action }}
+      TASK: ${{ inputs.task }}
+      STASH: ${{ inputs.stash_dirty }}
+    steps:
+      # The runner's own checkout is only used for scripts/ - it is the
+      # newest copy of sync-and-run.ps1 regardless of what the clone has.
+      - uses: actions/checkout@v4
+
+      - name: Status of the clone (always, read-only)
+        shell: powershell
+        run: |
+          Write-Host "== runner user: $env:USERDOMAIN\$env:USERNAME"
+          Write-Host "== clone: $env:CLONE"
+          if (-not (Test-Path (Join-Path $env:CLONE ".git"))) {
+            Write-Host "!! $env:CLONE is not a git repository on this machine."
+            exit 2
+          }
+          Write-Host "== branch:"; git -C $env:CLONE rev-parse --abbrev-ref HEAD
+          Write-Host "== last commits:"; git -C $env:CLONE log -3 --oneline
+          Write-Host "== working tree (git status --short):"
+          $dirty = git -C $env:CLONE status --short
+          if ($dirty) { $dirty } else { Write-Host "(clean)" }
+          Write-Host "== stashes:"; git -C $env:CLONE stash list
+          $sync = Join-Path $env:CLONE "Reports\sync-status\latest.txt"
+          if (Test-Path $sync) { Write-Host "== Reports/sync-status/latest.txt:"; Get-Content $sync } else { Write-Host "== no Reports/sync-status/latest.txt yet" }
+          $run = Join-Path $env:CLONE "Reports\runs\latest.txt"
+          if (Test-Path $run) { Write-Host "== Reports/runs/latest.txt (head):"; Get-Content $run -TotalCount 12 } else { Write-Host "== no Reports/runs/latest.txt yet" }
+          Write-Host "== codex on PATH:"; $c = Get-Command codex.cmd, codex -ErrorAction SilentlyContinue | Select-Object -First 1; if ($c) { $c.Source } else { Write-Host "(not found for this user)" }
+
+      - name: Stash uncommitted work (opt-in)
+        if: inputs.stash_dirty == true && inputs.action != 'status'
+        shell: powershell
+        run: |
+          $dirty = git -C $env:CLONE status --short
+          if (-not $dirty) { Write-Host "Nothing to stash."; exit 0 }
+          git -C $env:CLONE stash push -u -m "pc-control run ${{ github.run_id }}"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "Stashed. Recover with: git -C $env:CLONE stash list / stash pop"
+          git -C $env:CLONE stash list
+
+      - name: Sync the clone from upstream
+        if: inputs.action != 'status'
+        shell: powershell
+        run: |
+          # -NoTrigger: this is a sync, never a pipeline start. -Silent: no
+          # message boxes on a service session. Exit code is the verdict, and
+          # the script writes Reports/sync-status/latest.txt either way.
+          & .\scripts\desktop\sync-and-run.ps1 -RepoPath $env:CLONE -NoTrigger -Silent
+          $code = $LASTEXITCODE
+          $sync = Join-Path $env:CLONE "Reports\sync-status\latest.txt"
+          if (Test-Path $sync) { Write-Host "== sync-status:"; Get-Content $sync }
+          Write-Host "== clone head now:"; git -C $env:CLONE log -1 --oneline
+          exit $code
+
+      - name: Regenerate the dashboard
+        if: inputs.action == 'dashboard'
+        shell: powershell
+        working-directory: C:\Dory_tycoon\AI_GAME_COMPANY
+        run: |
+          python -m company.orchestrator.main dashboard
+          exit $LASTEXITCODE
+
+      - name: Codex self-check
+        if: inputs.action == 'codex-doctor'
+        shell: powershell
+        working-directory: C:\Dory_tycoon\AI_GAME_COMPANY
+        run: |
+          python -m company.orchestrator.main codex --doctor
+          exit $LASTEXITCODE
+
+      - name: Hand a task to Codex
+        if: inputs.action == 'team-run'
+        shell: powershell
+        working-directory: C:\Dory_tycoon\AI_GAME_COMPANY
+        run: |
+          # Same SAFE_ID rule as server.py: the id is validated before it is
+          # placed on a command line, and it is read from env, not templated.
+          if ($env:TASK -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$') {
+            Write-Host "REFUSED: task id '$env:TASK' is not a valid id."
+            exit 2
+          }
+          python -m company.orchestrator.main team run --task $env:TASK
+          exit $LASTEXITCODE
+
+      - name: Final state (always)
+        if: always()
+        shell: powershell
+        run: |
+          if (-not (Test-Path (Join-Path $env:CLONE ".git"))) { exit 0 }
+          Write-Host "== clone head:"; git -C $env:CLONE log -1 --oneline
+          Write-Host "== working tree:"; $d = git -C $env:CLONE status --short; if ($d) { $d } else { Write-Host "(clean)" }
+          $run = Join-Path $env:CLONE "Reports\runs\latest.txt"
+          if (Test-Path $run) { Write-Host "== Reports/runs/latest.txt:"; Get-Content $run }

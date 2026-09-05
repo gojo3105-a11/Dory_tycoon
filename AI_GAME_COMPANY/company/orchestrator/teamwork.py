@@ -73,6 +73,9 @@ class Task:
     title: str
     owner: str = CODEX
     status: str = TODO
+    # The page the user reads is Korean; the prompt Codex reads is English.
+    # Both are titles for the same task, so both live on it.
+    title_ko: str = ""
     goal: str = ""
     # Repo-relative glob patterns. fnmatch, not regex: these are written by
     # hand into a JSON file and "Assets/**/*.cs" should mean what it looks like.
@@ -89,13 +92,16 @@ class Task:
         return cls(**{k: v for k, v in data.items() if k in known})
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "id": self.id, "title": self.title, "owner": self.owner,
             "status": self.status, "goal": self.goal, "files": self.files,
             "acceptance": self.acceptance, "depends_on": self.depends_on,
             "notes": self.notes, "changed_files": self.changed_files,
             "last_run": self.last_run,
         }
+        if self.title_ko:
+            data["title_ko"] = self.title_ko
+        return data
 
     def covers(self, repo_relative_path: str) -> bool:
         """True if this path is inside the task's declared allowlist."""
@@ -112,10 +118,23 @@ class Task:
         return False
 
 
+DEFAULT_BOARD_COMMENT = (
+    "Shared task board for Claude and Codex. 'owner' decides who implements a "
+    "task; 'files' is the allowlist its diff is checked against. Run one with: "
+    "python -m company.orchestrator.main team run --task <id>"
+)
+
+
 @dataclass
 class TaskBoard:
     path: Path
     tasks: list[Task] = field(default_factory=list)
+    # Every top-level key that is not "tasks", kept verbatim. The board is a
+    # hand-annotated handoff document as much as a data file, and a save()
+    # that rewrote _comment from a constant silently reverted every note a
+    # person had put there - which is how CODEX-BOARD1 came to carry a note
+    # that begins "recorded here because _comment gets overwritten".
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def load(cls, path: Path) -> "TaskBoard":
@@ -123,20 +142,20 @@ class TaskBoard:
             return cls(path=path, tasks=[])
         # utf-8-sig: the board can be edited on the PC, where editors add a BOM.
         data = json.loads(path.read_text(encoding="utf-8-sig"))
-        return cls(path=path, tasks=[Task.from_dict(t) for t in data.get("tasks", [])])
+        meta = {k: v for k, v in data.items() if k != "tasks"}
+        return cls(path=path, tasks=[Task.from_dict(t) for t in data.get("tasks", [])],
+                   meta=meta)
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "_comment": (
-                "Shared task board for Claude and Codex. 'owner' decides who "
-                "implements a task; 'files' is the allowlist its diff is checked "
-                "against. Run one with: python -m company.orchestrator.main team "
-                "run --task <id>"
-            ),
-            "_version": 1,
-            "tasks": [t.to_dict() for t in self.tasks],
-        }
+        payload: dict[str, Any] = {}
+        # Defaults only fill a gap; anything the file already had wins.
+        payload["_comment"] = self.meta.get("_comment", DEFAULT_BOARD_COMMENT)
+        payload["_version"] = self.meta.get("_version", 1)
+        for key, value in self.meta.items():
+            if key not in payload:
+                payload[key] = value
+        payload["tasks"] = [t.to_dict() for t in self.tasks]
         self.path.write_text(
             json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
@@ -164,6 +183,34 @@ class TaskBoard:
 
 
 # ---- git ----------------------------------------------------------------
+
+# Tracked files that TOOLS rewrite, not agents. Unity re-resolves packages
+# whenever the Editor is open and rewrites packages-lock.json as a side
+# effect; the first real `team run` saw exactly that land in its diff, match
+# no allowlist, and report a correct piece of work as BLOCKED. These are
+# excluded from the allowlist check and reported separately, so a genuine
+# change to one is still visible rather than silently dropped.
+TOOL_OWNED_PATHS: tuple[str, ...] = (
+    "Packages/packages-lock.json",
+)
+
+
+def is_tool_owned(repo_relative_path: str) -> bool:
+    path = repo_relative_path.replace("\\", "/")
+    return any(fnmatch.fnmatch(path, pattern) for pattern in TOOL_OWNED_PATHS)
+
+
+def dirty_paths_or_none(repo_root: Path) -> set[str] | None:
+    """changed_paths(), or None when git cannot answer.
+
+    For callers that only want a better answer when one is available - a
+    prompt builder must not be able to fail the run because git is missing
+    or the path is not a repository.
+    """
+    try:
+        return changed_paths(repo_root)
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 
 def changed_paths(repo_root: Path) -> set[str]:
@@ -237,7 +284,34 @@ message rather than guessing.
 """
 
 
-def build_prompt(task: Task, board: TaskBoard) -> str:
+def concurrent_work(task: Task, board: TaskBoard,
+                    repo_root: Path | None = None) -> list[str]:
+    """Lines naming other agents' work that is actually in flight.
+
+    With a repository to look at, a task counts only when at least one of its
+    declared files is dirty right now, and those files are named - a REVIEW
+    task whose work was committed hours ago is not "being edited", and saying
+    so warned Codex off perfectly stable files. Without git (no repo_root, or
+    git unavailable) it falls back to the status-based reading rather than
+    raising: a prompt builder must not be able to fail the run.
+    """
+    others = [t for t in board.tasks if t.owner != task.owner and t.id != task.id]
+    dirty = dirty_paths_or_none(repo_root) if repo_root is not None else None
+
+    if dirty is None:
+        return [f"  - [{t.owner}] {t.id}: {t.title}"
+                for t in others if t.status in (IN_PROGRESS, REVIEW)]
+
+    lines = []
+    for other in others:
+        touched = sorted(p for p in dirty if other.covers(p))
+        if touched:
+            lines.append(f"  - [{other.owner}] {other.id}: {other.title}")
+            lines.extend(f"      {p}" for p in touched)
+    return lines
+
+
+def build_prompt(task: Task, board: TaskBoard, repo_root: Path | None = None) -> str:
     """The full instruction handed to `codex exec`.
 
     Deliberately verbose about the allowlist: the check afterwards is a
@@ -248,9 +322,7 @@ def build_prompt(task: Task, board: TaskBoard) -> str:
         or "  (none declared)"
     notes = "\n".join(f"  - {line}" for line in task.notes)
 
-    other_work = [t for t in board.tasks
-                  if t.owner != task.owner and t.status in (IN_PROGRESS, REVIEW)]
-    concurrent = "\n".join(f"  - [{t.owner}] {t.id}: {t.title}" for t in other_work)
+    concurrent = "\n".join(concurrent_work(task, board, repo_root))
 
     sections = [
         f"TASK {task.id}: {task.title}",
@@ -301,6 +373,9 @@ class TaskRun:
     outside_allowlist: list[str]
     summary: str
     output_path: Path | None = None
+    # Tool-rewritten files that changed during the run (see TOOL_OWNED_PATHS).
+    # Not the agent's doing and not a reason to block, but not hidden either.
+    tool_churn: list[str] = field(default_factory=list)
 
 
 def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
@@ -340,7 +415,8 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
     before = changed_paths(repo_root)
 
     try:
-        result = codex.implement(build_prompt(task, board), timeout_seconds=timeout_seconds)
+        result = codex.implement(build_prompt(task, board, repo_root),
+                                 timeout_seconds=timeout_seconds)
     except Exception as exc:
         # Whatever went wrong, the board must not be left claiming the task is
         # still being worked on. It said IN_PROGRESS a moment ago, and without
@@ -355,7 +431,9 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
     after = changed_paths(repo_root)
     # Only what THIS run introduced. Files already dirty before it started
     # belong to whoever was working in the tree, not to Codex.
-    changed = sorted(after - before)
+    introduced = sorted(after - before)
+    tool_churn = [p for p in introduced if is_tool_owned(p)]
+    changed = [p for p in introduced if not is_tool_owned(p)]
     outside = sorted(p for p in changed if not task.covers(p))
 
     task.changed_files = changed
@@ -370,7 +448,8 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
         )
         board.save()
         return TaskRun(task=task, ok=False, changed=changed, outside_allowlist=outside,
-                       summary=result.last_message, output_path=result.output_path)
+                       summary=result.last_message, output_path=result.output_path,
+                       tool_churn=tool_churn)
 
     if not changed:
         # Codex answering without editing anything is a real outcome - usually
@@ -380,10 +459,12 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
         task.notes.append("BLOCKED: the run finished but changed no files.")
         board.save()
         return TaskRun(task=task, ok=False, changed=[], outside_allowlist=[],
-                       summary=result.last_message, output_path=result.output_path)
+                       summary=result.last_message, output_path=result.output_path,
+                       tool_churn=tool_churn)
 
     # REVIEW, never DONE: nothing here compiled the project.
     task.status = REVIEW
     board.save()
     return TaskRun(task=task, ok=True, changed=changed, outside_allowlist=[],
-                   summary=result.last_message, output_path=result.output_path)
+                   summary=result.last_message, output_path=result.output_path,
+                   tool_churn=tool_churn)

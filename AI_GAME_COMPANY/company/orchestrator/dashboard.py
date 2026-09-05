@@ -32,6 +32,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from company.orchestrator import progress as progress_mod
 from company.orchestrator.teamwork import Task, TaskBoard
 
 # Optional: only used to shrink the multi-megabyte reference photos. Absent on
@@ -114,6 +115,10 @@ class Snapshot:
     gallery: list[dict[str, Any]]
     art_plan: dict[str, Any]
     missing: list[str]
+    # Reports/sync-status/latest.txt and Reports/runs/latest.txt, parsed.
+    # Empty dict = file absent, which renders as 확인 불가 - never as fine.
+    sync_status: dict[str, str] = field(default_factory=dict)
+    last_run: dict[str, str] = field(default_factory=dict)
 
 
 # ---- reading -------------------------------------------------------------
@@ -201,6 +206,45 @@ def read_errors(path: Path) -> tuple[dict[str, int], str]:
         if match:
             counts[key] = int(match.group(1))
     return counts, _report_timestamp(text)
+
+
+def read_header_fields(path: Path) -> dict[str, str]:
+    """'Key: value' header lines of a report, up to its first '## ' section.
+
+    Shared by the sync-status and run-log readers because both files use the
+    same shape as the two reports that already work - a third format would
+    be a third parser.
+    """
+    if not path.is_file():
+        return {}
+    fields: dict[str, str] = {}
+    try:
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
+        return {}
+    for line in text.splitlines():
+        if line.startswith("## "):
+            break
+        match = re.match(r"^([A-Za-z][A-Za-z-]*):\s*(.*)$", line)
+        if match:
+            fields[match.group(1)] = match.group(2).strip()
+    return fields
+
+
+def hours_since(stamp: str, now: datetime | None = None) -> float | None:
+    """Age of a 'YYYY-MM-DD HH:MM:SS' stamp in hours, or None if unreadable."""
+    try:
+        then = datetime.strptime(stamp.strip()[:19], "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    current = now or datetime.now()
+    return max(0.0, (current - then).total_seconds() / 3600)
+
+
+# The scheduled sync runs every 15 minutes but commits its status only when
+# the outcome changes or after a 6-hour heartbeat, so a committed stamp up to
+# ~6h old is normal. Past this, the scheduled task itself has probably stopped.
+SYNC_STALE_HOURS = 7.0
 
 
 def read_commits(repo_root: Path, limit: int = 8) -> list[dict[str, str]]:
@@ -602,7 +646,10 @@ def collect(repo_root: Path) -> Snapshot:
         missing.append("Reports/build-status/latest.txt")
 
     licences = _licence_status(registry)
+    reports = repo_root / "Reports"
     return Snapshot(
+        sync_status=read_header_fields(reports / "sync-status" / "latest.txt"),
+        last_run=read_header_fields(reports / "runs" / "latest.txt"),
         generated_at=datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M"),
         profile=profile,
         policy=policy,
@@ -749,6 +796,9 @@ section{margin-top:44px;}
 .office-agent--gated{--st:var(--gate);}
 .office-agent--blocked{--st:var(--blocked);}
 .office-agent--unknown{--st:var(--unknown); border-style:dashed;}
+/* A live job outranks the file evidence: solid accent border, so a Codex that
+   is gated on paper but demonstrably running does not read as idle. */
+.office-agent--working{--st:var(--accent); border-style:solid;}
 .office-character{display:block; width:100%; max-width:112px; height:auto; margin:0 auto;
   overflow:visible;}
 .office-desk{fill:var(--sunk); stroke:var(--line);}
@@ -796,6 +846,57 @@ section{margin-top:44px;}
 @keyframes office-cursor{50%{opacity:0;}}
 @keyframes office-alert{50%{transform:scale(1.12);}}
 @keyframes office-unknown{50%{opacity:.25;}}
+
+/* ---- queue ----
+   The board section shows everything including finished work. This shows only
+   what is queued or running, in the order it will be taken, because "what is
+   next" is a different question from "what exists". */
+.queue{display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:18px;}
+.q-lane{background:var(--surface); border:1px solid var(--line); border-radius:3px;
+        padding:18px 20px 20px;}
+.q-lane > h3{font-size:13px; letter-spacing:0.1em; text-transform:uppercase;
+             color:var(--muted); margin-bottom:6px;
+             display:flex; justify-content:space-between; align-items:baseline; gap:10px;}
+.q-tally{font-size:11.5px; color:var(--muted); letter-spacing:0; font-weight:400;}
+.q-item{display:grid; grid-template-columns:auto minmax(0,1fr); gap:0 12px;
+        padding:12px 0; border-top:1px solid var(--line);}
+.q-item:first-of-type{border-top:0;}
+.q-seat{width:26px; height:26px; border-radius:50%; display:grid; place-items:center;
+        font-size:12px; font-weight:600; background:var(--sunk); color:var(--muted);}
+.q-item--running .q-seat{background:var(--accent); color:#fff;}
+.q-item--waiting-deps .q-seat{background:var(--blocked-soft); color:var(--blocked);}
+.q-head{display:flex; gap:10px; align-items:baseline; justify-content:space-between;}
+.q-title{font-weight:500; font-size:14.5px;}
+.q-id{grid-column:2; font-size:11.5px; color:var(--muted); letter-spacing:0.05em;}
+.q-deps{grid-column:2; margin-top:5px; font-size:11.5px; color:var(--blocked);}
+.q-deps code{font-size:11px;}
+.q-act{grid-column:2; margin-top:9px;}
+.q-act .btn{padding:6px 11px; font-size:12px;}
+.q-empty{font-size:13px; color:var(--muted); padding:6px 0 2px;}
+
+/* ---- live progress ----
+   Every string in here comes from progress.py, which anchors each phrase to a
+   line the orchestrator actually printed. There is deliberately no bar and no
+   percentage: this pipeline has no denominator, so one would be invented. */
+.live{grid-column:2; margin-top:10px; padding:12px 14px; border-radius:3px;
+      background:var(--accent-soft); border:1px solid var(--accent);}
+.live--panel{grid-column:auto; margin:0 0 12px;}
+.live-top{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:baseline;
+          justify-content:space-between;}
+.live-phase{font-weight:600; font-size:14px; color:var(--accent); min-width:0;}
+.live-elapsed{font-size:12px; color:var(--ink-2); font-variant-numeric:tabular-nums;}
+.live-what{font-size:11.5px; color:var(--ink-2); margin-top:3px;}
+.live-evidence{margin-top:7px; font-size:11px; line-height:1.6; color:var(--muted);
+               word-break:break-word;}
+.live-note{margin-top:7px; font-size:11.5px; color:var(--gate);}
+.live-dots::after{content:''; animation:live-dots 1.4s steps(4,end) infinite;}
+@keyframes live-dots{0%{content:'';}25%{content:'.';}50%{content:'..';}75%{content:'...';}}
+.live--done{background:var(--ok-soft); border-color:var(--ok);}
+.live--done .live-phase{color:var(--ok);}
+.live--failed{background:var(--blocked-soft); border-color:var(--blocked);}
+.live--failed .live-phase{color:var(--blocked);}
+
+.kv-note{margin-top:10px; font-size:12px; line-height:1.6; color:var(--muted);}
 
 /* ---- board ---- */
 .board{display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:18px;}
@@ -928,7 +1029,10 @@ section{margin-top:44px;}
                  background:currentColor; animation:blip 1s ease-in-out infinite;}
 @keyframes blip{50%{opacity:.25;}}
 @media (prefers-reduced-motion: reduce){
-  .running::before,.office-agent *{animation:none!important;}
+  .running::before,.office-agent *,.live-dots::after{animation:none!important;}
+  /* The dots are decoration; the phase text carries the meaning, so stopping
+     them loses nothing. Left as an ellipsis so the line does not reflow. */
+  .live-dots::after{content:'...';}
 }
 
 .warn{margin-top:14px; padding:14px 18px; border-radius:3px;
@@ -949,6 +1053,10 @@ footer code{font-size:12px; background:var(--sunk); padding:2px 6px; border-radi
   .office-building{grid-template-columns:minmax(0,1fr);}
   .office-room--etc{grid-column:auto;}
   .office-agent{max-width:none; flex-basis:104px;}
+  /* auto-fit will not shrink a track below its minmax floor, so on a 360px
+     phone the 340px lane plus padding pushes the page sideways. One column. */
+  .queue{grid-template-columns:minmax(0,1fr);}
+  .q-lane{padding:16px 14px 18px;}
 }
 """
 
@@ -1015,25 +1123,59 @@ def _character_svg(department: str, state: str) -> str:
             '<path d="M42 81V66q14-10 28 0v15M45 66l-7 12M67 66l7 12"/></g></svg>')
 
 
-def _office_html(agents: list[Agent]) -> str:
+def _office_caption(agent: Agent, working: bool) -> str:
+    """What the character says under its feet.
+
+    Not simply STATE_LABEL: bare '대기 중' on a GATED agent reads as "idle
+    right now", when what it means is "a person has to do something first".
+    The roster keeps the four plain labels; this is the caption only.
+    """
+    if working:
+        return "작업 중"
+    if agent.state == GATED:
+        return "대기 중 · 사람 확인 필요"
+    return STATE_LABEL[agent.state]
+
+
+def _office_html(agents: list[Agent], working_prefix: str = "") -> str:
+    """Draw the departments. `working_prefix` is the agent a live job drives.
+
+    A running job is stronger evidence than any committed file, so it wins:
+    Codex is GATED on paper because a login cannot be read from disk, but a
+    Codex run that is producing output has plainly passed that gate. Without
+    this the panel says '실행 중' while the character below it says '대기 중',
+    and a page that contradicts itself is wrong however defensible each half.
+    """
     grouped = {department: [] for department in DEPARTMENT_LABEL}
     for agent in agents:
         grouped[_department_for_agent(agent.name)].append(agent)
 
+    def is_working(agent: Agent) -> bool:
+        return bool(working_prefix) and agent.name.startswith(working_prefix)
+
     def room(department: str) -> str:
         occupants = grouped[department]
-        working = sum(agent.state == READY for agent in occupants)
+        working = sum(agent.state == READY or is_working(agent)
+                      for agent in occupants)
         room_classes = f"office-room office-room--{department}"
         if occupants:
             seats = []
             for agent in occupants:
-                accessible = f"{agent.name} - {STATE_LABEL[agent.state]}"
+                busy = is_working(agent)
+                caption = _office_caption(agent, busy)
+                accessible = f"{agent.name} - {caption}"
+                # A working agent is drawn with the READY (typing) character
+                # whatever its file-based state says, and keeps its own state
+                # class so colour still reports the gate underneath.
+                drawn = READY if busy else agent.state
+                extra = " office-agent--working" if busy else ""
                 seats.append(
-                    f'<a class="office-agent office-agent--{department} office-agent--{agent.state}" '
+                    f'<a class="office-agent office-agent--{department} '
+                    f'office-agent--{agent.state}{extra}" '
                     f'href="#agent-{e(_agent_slug(agent.name))}" title="{e(accessible)}" '
-                    f'aria-label="{e(accessible)}">{_character_svg(department, agent.state)}'
+                    f'aria-label="{e(accessible)}">{_character_svg(department, drawn)}'
                     f'<span class="office-agent-name">{e(agent.name)}</span>'
-                    f'<span class="office-agent-state">{e(STATE_LABEL[agent.state])}</span></a>')
+                    f'<span class="office-agent-state">{e(caption)}</span></a>')
             body = f'<div class="office-seats">{"".join(seats)}</div>'
         else:
             body = '<div class="office-empty">배정된 AI 없음</div>'
@@ -1062,6 +1204,189 @@ def _short_path(pattern: str) -> str:
     return f"{tail}/" if pattern.rstrip().endswith("/") else tail
 
 
+def _live_html(job: dict[str, Any] | None, panel: bool = False) -> str:
+    """The Korean progress block for a running job.
+
+    Renders nothing at all when there is no job - including on the static
+    page, which has no server behind it and therefore no live state to read.
+    Inventing one there would be the same lie as a button that cannot post.
+    """
+    if not job:
+        return ""
+    progress = job.get("progress") or {}
+    phase = str(progress.get("phase", ""))
+    if not phase:
+        return ""
+
+    done = bool(progress.get("done"))
+    exit_code = progress.get("exit_code")
+    tone = ""
+    if done:
+        tone = " live--done" if exit_code == 0 else " live--failed"
+    where = " live--panel" if panel else ""
+    dots = "" if done else ' <span class="live-dots" aria-hidden="true"></span>'
+
+    elapsed = str(progress.get("elapsed", ""))
+    elapsed_html = (f'<span class="live-elapsed">{e(elapsed)} 경과</span>'
+                    if elapsed else "")
+
+    what = str(progress.get("action_label", ""))
+    arg = str(job.get("arg", ""))
+    if arg:
+        what = f"{what} · {arg}" if what else arg
+
+    evidence = str(progress.get("evidence", ""))
+    evidence_html = (f'<div class="live-evidence mono">{e(evidence)}</div>'
+                     if evidence else "")
+
+    # Said out loud rather than left to be discovered: run_pipeline prints its
+    # step results only after Unity returns, so a build genuinely shows
+    # nothing for a long time. Without this line the page looks hung.
+    note = ""
+    if progress.get("slow") and not done:
+        note = ('<div class="live-note">이 단계는 외부 프로그램이 끝날 때까지 '
+                '출력이 나오지 않습니다. 멈춘 것이 아닙니다.</div>')
+
+    return f"""<div class="live{tone}{where}" aria-live="polite">
+            <div class="live-top">
+              <span class="live-phase">{e(phase)}{dots}</span>
+              {elapsed_html}
+            </div>
+            <div class="live-what">{e(what)}</div>
+            {evidence_html}
+            {note}
+          </div>"""
+
+
+QUEUE_STATUSES = ("in_progress", "todo")
+
+# Owner id -> the name shown on the queue lane. An owner not listed here still
+# gets a lane, titled with its raw id, rather than having its work disappear.
+OWNER_LABEL = {"claude": "Claude", "codex": "Codex"}
+
+
+def _queue_item(index: int, task: dict[str, Any], served: bool,
+                unmet: list[str], live: dict[str, Any] | None) -> str:
+    running = live is not None
+    status = str(task.get("status", "todo"))
+    if running:
+        kind, seat = "q-item--running", "▶"
+    elif unmet:
+        kind, seat = "q-item--waiting-deps", "!"
+    else:
+        kind, seat = "q-item--waiting", str(index)
+
+    if running:
+        label, css = "진행 중", "s-in_progress"
+    elif unmet:
+        label, css = "선행 작업 대기", "s-blocked-tag"
+    elif status == "in_progress":
+        # The board says a run started and nothing on this machine is running
+        # it. That is a stale record, not work in flight - say which it is.
+        label, css = "기록만 진행 중", "s-review"
+    else:
+        label, css = "대기", "s-todo"
+
+    deps = ""
+    if unmet:
+        ids = ", ".join(f"<code>{e(d)}</code>" for d in unmet)
+        deps = f'<div class="q-deps">선행 작업: {ids}</div>'
+
+    action = ""
+    if served and task.get("owner") == "codex" and not running:
+        # data-blocked is what lock() reads to keep a button disabled when the
+        # panel re-enables the rest, so it has to travel with disabled.
+        disabled = ' disabled data-blocked="true"' if unmet else ""
+        button = "작업 시작" if status == "todo" else "다시 실행"
+        action = (f'<div class="q-act"><button class="btn" type="button" '
+                  f'data-act="team-run" data-arg-value="{e(task.get("id", ""))}"'
+                  f'{disabled}>{button}</button></div>')
+
+    return f"""        <div class="q-item {kind}">
+          <span class="q-seat" aria-hidden="true">{e(seat)}</span>
+          <div class="q-head">
+            <span class="q-title" title="{e(task.get('title', ''))}">{e(task_title(task))}</span>
+            <span class="tag {css}">{e(label)}</span>
+          </div>
+          <div class="q-id mono">{e(task.get('id', ''))}</div>
+          {deps}{_live_html(live)}{action}
+        </div>"""
+
+
+def _queue_html(tasks: list[dict[str, Any]], unmet_by_id: dict[str, list[str]],
+                served: bool, live_job: dict[str, Any] | None) -> str:
+    """Who is working on what, and what is next in line.
+
+    Deliberately not the same list as the board section. Done and review are
+    left out: review means a human owes it a look, which is not queue work,
+    and a queue that includes finished items stops answering "what is next".
+    """
+    running_id = ""
+    if live_job and live_job.get("action") == "team-run":
+        running_id = str(live_job.get("arg", ""))
+
+    by_owner: dict[str, list[dict[str, Any]]] = {}
+    for task in tasks:
+        if str(task.get("status", "")) in QUEUE_STATUSES:
+            by_owner.setdefault(str(task.get("owner", "기타")), []).append(task)
+
+    if not by_owner:
+        return ('<div class="q-lane"><div class="q-empty">'
+                '대기 중인 작업이 없습니다. 작업판의 모든 항목이 완료 또는 검토 상태입니다.'
+                '</div></div>')
+
+    lanes = []
+    for owner in sorted(by_owner, key=lambda o: (o != "codex", o)):
+        owned = by_owner[owner]
+        # Running first, then runnable in board order, then dependency-blocked.
+        def rank(task: dict[str, Any]) -> tuple[int, int]:
+            task_id = str(task.get("id", ""))
+            if task_id == running_id:
+                return (0, 0)
+            return (2 if unmet_by_id.get(task_id) else 1, owned.index(task))
+
+        ordered = sorted(owned, key=rank)
+
+        running = held = waiting = 0
+        rows = []
+        for task in ordered:
+            task_id = str(task.get("id", ""))
+            is_running = task_id == running_id
+            unmet = unmet_by_id.get(task_id, [])
+            if is_running:
+                running += 1
+            elif unmet:
+                held += 1
+            else:
+                waiting += 1
+            # The seat number counts only what is actually queued, so the
+            # first runnable task is 1 whether or not something is running.
+            rows.append(_queue_item(waiting, task, served, unmet,
+                                    live_job if is_running else None))
+
+        tally = f"대기 {waiting}"
+        if held:
+            tally += f" · 선행 대기 {held}"
+        if running:
+            tally = f"진행 중 {running} · " + tally
+        lanes.append(f"""      <div class="q-lane">
+        <h3>{e(OWNER_LABEL.get(owner, owner))}<span class="q-tally">{e(tally)}</span></h3>
+{chr(10).join(rows)}
+      </div>""")
+    return chr(10).join(lanes)
+
+
+def task_title(task: dict[str, Any]) -> str:
+    """The title the page shows: Korean when the board has one.
+
+    The board's `title` is what Codex is prompted with and stays English; the
+    page is read by a Korean speaker and was the one place on it still in
+    English. Falls back to `title` so a task without a translation is never
+    blank.
+    """
+    return str(task.get("title_ko") or task.get("title") or task.get("id") or "")
+
+
 def _task_row(task: dict[str, Any], served: bool = False,
               unmet_dependencies: list[str] | None = None) -> str:
     status = str(task.get("status", "todo"))
@@ -1088,14 +1413,103 @@ def _task_row(task: dict[str, Any], served: bool = False,
                   f'<button class="btn task-run" type="button" data-act="team-run" '
                   f'data-arg-value="{e(task.get("id", ""))}"{disabled}>'
                   f'{button_label}</button>{blockers}</div>')
+    original = str(task.get("title", ""))
+    hover = f' title="{e(original)}"' if task.get("title_ko") and original else ""
     return f"""        <div class="task">
           <div class="t">
-            <span class="title">{e(task.get('title', ''))}</span>
+            <span class="title"{hover}>{e(task_title(task))}</span>
             <span class="tag {css}">{e(label)}</span>
           </div>
           <div class="id mono">{e(task.get('id', ''))}</div>
           <div class="files mono">{e(files)}</div>{action}
         </div>"""
+
+
+SYNC_OUTCOME_LABEL = {
+    "OK": ("동기화됨", "ok"),
+    "UP-TO-DATE": ("최신 상태", "ok"),
+    "BLOCKED": ("머지 보류", "blocked"),
+    "FAILED": ("실패", "blocked"),
+}
+
+RUN_OUTCOME_LABEL = {
+    "OK": ("성공", "ok"),
+    "FAILED": ("실패", "blocked"),
+    "RAISED": ("예외 발생", "blocked"),
+    "UNKNOWN": ("확인 불가", "unknown"),
+}
+
+
+def _kv(label: str, value_html: str) -> str:
+    return (f'<div class="kv"><span class="k">{e(label)}</span>'
+            f'<span class="v">{value_html}</span></div>')
+
+
+def _link_panel_sync(status: dict[str, str]) -> str:
+    """How the PC's scheduled sync is doing, from the file it commits.
+
+    The sync used to fail silently: its log is gitignored, so a dirty tracked
+    file could freeze every merge for a day and nothing on this page moved.
+    Now it commits its outcome, and this is where that lands.
+    """
+    if not status:
+        body = _kv("상태", '<span style="color:var(--unknown)">확인 불가</span>')
+        body += ('<div class="kv-note">Reports/sync-status/latest.txt 가 없습니다. '
+                 'PC의 sync-and-run.ps1 이 이 파일을 쓰기 전이거나, 예약 작업이 돌지 않았습니다.</div>')
+        return f'<div class="panel"><h3>PC 자동 동기화</h3>{body}</div>'
+
+    outcome = status.get("Outcome", "")
+    label, tone = SYNC_OUTCOME_LABEL.get(outcome, (outcome or "확인 불가", "unknown"))
+    body = _kv("상태", f'<span class="big" style="color:var(--{tone})">{e(label)}</span>')
+
+    age = hours_since(status.get("Generated", ""))
+    stale = age is not None and age > SYNC_STALE_HOURS
+    when = e(status.get("Generated", "") or "없음")
+    if stale:
+        when += f' <span style="color:var(--blocked)">· {age:.0f}시간 전</span>'
+    body += _kv("마지막 실행", f'<span class="mono">{when}</span>')
+    body += _kv("마지막 성공", f'<span class="mono">{e(status.get("Last-Success", "") or "없음")}</span>')
+
+    local, upstream = status.get("Local-Head", ""), status.get("Upstream-Head", "")
+    if local and upstream:
+        behind = local != upstream
+        heads = f'PC {e(local)} · Claude {e(upstream)}'
+        if behind:
+            heads += ' <span style="color:var(--gate)">· 다름</span>'
+        body += _kv("커밋", f'<span class="mono">{heads}</span>')
+
+    reason = status.get("Reason", "")
+    if tone == "blocked" and reason:
+        body += f'<div class="kv-note" style="color:var(--blocked)">{e(reason[:400])}</div>'
+    if stale:
+        body += ('<div class="kv-note" style="color:var(--blocked)">15분마다 돌아야 하는 예약 작업이 '
+                 f'{age:.0f}시간 동안 상태를 남기지 않았습니다. 작업 스케줄러에서 등록 상태를 확인하세요.</div>')
+    return f'<div class="panel"><h3>PC 자동 동기화</h3>{body}</div>'
+
+
+def _link_panel_run(run: dict[str, str]) -> str:
+    """The last orchestrator command that ran on the PC, from Reports/runs/."""
+    if not run:
+        body = _kv("상태", '<span style="color:var(--unknown)">확인 불가</span>')
+        body += ('<div class="kv-note">Reports/runs/latest.txt 가 없습니다. 오케스트레이터가 '
+                 '이 기록을 남기는 버전으로 아직 실행되지 않았습니다.</div>')
+        return f'<div class="panel"><h3>마지막 오케스트레이터 실행</h3>{body}</div>'
+
+    outcome = run.get("Outcome", "")
+    label, tone = RUN_OUTCOME_LABEL.get(outcome, (outcome or "확인 불가", "unknown"))
+    body = _kv("결과", f'<span class="big" style="color:var(--{tone})">{e(label)}</span>')
+    body += _kv("명령", f'<span class="mono">{e(run.get("Command", "") or "?")}</span>')
+    body += _kv("실행 시각", f'<span class="mono">{e(run.get("Generated", "") or "없음")}</span>')
+    detail = " · ".join(x for x in (
+        f'종료 코드 {run["Exit"]}' if run.get("Exit") not in (None, "", "-") else "",
+        run.get("Duration", ""),
+    ) if x)
+    if detail:
+        body += _kv("상세", f'<span class="mono">{e(detail)}</span>')
+    if tone == "blocked":
+        body += ('<div class="kv-note">전체 출력은 Reports/runs/latest.txt 에 있습니다. '
+                 'Claude가 포크에서 직접 읽으므로 붙여넣을 필요가 없습니다.</div>')
+    return f'<div class="panel"><h3>마지막 오케스트레이터 실행</h3>{body}</div>'
 
 
 def _gallery_html(groups: list[dict[str, Any]]) -> str:
@@ -1171,7 +1585,8 @@ def _art_plan_html(plan: dict[str, Any]) -> str:
     return f'<div class="panel"><div class="plan">{"".join(rows)}</div></div>'
 
 
-def _control_html(snapshot: Snapshot, token: str) -> str:
+def _control_html(snapshot: Snapshot, token: str,
+                  live_job: dict[str, Any] | None = None) -> str:
     """The action panel. Rendered ONLY when a local server is behind it.
 
     A static copy of this page - the one written to Reports/ or published as an
@@ -1181,12 +1596,16 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
     codex_open = [t for t in snapshot.tasks
                   if t.get("owner") == "codex" and t.get("status") in ("todo", "in_progress")]
     task_options = "".join(
-        f'<option value="{e(t["id"])}">{e(t["id"])} · {e(t.get("title", ""))}</option>'
+        f'<option value="{e(t["id"])}">{e(t["id"])} · {e(task_title(t))}</option>'
         for t in codex_open) or '<option value="">넘길 작업이 없습니다</option>'
 
     game_options = "".join(
         f'<option value="{e(g["id"])}">{e(g["id"])}</option>'
         for g in snapshot.games if g["spec"]) or '<option value="">GameSpec 없음</option>'
+
+    # Rendered server-side as well as by the poller: reloading the page during
+    # a run must not blank the phase until the first fetch comes back.
+    live_panel = _live_html(live_job, panel=True)
 
     return f"""  <section>
     <div class="head">
@@ -1208,6 +1627,7 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
         <button class="btn ghost" data-act="dashboard">새로고침</button>
         <span id="busy"></span>
       </div>
+      <div id="live">{live_panel}</div>
       <pre class="term" id="term" aria-live="polite"></pre>
     </div>
   </section>
@@ -1217,13 +1637,41 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
     const TOKEN = {json.dumps(token)};
     const term = document.getElementById('term');
     const busy = document.getElementById('busy');
+    const live = document.getElementById('live');
     const buttons = [...document.querySelectorAll('.btn[data-act]')];
     let poll = null;
 
     function lock(on, label) {{
       buttons.forEach(b => {{ b.disabled = on || b.dataset.blocked === 'true'; }});
       busy.className = on ? 'running' : '';
-      busy.textContent = on ? (label + ' 실행 중') : '';
+      // The label is the button's own text, which already reads '...실행';
+      // appending '실행 중' to it produced 'Codex 실행 실행 중'.
+      busy.textContent = on ? (label || '작업') : '';
+    }}
+
+    const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g,
+      c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]));
+
+    // Mirrors _live_html in dashboard.py. Every phrase still comes from the
+    // server's summariser - this only decides where it sits on the page.
+    function showLive(data) {{
+      const p = (data && data.progress) || null;
+      if (!p || !p.phase) {{ live.innerHTML = ''; return; }}
+      const tone = p.done ? (p.exit_code === 0 ? ' live--done' : ' live--failed') : '';
+      const dots = p.done ? '' : ' <span class="live-dots" aria-hidden="true"></span>';
+      const what = [p.action_label, data.arg].filter(Boolean).join(' · ');
+      const note = (p.slow && !p.done)
+        ? '<div class="live-note">이 단계는 외부 프로그램이 끝날 때까지 출력이 나오지 않습니다. 멈춘 것이 아닙니다.</div>'
+        : '';
+      live.innerHTML =
+        '<div class="live live--panel' + tone + '" aria-live="polite">' +
+          '<div class="live-top"><span class="live-phase">' + esc(p.phase) + dots + '</span>' +
+          (p.elapsed ? '<span class="live-elapsed">' + esc(p.elapsed) + ' 경과</span>' : '') +
+          '</div>' +
+          '<div class="live-what">' + esc(what) + '</div>' +
+          (p.evidence ? '<div class="live-evidence mono">' + esc(p.evidence) + '</div>' : '') +
+          note +
+        '</div>';
     }}
 
     async function start(button) {{
@@ -1235,6 +1683,7 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
       if ((argId || hasDirectArg) && !arg) {{ term.textContent = '선택할 항목이 없습니다.'; return; }}
 
       term.textContent = '';
+      live.innerHTML = '';
       lock(true, button.textContent);
       try {{
         const res = await fetch('/run', {{
@@ -1244,6 +1693,7 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
         }});
         const data = await res.json();
         if (!res.ok) {{ term.textContent = '거부됨: ' + (data.error || res.status); lock(false); return; }}
+        showLive(data);
         watch(data.job, button.textContent);
       }} catch (err) {{
         term.textContent = '서버에 연결할 수 없습니다: ' + err;
@@ -1257,6 +1707,7 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
         try {{
           const res = await fetch('/log?job=' + encodeURIComponent(job));
           const data = await res.json();
+          showLive(data);
           term.textContent = data.output || '(출력 없음)';
           term.scrollTop = term.scrollHeight;
           if (data.done) {{
@@ -1284,17 +1735,37 @@ def _control_html(snapshot: Snapshot, token: str) -> str:
 """
 
 
-def render(snapshot: Snapshot, control_token: str | None = None) -> str:
+def render(snapshot: Snapshot, control_token: str | None = None,
+           live_job: dict[str, Any] | None = None) -> str:
+    """Draw the page. `live_job` is a running job's snapshot, or None.
+
+    Only the served page ever gets one - the static file has no server behind
+    it, so it renders the committed evidence alone rather than a fabricated
+    running state.
+    """
+    # One guard rather than a check at every use: a page with no server behind
+    # it has no live state to read, and the file written to Reports/ or
+    # published as an Artifact must never carry a running state that was true
+    # only at the moment it was written.
+    if control_token is None:
+        live_job = None
+
     counts = {state: sum(1 for a in snapshot.agents if a.state == state)
               for state in (READY, GATED, BLOCKED, UNKNOWN)}
 
-    office = _office_html(snapshot.agents)
+    working_prefix = (progress_mod.agent_prefix_for(str(live_job.get("action", "")))
+                      if live_job and not (live_job.get("progress") or {}).get("done")
+                      else "")
+    office = _office_html(snapshot.agents, working_prefix)
     roster = "\n".join(_agent_row(agent) for agent in snapshot.agents)
 
     task_models = [Task.from_dict(task) for task in snapshot.tasks]
     task_board = TaskBoard(path=Path(), tasks=task_models)
     unmet_by_id = {task.id: task_board.unmet_dependencies(task)
                    for task in task_models if task.owner == "codex" and task.status != "done"}
+
+    queue = _queue_html(snapshot.tasks, unmet_by_id,
+                        served=control_token is not None, live_job=live_job)
 
     lanes = []
     for owner, label in (("claude", "Claude"), ("codex", "Codex")):
@@ -1372,7 +1843,8 @@ def render(snapshot: Snapshot, control_token: str | None = None) -> str:
     hardware = snapshot.profile.get("hardware", {})
     unity = snapshot.profile.get("unity", {})
 
-    control = _control_html(snapshot, control_token) if control_token else ""
+    control = (_control_html(snapshot, control_token, live_job)
+               if control_token else "")
     shot_count = sum(len(g["items"]) for g in snapshot.gallery)
 
     plan = snapshot.art_plan
@@ -1426,6 +1898,27 @@ def render(snapshot: Snapshot, control_token: str | None = None) -> str:
     </div>
     <div class="roster">
 {roster}
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>작업 대기열</h2>
+      <span class="note">진행 중과 대기만 · 완료와 검토는 아래 작업판에 있습니다</span>
+    </div>
+    <div class="queue">
+{queue}
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <h2>PC 연결</h2>
+      <span class="note">이 두 파일이 PC에서 Claude로 오는 유일한 통로입니다 · 없으면 확인 불가</span>
+    </div>
+    <div class="grid2">
+      {_link_panel_sync(snapshot.sync_status)}
+      {_link_panel_run(snapshot.last_run)}
     </div>
   </section>
 

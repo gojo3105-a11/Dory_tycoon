@@ -40,12 +40,14 @@ import secrets
 import subprocess
 import sys
 import threading
+import time
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
 from company.orchestrator import dashboard as dash
+from company.orchestrator import progress as prog
 from company.orchestrator.teamwork import TaskBoard
 
 LOOPBACK = "127.0.0.1"
@@ -104,9 +106,14 @@ class Job:
     id: str
     action: str
     argv: list[str]
+    arg: str = ""
     output: str = ""
     done: bool = False
     exit_code: int | None = None
+    # monotonic, so a clock adjustment mid-build cannot produce a negative
+    # elapsed time or a sudden jump in the page.
+    started: float = field(default_factory=time.monotonic)
+    finished: float | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     def append(self, text: str) -> None:
@@ -116,10 +123,20 @@ class Job:
                 # Keep the tail: the failure is at the end of a build log.
                 self.output = "...(앞부분 생략)...\n" + self.output[-MAX_LOG_CHARS:]
 
+    def elapsed(self) -> float:
+        end = self.finished if self.finished is not None else time.monotonic()
+        return end - self.started
+
     def snapshot(self) -> dict[str, Any]:
         with self.lock:
-            return {"job": self.id, "action": self.action, "output": self.output,
-                    "done": self.done, "exit_code": self.exit_code}
+            # Derived here rather than in the browser so the rule that every
+            # phrase is anchored to a printed line lives with the code that
+            # can be tested, not in a script tag.
+            summary = prog.summarise(self.action, self.output, self.elapsed(),
+                                     done=self.done, exit_code=self.exit_code)
+            return {"job": self.id, "action": self.action, "arg": self.arg,
+                    "output": self.output, "done": self.done,
+                    "exit_code": self.exit_code, "progress": summary.as_dict()}
 
 
 class Runner:
@@ -165,7 +182,7 @@ class Runner:
             if self.current is not None and not self.current.done:
                 return None, f"이미 '{self.current.action}' 이 실행 중입니다. 끝나면 다시 누르세요."
 
-            job = Job(id=secrets.token_hex(8), action=name,
+            job = Job(id=secrets.token_hex(8), action=name, arg=arg,
                       argv=action.build(self.repo_root, arg))
             self.current = job
 
@@ -191,6 +208,7 @@ class Runner:
             job.append(f"실행할 수 없습니다: {exc}\n")
             with job.lock:
                 job.done, job.exit_code = True, -1
+                job.finished = time.monotonic()
             return
 
         def reap() -> None:
@@ -214,6 +232,9 @@ class Runner:
 
         with job.lock:
             job.done, job.exit_code = True, code
+            # Frozen here so a finished run keeps reporting how long it took
+            # instead of counting up forever while the page is still open.
+            job.finished = time.monotonic()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -268,7 +289,12 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path in ("/", "/index.html"):
             snapshot = dash.collect(self.runner.repo_root)
-            page = dash.render(snapshot, control_token=self.token)
+            # Read-only: the renderer is handed the current job so the page
+            # agrees with itself about who is working. Nothing in a request
+            # can set or clear it - only start() creates one.
+            live = self.runner.current
+            page = dash.render(snapshot, control_token=self.token,
+                               live_job=live.snapshot() if live else None)
             self._send(200, dash.standalone(page).encode("utf-8"),
                        "text/html; charset=utf-8")
             return
