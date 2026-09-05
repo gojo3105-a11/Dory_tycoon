@@ -226,6 +226,51 @@ class RunTaskTests(RepoTestCase):
         self.assertEqual(BLOCKED, reloaded.get("T1").status)
         self.assertIn("quota exhausted", " ".join(reloaded.get("T1").notes))
 
+    def test_work_committed_mid_run_is_not_read_as_changed_nothing(self):
+        """The CODEX-TESTCMD1 case: a commit landed while Codex worked.
+
+        The edits left the working tree, after-minus-before came back empty,
+        and a finished task was reported BLOCKED - "the run changed nothing".
+        """
+        class CommitsWhileWorking:
+            def __init__(self, repo):
+                self.repo = repo
+
+            def implement(self, prompt, timeout_seconds=None):
+                target = self.repo / "src" / "allowed.cs"
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("// codex did the work\n", encoding="utf-8")
+                # A person, or the scheduled sync, commits mid-run.
+                git(self.repo, "add", "-A")
+                git(self.repo, "commit", "-qm", "background commit during the run")
+
+                class Result:
+                    last_message = "done"
+                    output_path = None
+                return Result()
+
+        run = run_task(self.board, "T1", CommitsWhileWorking(self.repo), self.repo)
+
+        self.assertTrue(run.ok)
+        self.assertEqual(REVIEW, self.board.get("T1").status)
+        self.assertIn("src/allowed.cs", run.committed_during_run)
+        note = self.board.get("T1").notes[-1]
+        self.assertIn("COMMITTED while", note)
+        self.assertIn("src/allowed.cs", note)
+
+    def test_a_run_that_truly_changed_nothing_is_still_blocked(self):
+        class DoesNothing:
+            def implement(self, prompt, timeout_seconds=None):
+                class Result:
+                    last_message = "already done"
+                    output_path = None
+                return Result()
+
+        run = run_task(self.board, "T1", DoesNothing(), self.repo)
+        self.assertFalse(run.ok)
+        self.assertEqual(BLOCKED, self.board.get("T1").status)
+        self.assertEqual([], run.committed_during_run)
+
     def test_ctrl_c_does_not_leave_the_task_claiming_to_be_in_progress(self):
         # KeyboardInterrupt is a BaseException, so a narrower catch missed it
         # and CODEX-AICTL1 sat at in_progress with nothing running.

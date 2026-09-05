@@ -221,6 +221,34 @@ def dirty_paths_or_none(repo_root: Path) -> set[str] | None:
         return None
 
 
+def head_commit(repo_root: Path) -> str:
+    """The current commit, or '' when git cannot answer.
+
+    Used to notice that something COMMITTED during a run - see run_task.
+    """
+    try:
+        completed = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=str(repo_root), capture_output=True,
+            text=True, check=True, encoding="utf-8", errors="replace")
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+    return completed.stdout.strip()
+
+
+def paths_between(repo_root: Path, before: str, after: str) -> list[str]:
+    """Files changed by the commits made between two revisions."""
+    if not before or not after or before == after:
+        return []
+    try:
+        completed = subprocess.run(
+            ["git", "diff", "--name-only", f"{before}..{after}"], cwd=str(repo_root),
+            capture_output=True, text=True, check=True, encoding="utf-8",
+            errors="replace")
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    return sorted(line.strip() for line in completed.stdout.splitlines() if line.strip())
+
+
 def changed_paths(repo_root: Path) -> set[str]:
     """Every path git sees as modified, added, deleted or untracked.
 
@@ -384,6 +412,9 @@ class TaskRun:
     # Tool-rewritten files that changed during the run (see TOOL_OWNED_PATHS).
     # Not the agent's doing and not a reason to block, but not hidden either.
     tool_churn: list[str] = field(default_factory=list)
+    # Files that were COMMITTED while the run was in flight - by the scheduled
+    # sync, or by a person. The work is real; it just left the working tree.
+    committed_during_run: list[str] = field(default_factory=list)
 
 
 def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
@@ -421,6 +452,13 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
     # Codex editing the board DURING its run still shows up here, is still
     # outside every allowlist, and still blocks - which is what should happen.
     before = changed_paths(repo_root)
+    # A commit made WHILE the run works moves its edits out of the working
+    # tree, so the after-minus-before diff comes back empty and the run reads
+    # as "changed nothing". That is what happened to CODEX-TESTCMD1 on
+    # 2026-09-05: Codex did the whole task, a commit landed mid-run, and the
+    # result was reported BLOCKED. Remembering HEAD is what tells the two
+    # apart - a run that did nothing from one whose work was carried off.
+    head_before = head_commit(repo_root)
 
     try:
         result = codex.implement(build_prompt(task, board, repo_root),
@@ -451,7 +489,14 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
     changed = [p for p in introduced if not is_tool_owned(p)]
     outside = sorted(p for p in changed if not task.covers(p))
 
-    task.changed_files = changed
+    # Deliberately NOT run through the allowlist check: a commit made during
+    # the run can carry anyone's work, so blaming this task for what is in it
+    # would be a guess. It is enough to know the tree did not stay still.
+    committed = [p for p in paths_between(repo_root, head_before,
+                                          head_commit(repo_root))
+                 if not is_tool_owned(p)]
+
+    task.changed_files = changed or committed
     task.last_run = str(result.output_path) if result.output_path else ""
     task.notes = list(task.notes)
 
@@ -465,6 +510,22 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
         return TaskRun(task=task, ok=False, changed=changed, outside_allowlist=outside,
                        summary=result.last_message, output_path=result.output_path,
                        tool_churn=tool_churn)
+
+    if not changed and committed:
+        # The tree is clean but commits landed while the run worked. Its edits
+        # are in them. Report it as review with the commit named, rather than
+        # as "changed nothing" - which is what threw away a finished task once.
+        task.status = REVIEW
+        task.notes.append(
+            "REVIEW: the working tree is clean, but these were COMMITTED while "
+            "the run was in flight, so its edits are in that commit rather than "
+            "in the tree: " + ", ".join(committed[:12])
+            + ("..." if len(committed) > 12 else "")
+            + ". Check that commit before re-running - the work may already be done.")
+        board.save()
+        return TaskRun(task=task, ok=True, changed=[], outside_allowlist=[],
+                       summary=result.last_message, output_path=result.output_path,
+                       tool_churn=tool_churn, committed_during_run=committed)
 
     if not changed:
         # Codex answering without editing anything is a real outcome - usually
@@ -482,4 +543,4 @@ def run_task(board: TaskBoard, task_id: str, codex: Any, repo_root: Path,
     board.save()
     return TaskRun(task=task, ok=True, changed=changed, outside_allowlist=[],
                    summary=result.last_message, output_path=result.output_path,
-                   tool_churn=tool_churn)
+                   tool_churn=tool_churn, committed_during_run=committed)

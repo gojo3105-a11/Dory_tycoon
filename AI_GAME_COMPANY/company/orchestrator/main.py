@@ -340,6 +340,14 @@ def cmd_team(args: argparse.Namespace) -> int:
         print(f"  {path}")
     if not run.changed:
         print("  (none)")
+    if run.committed_during_run:
+        # Named explicitly: this is the difference between "the run did
+        # nothing" and "something committed the run's work while it worked".
+        print("\n--- committed by something else DURING this run ---")
+        for path in run.committed_during_run:
+            print(f"  {path}")
+        print("  The run's edits may be in that commit. Check it before re-running.")
+
     if run.tool_churn:
         # Reported, not blamed: Unity rewrote these while Codex worked.
         print("\n--- rewritten by tools during the run (not counted against the task) ---")

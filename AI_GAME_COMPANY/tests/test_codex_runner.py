@@ -258,9 +258,14 @@ class BinaryResolutionTests(RunnerTestCase):
     def test_ignores_a_recorded_path_that_is_not_there(self):
         # The profile is written on the build PC, so its Windows paths do not
         # exist in a Linux container - falling through to PATH is correct.
+        recorded = r"C:\Users\someone\AppData\codex.cmd"
         resolved = CodexRunner.resolve_binary(
-            self.profile(status="OK", path=r"C:\Users\someone\AppData\codex.cmd"))
-        self.assertNotIn("C:\\", resolved)
+            self.profile(status="OK", path=recorded))
+        # Asserted as "not the recorded path", NOT as "contains no drive
+        # letter": ON THE BUILD PC the correct fallback is itself a C:\ path,
+        # so the old wording failed there and only there. A suite that is red
+        # on the one machine that matters teaches people to ignore it.
+        self.assertNotEqual(recorded, resolved)
 
     def test_ignores_a_recorded_path_when_the_probe_did_not_pass(self):
         shim = self.root / "codex.cmd"
