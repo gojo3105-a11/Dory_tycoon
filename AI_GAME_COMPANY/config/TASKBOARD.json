@@ -5,7 +5,6 @@
     {
       "id": "CLAUDE-UI1",
       "title": "Casual/Korean UI layout in SceneGenerator",
-      "title_ko": "SceneGenerator 캐주얼·한국어 UI 레이아웃",
       "owner": "claude",
       "status": "review",
       "goal": "Rebuild the title, HUD, game-over, pause and shop screens in SceneGenerator to match the approved casual direction: cream cards with a thick brown outline, Korean labels, one primary green button per screen.",
@@ -28,12 +27,12 @@
         "Verified from the fork's committed reports 2026-09-02 20:25: generate/validate/build all exit 0, APK Builds/game01/APK/Game01_FactoryRunner_v1.0.apk 17.32 MB sha256:7F81E6F18E29EA94, and 0 compile errors / 0 obsolete-API warnings / 0 runtime exceptions / 0 build failures. Still REVIEW for one reason only: nobody has looked at the Korean text on a device yet."
       ],
       "changed_files": [],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "SceneGenerator 캐주얼·한국어 UI 레이아웃"
     },
     {
       "id": "CLAUDE-ECON",
       "title": "Split distance from coins in the economy",
-      "title_ko": "경제 분리: 거리 점수와 코인",
       "owner": "claude",
       "status": "done",
       "goal": "Score was the coin count and there was no distance metric at all. Score is now distance in metres (RunnerDistanceTracker), coins are the shop currency, and game over pays out coins rather than score.",
@@ -51,12 +50,12 @@
         "Verified 2026-09-02: orchestrator build compiled it and PlayMode reported total=11 failed=0. Five of those eleven are CODEX-TEST1's and exercise this change directly - including that game-over pays out Coins and not Score, which was the whole point."
       ],
       "changed_files": [],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "경제 분리: 거리 점수와 코인"
     },
     {
       "id": "CODEX-ART1",
       "title": "Map the four Kenney button colours",
-      "title_ko": "Kenney 버튼 4색 매핑",
       "owner": "codex",
       "status": "review",
       "goal": "The UI only has one button sprite (blue). The casual design needs green for the primary action, yellow for the shop, red for close and grey for secondary/disabled. Add the four colour variants from the already-approved kenney-ui-pack to the art mapping, and give each one its 9-slice border in SharedArtImporter so the outline keeps its thickness at any button size.",
@@ -84,12 +83,12 @@
         "AI_GAME_COMPANY/config/art-mapping.json",
         "Assets/GameFactory/Editor/SharedArtImporter.cs"
       ],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "Kenney 버튼 4색 매핑"
     },
     {
       "id": "CODEX-TEST1",
       "title": "PlayMode tests for the distance/coin split",
-      "title_ko": "거리/코인 분리 PlayMode 테스트",
       "owner": "codex",
       "status": "done",
       "goal": "GameManager just grew a second currency-like counter and a monotonic SetScore. The existing PlayMode tests only cover AddScore. Add tests that pin the new behaviour so a later refactor cannot quietly put distance back into the currency payout.",
@@ -114,12 +113,12 @@
       "changed_files": [
         "Assets/GameFactory/Tests/PlayMode/FactoryRunnerPlayModeTests.cs"
       ],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "거리/코인 분리 PlayMode 테스트"
     },
     {
       "id": "CODEX-ANIM1",
       "title": "Give the character arms and legs that move",
-      "title_ko": "캐릭터 팔다리 움직임",
       "owner": "codex",
       "status": "todo",
       "goal": "The character is one sprite with squash/stretch and a bob. The user asked whether the arms and legs move - they do not. Add procedural limbs that run while grounded and hold a pose in the air, driven from the existing RunnerCharacterMotion so no new Update loop is introduced.",
@@ -140,12 +139,12 @@
         "Keep it subtle. This is a 136x192 sprite on a phone; limbs that swing far read as broken, not lively."
       ],
       "changed_files": [],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "캐릭터 팔다리 움직임"
     },
     {
       "id": "CODEX-GEMINI1",
       "title": "Gemini design adapter (free tier only, never escalates)",
-      "title_ko": "Gemini 디자인 어댑터 (무료 등급 전용)",
       "owner": "codex",
       "status": "review",
       "goal": "Add company/orchestrator/gemini_client.py so design work can be requested from Gemini's free tier. Model it on the two adapters already in this repo - ollama_client.py and codex_runner.py - which enforce their cost rules in code rather than in prose. Text prompts return text; image prompts return PNG bytes the caller writes under AI_GAME_COMPANY/generated/.",
@@ -173,12 +172,12 @@
         "2026-09-02 RUN: done and committed as e1ade1b, in the same commit as CODEX-OFFICE1 and CODEX-OLLAMA1. Status set BY HAND for the same reason - the codex_runner bug left the board stale. Verified from the commit: the key is read only through the env var named by policy gemini_api_key_env, key_status reports PRESENT/ABSENT and never a value, allow_gemini_design raises PolicyViolation before any request, a model outside gemini_free_tier_models raises GeminiModelNotAllowed, 429 raises GeminiLimited with no retry against another model or tier, and the transport is injectable urllib with no new dependency. test_gemini_client.py: 17 tests, all pass. REVIEW, not DONE - no key exists yet (initial_gemini_login is still an open HUMAN_GATE), so not one line of this has spoken to Google. The free tier itself is still unconfirmed from a first-party source: ai.google.dev is blocked by this container's egress proxy."
       ],
       "changed_files": [],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "Gemini 디자인 어댑터 (무료 등급 전용)"
     },
     {
       "id": "CODEX-OFFICE1",
       "title": "Department office view on the dashboard",
-      "title_ko": "대시보드 부서 사무실 뷰",
       "owner": "codex",
       "status": "review",
       "goal": "Add one section to the dashboard that draws the connected AI as characters sitting in company departments, where each character's movement encodes that AI's real status. docs/OFFICE_VIEW_SPEC.md is the specification - read it first and follow it; it fixes the department mapping, the status-to-behaviour table and the constraints.",
@@ -218,14 +217,14 @@
         "AI_GAME_COMPANY/tests/test_dashboard.py",
         "Reports/dashboard.html"
       ],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "대시보드 부서 사무실 뷰"
     },
     {
       "id": "CODEX-BG1",
       "title": "ParallaxBackground so the level can have background art",
-      "title_ko": "ParallaxBackground 배경 아트 레이어",
       "owner": "codex",
-      "status": "todo",
+      "status": "review",
       "goal": "The level has no background art at all - just a generated sky gradient. The approved kenney-background-elements-remastered pack cannot be used because nothing scrolls a background layer yet. Add that component so the art becomes a file copy afterwards.",
       "files": [
         "Assets/GameFactory/Gameplay/Runner/ParallaxBackground.cs"
@@ -245,13 +244,15 @@
         "Read Assets/GameFactory/Gameplay/Runner/GroundSpawner.cs first - it already solves the recycle-when-passed problem for ground tiles and the same idiom should be used here rather than a new one.",
         "The camera is orthographic with orthographicSize 5 and follows the player on X only (CameraFollow2D)."
       ],
-      "changed_files": [],
-      "last_run": ""
+      "changed_files": [
+        "Assets/GameFactory/Gameplay/Runner/ParallaxBackground.cs"
+      ],
+      "last_run": "C:\\Dory_tycoon\\AI_GAME_COMPANY\\logs\\codex-runs\\implement-20260905-095156-712da1.txt",
+      "title_ko": "ParallaxBackground 배경 아트 레이어"
     },
     {
       "id": "CODEX-BOARD1",
       "title": "Three bugs in the board runner, found by running it for real",
-      "title_ko": "작업판 러너 버그 3건 수정",
       "owner": "codex",
       "status": "review",
       "goal": "The first real `team run` reported CODEX-ART1 as BLOCKED even though Codex had done the work correctly. Three separate defects in teamwork.py caused or contributed to that, all of them mine. Fix all three.",
@@ -281,12 +282,12 @@
         "AI_GAME_COMPANY/company/orchestrator/main.py",
         "AI_GAME_COMPANY/tests/test_teamwork.py"
       ],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "작업판 러너 버그 3건 수정"
     },
     {
       "id": "CODEX-TESTCMD1",
       "title": "orchestrator test - run the Unity test suites locally",
-      "title_ko": "orchestrator test - Unity 테스트 로컬 실행",
       "owner": "codex",
       "status": "todo",
       "goal": "There is no way to run the Unity tests from the orchestrator. run_pipeline deliberately does generate/validate/build and leaves tests to the workflow, but the self-hosted runner is not always up, and a task like CODEX-TEST1 that WRITES tests cannot be verified without running them. PlayMode test assemblies are also excluded from a player build, so `orchestrator build` does not even compile them - a syntax error in a test file passes the build and is caught by nobody. Add the missing step.",
@@ -310,12 +311,12 @@
         "Do not change .github/workflows/test.yml. It works, and it is not in your allowlist."
       ],
       "changed_files": [],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "orchestrator test - Unity 테스트 로컬 실행"
     },
     {
       "id": "CODEX-START1",
       "title": "A start button on every waiting task, not one dropdown",
-      "title_ko": "대기 작업마다 시작 버튼",
       "owner": "codex",
       "status": "review",
       "goal": "The control panel can already run a Codex task, but only through a single <select> of task ids. Put the button on the task itself: every waiting row in the 공유 작업판 section gets its own start button, so you press the thing you are looking at instead of matching an id in a dropdown.",
@@ -348,12 +349,12 @@
         "AI_GAME_COMPANY/tests/test_dashboard.py",
         "Reports/dashboard.html"
       ],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "대기 작업마다 시작 버튼"
     },
     {
       "id": "CODEX-OLLAMA1",
       "title": "Choose which Ollama model is in use, without breaking the licence gate",
-      "title_ko": "Ollama 사용 모델 선택 (라이선스 게이트 유지)",
       "owner": "codex",
       "status": "review",
       "goal": "ollama_client can list installed models and knows which ids are APPROVED, but nothing can SELECT one - there is no concept of an active model anywhere. Add that, so the model can be changed without editing code, and so the dashboard can say which one is in use.",
@@ -383,12 +384,12 @@
         "AI_GAME_COMPANY/company/orchestrator/main.py",
         "AI_GAME_COMPANY/tests/test_ollama_client.py"
       ],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "Ollama 사용 모델 선택 (라이선스 게이트 유지)"
     },
     {
       "id": "CODEX-AICTL1",
       "title": "A control per AI in the panel, and honest silence where there is none",
-      "title_ko": "AI별 제어 버튼, 없으면 정직하게 없음 표시",
       "owner": "codex",
       "status": "todo",
       "goal": "The control panel can only drive Codex and Unity. Give each connected AI its own control - and give the ones with no adapter no control at all, stated as such, because a button that cannot work misrepresents what this project can do.",
@@ -419,12 +420,12 @@
         "THE MACHINE HAS NO OLLAMA MODELS AT ALL, verified 2026-09-02: `ollama rm gemma4:26b` said \"model not found\" and `orchestrator ollama --list` printed \"no models installed\". So the only Ollama state you can build against today is the empty one, which is why it is an acceptance criterion above. Do NOT trust HARDWARE_PROFILE.json here - it still lists gemma4:26b 17.33 GB from a 2026-09-01 scan and is stale. Read the inventory from OllamaClient at render time, not from the profile; the profile is for RAM sizes."
       ],
       "changed_files": [],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "AI별 제어 버튼, 없으면 정직하게 없음 표시"
     },
     {
       "id": "CODEX-LIVE1",
       "title": "The page contradicts itself: 'Codex 실행 중' at the top, '대기 중' below",
-      "title_ko": "실행 중 표시 모순 해소 (패널 vs 사무실 뷰)",
       "owner": "codex",
       "status": "review",
       "goal": "While a Codex job is running, the control panel says so and the office view right below it shows Codex as 대기 중. Both are reading their own source correctly - the panel watches the live job, build_agents reads committed files - but a page that contradicts itself is wrong however defensible each half is. Three defects, all in code Claude wrote.",
@@ -463,12 +464,12 @@
         "AI_GAME_COMPANY/tests/test_server.py",
         "Reports/dashboard.html"
       ],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "실행 중 표시 모순 해소 (패널 vs 사무실 뷰)"
     },
     {
       "id": "CODEX-RUNLOG1",
       "title": "Every orchestrator run leaves a committed log, so failures reach Claude without copy-paste",
-      "title_ko": "오케스트레이터 실행 기록을 커밋해 Claude에게 전달",
       "owner": "codex",
       "status": "review",
       "goal": "Unity compile errors and build results already reach Claude on their own: sync-and-run.ps1 commits Reports/errors/latest.txt and Reports/build-status/latest.txt every 15 minutes and Claude reads them from the fork. Orchestrator runs have no such channel - when `team run` or `serve` or `codex --doctor` fails, the output dies on the PC console and the human has to retype it into a chat window. Three separate bugs on 2026-09-02 (WinError 2, a cp949 UnicodeDecodeError, and CODEX_LIMITED discarding a finished run) were all diagnosed that way. Apply the pattern that already works to the orchestrator.",
@@ -506,7 +507,8 @@
         "AI_GAME_COMPANY/tests/test_runlog.py",
         "scripts/desktop/sync-and-run.ps1"
       ],
-      "last_run": ""
+      "last_run": "",
+      "title_ko": "오케스트레이터 실행 기록을 커밋해 Claude에게 전달"
     }
   ]
 }
