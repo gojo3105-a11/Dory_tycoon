@@ -646,6 +646,7 @@
       "status": "review",
       "goal": "One opaque cut-out PNG cannot animate - the player reported the character as an image sliding sideways. Split the drawing into body plus limbs, hang them on joints, and drive them with real AnimationClip assets on an AnimatorController instead of angles computed in LateUpdate.",
       "files": [
+        "Assets/GameFactory/Editor/CharacterPartSlicer.cs",
         "Assets/GameFactory/Editor/CharacterRigGenerator.cs",
         "Assets/GameFactory/Editor/PrefabGenerator.cs",
         "Assets/GameFactory/Editor/SharedArtImporter.cs",
@@ -665,6 +666,7 @@
       "depends_on": [],
       "notes": [
         "DONE BY CLAUDE - user instruction 2026-09-06 '유니티를 이용하여 캐릭터 팔다리 움직이도록' then '제미나이를 이용하여 이미지를 게임 에셋으로'. Rule 1 exception; the DRAWING itself stays Gemini's under rule 2.",
+        "Unity cuts the parts itself now (CharacterPartSlicer), so the rig needs no key and no service; Gemini is an optional redraw. The C# was checked by transcribing it back to Python and diffing against the already-verified output: identical crop sizes and anchors, max 1/255 rounding difference per channel.",
         "Packages/manifest.json gained com.unity.modules.animation. Animator and AnimationClip live there and it was not registered - this is the CS1069 case in CLAUDE.md 9.3. Do not hand-edit packages-lock.json.",
         "Not compiled or run: no Unity in the Claude Code container, and GEMINI_API_KEY is ABSENT so the Gemini path has never executed either. The clip maths was checked by rendering the same curves over the real art outside Unity.",
         "Geometry lives in Assets/Common/Art/Runner/rig/rig.json, not in the C#. A limb in the wrong place is a number in that file.",

@@ -68,9 +68,26 @@ Inspector에서 개별 조정한 값을 재임포트 때마다 되돌리지 않�
   `AnimationClip`(Run/Air/Slide) + `AnimatorController`를 **에셋으로** 만든다.
 - 이 폴더가 없으면 예전처럼 `player.png` 한 장짜리 캐릭터가 나온다. 추가 기능일 뿐이다.
 
-### 누가 그리나
+### 누가 만드나
 
-**Gemini 무료 등급** (CLAUDE.md 규칙 2). 키가 생기면:
+**Unity가 직접 만든다.** `Assets/GameFactory/Editor/CharacterPartSlicer.cs`가
+`player.png`를 읽어서 파츠로 자르고 `rig.json`까지 쓴다. 키도, 외부 서비스도 필요 없다.
+
+- **빌드하면 자동으로** 만들어진다 (`PrefabGenerator`가 없으면 부른다).
+- 손으로 다시 만들려면: Unity 메뉴 **Game Factory > Character > Slice player.png into rig parts**
+
+자르는 위치 숫자는 `CharacterPartSlicer.cs`의 표 하나에 모여 있다. 다른 그림으로
+바꾸면 **그 표를 고치고 다시 자른다.**
+
+어려운 건 팔다리를 떼는 게 아니라 **뗀 자리를 메우는 것**이다. 그냥 지우면 배에
+사각형 구멍이 남고, 팔이 움직이는 순간 그게 보인다. 그래서 주변 털로 다시 칠한다
+(알파 가중 pull-push). 앞발은 실루엣 **안**에 있어서 색만 칠하면 되지만, 발은
+배 **아래**로 나와 있어서 윤곽선까지 다시 그려야 한다.
+
+### Gemini로 다시 그리기 (선택)
+
+더 나은 그림을 원하면 Gemini 무료 등급으로 다시 그릴 수 있다 (CLAUDE.md 규칙 2).
+키가 있어야 한다:
 
 ```bash
 cd AI_GAME_COMPANY
@@ -78,5 +95,6 @@ python -m company.orchestrator.main character --status    # 키 게이트 확인
 python -m company.orchestrator.main character --force     # 다시 그리기
 ```
 
-지금 들어있는 파츠는 `rig.json`의 `source`가 `local-slicer`다 — Gemini 키가 아직
-없어서, `player.png`에서 잘라낸 **폴백**이다. Gemini가 다시 그리면 덮어쓴다.
+`rig.json`의 `source`가 누가 만든 건지 알려준다 (`unity-slicer` / `gemini`).
+**Gemini나 사람이 만든 것은 자동으로 덮어쓰지 않는다.** 자동 재생성은
+`unity-slicer`가 만든 것에만 적용된다.

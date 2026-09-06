@@ -122,6 +122,11 @@ namespace GameFactory.Editor
             // Separated art wins over the single sprite: it is the same
             // drawing, but with paws and feet that can actually move. Absent,
             // GenerateRig returns null and nothing below changes.
+            // Cut the parts first if they are not there. Unity does the image
+            // work itself, so a plain build produces a character that can move
+            // without a key, a service, or anyone running a menu item.
+            CharacterPartSlicer.EnsureRigParts();
+
             CharacterRigGenerator.CharacterRig? rig = CharacterRigGenerator.RigArtExists()
                 ? CharacterRigGenerator.GenerateRig(visual.transform, assetFolder)
                 : null;

@@ -277,6 +277,6 @@ python -m company.orchestrator.main team run --task CODEX-XXX
 | Scene/PrefabGenerator | Runner만 구현. Game02(Idle)부터 새 장르용 생성기 필요 |
 | Modules | GravitySwitch만 실제 모듈. DoubleJump/Dash/MovingPlatform 등은 폴더만 (슬라이드·이단점프는 `RunnerPlayerController` 안) |
 | MainCharacter.prefab | Unity 프리미티브 placeholder. 실제 3D 모델 미착수 (`Assets/Common/Character/CHARACTER_DESIGN.md`) |
-| 캐릭터 리그 | `Assets/Common/Art/Runner/rig/`의 분리된 파츠로 Animator/AnimationClip 생성. 지금 들어있는 파츠는 **로컬 슬라이서** 폴백 (`rig.json`의 `source`). Gemini판은 키 발급 후 `orchestrator character --force` |
+| 캐릭터 리그 | `CharacterPartSlicer`(Unity)가 `player.png`를 파츠로 자르고, `CharacterRigGenerator`가 Animator/AnimationClip을 만든다. 빌드 시 자동. Gemini 재생성은 선택 (`orchestrator character --force`, 키 필요) |
 | Ollama | 설치 모델 0개. 사용 전 라이선스 확인 → `LICENSE_REGISTRY.json` 등록 |
 | Gemini | 키 미발급, 무료 등급 미검증 |
