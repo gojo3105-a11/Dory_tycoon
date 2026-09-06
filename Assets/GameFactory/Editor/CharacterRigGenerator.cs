@@ -355,6 +355,8 @@ namespace GameFactory.Editor
 
         private const string RotationProperty = "localEulerAnglesRaw.z";
         private const string LiftProperty = "m_LocalPosition.y";
+        /// <summary>Forward and back travel. In profile this carries the stride, not the rotation.</summary>
+        private const string StrideProperty = "m_LocalPosition.x";
 
         private static AnimationClip BuildRunClip(string folder, HashSet<string> present,
                                                   RigLayout layout)
@@ -363,27 +365,27 @@ namespace GameFactory.Editor
 
             if (layout.IsSide)
             {
-                // A PROFILE CAN ACTUALLY RUN. Both legs swing through a full
-                // arc half a cycle apart, and the arm opposes them - the same
-                // shape a real stride has, and the reason side-view art was
-                // worth asking for. The near leg leads, the far one trails
-                // behind the body, and the gap between them IS the stride.
+                // A PROFILE CAN ACTUALLY RUN, but this drawing has no legs -
+                // the body meets the feet directly. Pivoting from a hip up
+                // inside the belly swung the feet clear of the body and they
+                // read as detached, so the stride is carried by TRAVEL and
+                // LIFT, with rotation only tilting the foot as it leaves the
+                // ground. Verified by rendering the cycle over the real art
+                // before any of it was written here.
                 const float ArmSwing = 30f;
-                const float LegSwing = 26f;
-                const float LegLift = 0.045f;
+                const float FootTilt = 14f;
+                // World units. The character is 1.5 tall over 192 px, so these
+                // are the 4.5 px of travel and 5 px of lift that were checked.
+                const float Stride = 0.0352f;
+                const float LegLift = 0.0391f;
 
-                AddSwing(clip, layout.ArmLead, present, RotationProperty, ArmSwing, 0f);
-                // Drawn behind the body and swinging opposite the near one, so
-                // the two never overlap into a single shape.
-                AddSwing(clip, layout.ArmTrail, present, RotationProperty, ArmSwing, 0.5f);
+                AddSwing(clip, layout.ArmLead, present, RotationProperty, ArmSwing, 0.5f);
+                // Behind the body and opposite the near one, so the two never
+                // overlap into a single shape. Usually absent in profile art.
+                AddSwing(clip, layout.ArmTrail, present, RotationProperty, ArmSwing, 0f);
 
-                AddSwing(clip, layout.LegLead, present, RotationProperty, LegSwing, 0.5f);
-                AddSwing(clip, layout.LegTrail, present, RotationProperty, LegSwing, 0f);
-                // A foot rises as it swings forward and is flat as it passes
-                // under the body, so the half-wave is offset a quarter cycle
-                // from its own swing.
-                AddHalfWave(clip, layout.LegLead, present, LiftProperty, LegLift, 0.25f);
-                AddHalfWave(clip, layout.LegTrail, present, LiftProperty, LegLift, 0.75f);
+                AddSideLeg(clip, layout.LegTrail, present, FootTilt, Stride, LegLift, 0f);
+                AddSideLeg(clip, layout.LegLead, present, FootTilt, Stride, LegLift, 0.5f);
             }
             else
             {
@@ -409,6 +411,8 @@ namespace GameFactory.Editor
                 AddHalfWave(clip, layout.LegTrail, present, RotationProperty, FootTilt, 0.5f);
                 AddHalfWave(clip, layout.LegLead, present, LiftProperty, LegLift, 0f);
                 AddHalfWave(clip, layout.LegTrail, present, LiftProperty, LegLift, 0.5f);
+                AddConstant(clip, layout.LegLead, present, StrideProperty, 0f);
+                AddConstant(clip, layout.LegTrail, present, StrideProperty, 0f);
             }
 
             SetLooping(clip, true);
@@ -436,9 +440,24 @@ namespace GameFactory.Editor
             // slide entered mid-stride would hold one foot in the air.
             AddConstant(clip, layout.LegLead, present, LiftProperty, legLift);
             AddConstant(clip, layout.LegTrail, present, LiftProperty, legLift);
+            AddConstant(clip, layout.LegLead, present, StrideProperty, 0f);
+            AddConstant(clip, layout.LegTrail, present, StrideProperty, 0f);
 
             SetLooping(clip, true);
             return SaveClip(clip, folder);
+        }
+
+        /// <summary>
+        /// One leg of a profile stride: it travels forward and back, lifts
+        /// while it is forward, and tilts as it leaves the ground. The tilt
+        /// opposes the travel - a foot swinging forward rolls its toe up.
+        /// </summary>
+        private static void AddSideLeg(AnimationClip clip, string part, HashSet<string> present,
+            float tiltDegrees, float stride, float lift, float phase)
+        {
+            AddSwing(clip, part, present, RotationProperty, -tiltDegrees, phase);
+            AddSwing(clip, part, present, StrideProperty, stride, phase);
+            AddHalfWave(clip, part, present, LiftProperty, lift, phase);
         }
 
         /// <summary>A full sine over the cycle, offset by <paramref name="phase"/> of it.</summary>
