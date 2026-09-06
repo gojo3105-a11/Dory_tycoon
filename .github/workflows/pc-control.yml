@@ -35,9 +35,14 @@ on:
           Reports/dashboard.html. team-run = sync then hand `task` to Codex.
           codex-doctor = sync then run the Codex self-check. test = sync then
           generate the scene and run Unity tests. build = sync then generate,
-          validate and build the APK.
+          validate and build the APK. character-status = report the Gemini key
+          gate and what rig art is on disk, touching nothing.
+          character-side = have Gemini redraw the character in PROFILE, which
+          is what a sideways-scrolling runner needs and what no image
+          processing can produce from a front view.
         type: choice
-        options: [status, sync, dashboard, team-run, codex-doctor, test, build]
+        options: [status, sync, dashboard, team-run, codex-doctor, test, build,
+                  character-status, character-side]
         default: status
       task:
         description: Task id for team-run (e.g. CODEX-ANIM1). Ignored otherwise.
@@ -157,6 +162,34 @@ jobs:
             exit 2
           }
           python -m company.orchestrator.main team run --task $env:TASK
+          exit $LASTEXITCODE
+
+      # The key reaches the orchestrator from the repository's secret store
+      # and nowhere else. It is never in the repo, never in a chat message,
+      # and GitHub masks it in these logs, so the value stays unknown to
+      # everyone who reads a run - Claude included. An unset secret arrives
+      # as an empty string and the adapter reports ABSENT, which is the
+      # honest answer rather than a confusing failure.
+      - name: Gemini key gate and rig art on disk
+        if: inputs.action == 'character-status' || inputs.action == 'character-side'
+        shell: powershell
+        working-directory: C:\Dory_tycoon\AI_GAME_COMPANY
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -m company.orchestrator.main character --status
+          exit $LASTEXITCODE
+
+      - name: Have Gemini redraw the character in profile
+        if: inputs.action == 'character-side'
+        shell: powershell
+        working-directory: C:\Dory_tycoon\AI_GAME_COMPANY
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          # The whole character in profile, not the cut-up parts. Where the
+          # joints land is measured off the finished drawing afterwards.
+          python -m company.orchestrator.main character --side
           exit $LASTEXITCODE
 
       # Unity IS on this machine, and these two are the only reason the

@@ -239,7 +239,27 @@ def cmd_character(args: argparse.Namespace) -> int:
     else:
         print("  on disk: no rig yet")
 
+    side = REPO_ROOT / ca.SIDE_VIEW_PATH
+    print(f"  side view: {'present' if side.is_file() else 'MISSING - the character still faces the camera'}")
+
     if args.status:
+        return 0
+
+    if args.side:
+        # The runner scrolls sideways. A character drawn facing the camera can
+        # only bounce on the spot, so this is the drawing the rig actually
+        # needs, and no image processing can produce it from the front one.
+        reference = REPO_ROOT / args.reference
+        print(f"\n  redrawing {reference} in profile...")
+        try:
+            written = ca.generate_side_view(client, REPO_ROOT, reference)
+        except ca.CharacterAssetError as exc:
+            print(f"\n  FAILED: {exc}")
+            return 1
+        print(f"  wrote {written}")
+        print("\n  Look at it before anything else uses it. The joint positions in")
+        print("  CharacterPartSlicer.cs are measured from the FRONT art and will be")
+        print("  wrong for this one until they are re-measured against it.")
         return 0
 
     if manifest.is_file() and not args.force:
@@ -680,6 +700,8 @@ def main(argv: list[str] | None = None) -> int:
         "character", help="ask Gemini to cut the character into rig parts")
     character.add_argument("--status", action="store_true",
                            help="report the key gate and what is on disk, then stop")
+    character.add_argument("--side", action="store_true",
+                           help="redraw the character in profile, facing right, and stop")
     character.add_argument("--force", action="store_true",
                            help="replace an existing rig (the committed fallback included)")
     character.add_argument("--reference", default="Assets/Common/Art/Runner/player.png",

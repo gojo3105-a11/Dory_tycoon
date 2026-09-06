@@ -132,8 +132,60 @@ PARTS: tuple[RigPart, ...] = (
 )
 
 
+SIDE_VIEW_PATH = Path("Assets/Common/Art/Runner/player_side.png")
+
+SIDE_VIEW_PROMPT = (
+    "Redraw this exact character in a SIDE VIEW, in profile, facing RIGHT. "
+    "Same character: same colours, same fur and spines, same face, same bow "
+    "tie, same proportions. Only the camera angle changes - this is the same "
+    "hedgehog seen from its left side, not a new design and not a three-quarter "
+    "turn. One eye visible. Standing upright on both feet, arms at its sides, "
+    "the whole body in frame from the tips of the spines to below the feet. "
+    "Neutral standing pose, not running - the run is animated afterwards. "
+    + STYLE_RULE
+)
+
+
 class CharacterAssetError(RuntimeError):
     """The rig could not be produced, with a reason worth printing."""
+
+
+def generate_side_view(client: GeminiClient, repo_root: Path, reference: Path,
+                       out_path: Path | None = None) -> Path:
+    """Redraws the character in profile and writes it next to the front art.
+
+    WHY THIS IS A SEPARATE STEP. The game scrolls sideways and the character
+    is drawn facing the camera, so it can only ever bounce on the spot - a
+    front view has no stride to animate. No amount of image processing turns
+    one into the other; it is a redraw, and a redraw is Gemini's job under
+    rule 2.
+
+    It deliberately produces the WHOLE character, not the cut-up parts. Where
+    a shoulder and a hip land is measured off the finished drawing and written
+    into the slicer's table; asking a model to place a joint to two decimal
+    places and trusting the answer is how a limb ends up hinged through the
+    middle of a belly.
+    """
+    if not reference.is_file():
+        raise CharacterAssetError(f"Reference image not found: {reference}")
+
+    target = out_path or (repo_root / SIDE_VIEW_PATH)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        png = client.generate_image(IMAGE_MODEL, SIDE_VIEW_PROMPT,
+                                    images=[reference.read_bytes()])
+    except GeminiLimited as exc:
+        raise CharacterAssetError(f"{exc} Nothing was written.") from None
+    except GeminiKeyMissing as exc:
+        raise CharacterAssetError(str(exc)) from None
+    except (GeminiModelNotAllowed, PolicyViolation) as exc:
+        raise CharacterAssetError(str(exc)) from None
+    except (GeminiInputRejected, GeminiResponseError, GeminiUnavailable) as exc:
+        raise CharacterAssetError(f"side view: {exc}") from None
+
+    target.write_bytes(png)
+    return target
 
 
 def manifest_for(source: str, parts: "list[str]") -> dict:
