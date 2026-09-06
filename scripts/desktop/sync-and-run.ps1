@@ -362,7 +362,14 @@ try {
         $resolved = $false
         $boardRel = "AI_GAME_COMPANY/config/TASKBOARD.json"
         try {
-            $conflicts = (Invoke-Git @("diff", "--name-only", "--diff-filter=U")) -split "\r?\n" | Where-Object { $_ }
+            # @(...) is load-bearing. Invoke-Git returns ONE string, and a
+            # pipeline that yields a single line comes back as a scalar, not
+            # an array - so $conflicts[0] would be the first CHARACTER of the
+            # path and the board test below could never match. That is why the
+            # board auto-merge, which has a passing test suite behind it, had
+            # never once fired on this machine.
+            $conflicts = @((Invoke-Git @("diff", "--name-only", "--diff-filter=U")) -split "\r?\n" | Where-Object { $_ })
+            Write-Log ("Merge conflicts: " + ($conflicts -join ", "))
 
             # REPORTS ARE THIS MACHINE'S OWN RECORD, so on a conflict this
             # machine's copy wins. They are regenerated on every run, both
@@ -383,7 +390,8 @@ try {
             }
             if ($ours.Count -gt 0) {
                 Write-Log ("Kept this machine's copy of: " + ($ours -join ", "))
-                $conflicts = (Invoke-Git @("diff", "--name-only", "--diff-filter=U")) -split "\r?\n" | Where-Object { $_ }
+                $conflicts = @((Invoke-Git @("diff", "--name-only", "--diff-filter=U")) -split "\r?\n" | Where-Object { $_ })
+                Write-Log ("Still conflicting: " + ($conflicts -join ", "))
             }
 
             if ($conflicts.Count -eq 0) {
