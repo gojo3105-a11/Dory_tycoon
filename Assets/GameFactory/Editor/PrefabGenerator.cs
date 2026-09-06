@@ -112,26 +112,42 @@ namespace GameFactory.Editor
 
             RunnerCharacterMotion motion = null;
 
-            if (playerSprite != null)
-            {
-                // The sprite goes on a CHILD, not the root. RunnerCharacterMotion
-                // scales and rotates whatever it is on, and on the root that
-                // would scale the BoxCollider2D too - the hitbox would breathe
-                // in and out while running.
-                GameObject visual = new GameObject("Visual");
-                visual.transform.SetParent(go.transform, false);
+            // The visual goes on a CHILD, not the root. RunnerCharacterMotion
+            // scales and rotates whatever it is on, and on the root that would
+            // scale the BoxCollider2D too - the hitbox would breathe in and
+            // out while running.
+            GameObject visual = new GameObject("Visual");
+            visual.transform.SetParent(go.transform, false);
 
+            // Separated art wins over the single sprite: it is the same
+            // drawing, but with paws and feet that can actually move. Absent,
+            // GenerateRig returns null and nothing below changes.
+            CharacterRigGenerator.CharacterRig? rig = CharacterRigGenerator.RigArtExists()
+                ? CharacterRigGenerator.GenerateRig(visual.transform, assetFolder)
+                : null;
+
+            if (rig.HasValue)
+            {
+                motion = visual.AddComponent<RunnerCharacterMotion>();
+                motion.SetBody(rig.Value.Body);
+                motion.SetAnimator(rig.Value.Animator);
+                bodySize = rig.Value.BodySize;
+            }
+            else if (playerSprite != null)
+            {
                 SpriteRenderer sr = visual.AddComponent<SpriteRenderer>();
                 sr.sprite = playerSprite;
                 sr.sortingOrder = 10;
 
                 motion = visual.AddComponent<RunnerCharacterMotion>();
+                motion.SetBody(sr);
                 bodySize = SpriteWorldSize(playerSprite, Vector2.one * 0.9f);
             }
             else
             {
                 // No licensed art yet: keep the primitive placeholder rather
                 // than shipping an invisible player.
+                Object.DestroyImmediate(visual);
                 InstantiateMainCharacterVisual(go.transform);
                 bodySize = Vector2.one * 0.9f;
             }

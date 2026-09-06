@@ -638,6 +638,41 @@
       "changed_files": [],
       "last_run": "",
       "title_ko": "에너지 게이지 + 젤리(코인) 회복"
+    },
+    {
+      "id": "CLAUDE-RIG1",
+      "title": "Character rig: separated art, Animator, generated clips",
+      "owner": "claude",
+      "status": "review",
+      "goal": "One opaque cut-out PNG cannot animate - the player reported the character as an image sliding sideways. Split the drawing into body plus limbs, hang them on joints, and drive them with real AnimationClip assets on an AnimatorController instead of angles computed in LateUpdate.",
+      "files": [
+        "Assets/GameFactory/Editor/CharacterRigGenerator.cs",
+        "Assets/GameFactory/Editor/PrefabGenerator.cs",
+        "Assets/GameFactory/Editor/SharedArtImporter.cs",
+        "Assets/GameFactory/Gameplay/Runner/RunnerCharacterMotion.cs",
+        "Assets/GameFactory/Gameplay/Runner/RunnerPlayerController.cs",
+        "Assets/Common/Art/Runner/rig/",
+        "AI_GAME_COMPANY/company/orchestrator/character_assets.py",
+        "AI_GAME_COMPANY/company/orchestrator/gemini_client.py",
+        "AI_GAME_COMPANY/company/orchestrator/main.py",
+        "Packages/manifest.json"
+      ],
+      "acceptance": [
+        "DONE only after an APK on a phone shows the paws swinging and the feet alternating - compiling proves nothing about whether it reads as running.",
+        "No rig folder must still generate the old single-sprite character, unchanged.",
+        "The parts on disk are the local-slicer fallback. Gemini redraws them once the key exists; rig.json's 'source' says which is in play."
+      ],
+      "depends_on": [],
+      "notes": [
+        "DONE BY CLAUDE - user instruction 2026-09-06 '유니티를 이용하여 캐릭터 팔다리 움직이도록' then '제미나이를 이용하여 이미지를 게임 에셋으로'. Rule 1 exception; the DRAWING itself stays Gemini's under rule 2.",
+        "Packages/manifest.json gained com.unity.modules.animation. Animator and AnimationClip live there and it was not registered - this is the CS1069 case in CLAUDE.md 9.3. Do not hand-edit packages-lock.json.",
+        "Not compiled or run: no Unity in the Claude Code container, and GEMINI_API_KEY is ABSENT so the Gemini path has never executed either. The clip maths was checked by rendering the same curves over the real art outside Unity.",
+        "Geometry lives in Assets/Common/Art/Runner/rig/rig.json, not in the C#. A limb in the wrong place is a number in that file.",
+        "Every clip writes every property any clip writes. A pose clip that skipped m_LocalPosition.y would leave a foot frozen mid-lift when the state changed."
+      ],
+      "changed_files": [],
+      "last_run": "",
+      "title_ko": "캐릭터 리그: 분해 아트 + Animator + 클립 생성"
     }
   ]
 }

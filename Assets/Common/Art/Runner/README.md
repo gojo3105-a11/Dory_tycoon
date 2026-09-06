@@ -48,3 +48,35 @@ Inspector에서 개별 조정한 값을 재임포트 때마다 되돌리지 않�
    (`Assets/`는 건드리지 않는다)
 3. 라이선스 텍스트 검토 후 레지스트리를 `APPROVED`로 올리고, 인벤토리에서 고른 파일을
    위 표의 이름으로 여기에 복사한다
+
+## `rig/` — 움직이는 캐릭터
+
+`player.png` 한 장은 통짜 그림이라 **아무것도 움직일 수 없다.** 팔다리가 실루엣
+안에 그려져 있기 때문이다. `rig/`에는 같은 그림을 **분해한 것**이 들어간다.
+
+| 파일 | 내용 |
+|---|---|
+| `body.png` | 팔다리를 지우고 배를 메운 몸통. 캔버스 크기는 `player.png`와 동일 |
+| `arm_l.png` / `arm_r.png` | 앞발 하나씩 |
+| `foot_l.png` / `foot_r.png` | 발 하나씩 |
+| `rig.json` | 각 파츠가 **어디를 축으로 도는지**(`joint`)와 그 축이 **파츠 그림 안 어디에 있는지**(`anchor`) |
+
+- `joint` / `anchor`는 둘 다 비율이고, **y는 위에서부터** 잰다.
+  `anchor`는 0~1을 벗어날 수 있다 — 엉덩이 관절은 발 그림보다 위에 있다.
+- 숫자가 틀렸으면 **`rig.json`을 고치고 다시 생성한다. C#을 고치지 않는다.**
+- `Assets/GameFactory/Editor/CharacterRigGenerator.cs`가 이걸 읽어서 관절 계층 +
+  `AnimationClip`(Run/Air/Slide) + `AnimatorController`를 **에셋으로** 만든다.
+- 이 폴더가 없으면 예전처럼 `player.png` 한 장짜리 캐릭터가 나온다. 추가 기능일 뿐이다.
+
+### 누가 그리나
+
+**Gemini 무료 등급** (CLAUDE.md 규칙 2). 키가 생기면:
+
+```bash
+cd AI_GAME_COMPANY
+python -m company.orchestrator.main character --status    # 키 게이트 확인
+python -m company.orchestrator.main character --force     # 다시 그리기
+```
+
+지금 들어있는 파츠는 `rig.json`의 `source`가 `local-slicer`다 — Gemini 키가 아직
+없어서, `player.png`에서 잘라낸 **폴백**이다. Gemini가 다시 그리면 덮어쓴다.

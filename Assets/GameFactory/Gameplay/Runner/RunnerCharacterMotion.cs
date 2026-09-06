@@ -80,7 +80,17 @@ namespace GameFactory.Gameplay.Runner
         [SerializeField] private float scaleSmoothing = 0.045f;
         [SerializeField] private float rotationSmoothing = 0.08f;
 
+        [Header("Rig")]
+        [Tooltip("Speed the run clip was authored at. The cycle is scaled against this, not against a number the GameSpec owns.")]
+        [SerializeField] private float referenceRunSpeed = 6f;
+
         private RunnerPlayerController controller;
+        private Animator animator;
+        private SpriteRenderer bodyRenderer;
+        private static readonly int GroundedParameter = Animator.StringToHash("Grounded");
+        private static readonly int SlidingParameter = Animator.StringToHash("Sliding");
+        private static readonly int RunSpeedParameter = Animator.StringToHash("RunSpeed");
+
         private Vector3 baseScale;
         private Vector3 baseLocalPosition;
         // Half the sprite's height in world units. The pivot is Center, so a
@@ -109,18 +119,43 @@ namespace GameFactory.Gameplay.Runner
             controller = owner;
         }
 
+        /// <summary>
+        /// The renderer that carries the character's body. Passed in rather
+        /// than searched for, because with a rig the body sprite is two levels
+        /// down and this component sits on a transform with no renderer of its
+        /// own. Structural wiring, edit time.
+        /// </summary>
+        public void SetBody(SpriteRenderer body)
+        {
+            bodyRenderer = body;
+        }
+
+        /// <summary>
+        /// The rig's Animator. Its presence switches off the procedural limbs
+        /// entirely: real clips and four rectangles rotated from LateUpdate
+        /// would be two things animating the same character, and they would
+        /// disagree. Structural wiring, edit time.
+        /// </summary>
+        public void SetAnimator(Animator rigAnimator)
+        {
+            animator = rigAnimator;
+        }
+
         private void Awake()
         {
             baseScale = transform.localScale;
             baseLocalPosition = transform.localPosition;
             if (controller == null) controller = GetComponentInParent<RunnerPlayerController>();
+            if (bodyRenderer == null) bodyRenderer = GetComponent<SpriteRenderer>();
+            if (animator == null) animator = GetComponentInChildren<Animator>();
 
-            SpriteRenderer renderer = GetComponent<SpriteRenderer>();
-            spriteHalfHeight = renderer != null && renderer.sprite != null
-                ? renderer.sprite.bounds.extents.y * baseScale.y
+            spriteHalfHeight = bodyRenderer != null && bodyRenderer.sprite != null
+                ? bodyRenderer.sprite.bounds.extents.y * baseScale.y
                 : 0.5f;
 
-            CreateLimbs(renderer);
+            // Only when there is no rig. With one, the limbs are real art on
+            // real joints and these grey rectangles would sit on top of them.
+            if (animator == null) CreateLimbs(bodyRenderer);
         }
 
         private void OnDisable()
@@ -142,6 +177,8 @@ namespace GameFactory.Gameplay.Runner
 
             bool grounded = controller.IsGrounded;
             bool dead = controller.IsDead;
+
+            DriveAnimator(grounded, dead);
 
             if (grounded && !wasGrounded) landTimer = landRecovery;
             wasGrounded = grounded;
@@ -239,6 +276,28 @@ namespace GameFactory.Gameplay.Runner
                 + new Vector3(0f, bobOffset - footCompensation, 0f);
 
             SetLimbAngles(leftArmAngle, rightArmAngle, leftLegAngle, rightLegAngle);
+        }
+
+        /// <summary>
+        /// Hands the rig the three facts its clips branch on. Everything else
+        /// this component does - squash, lean, the bob, keeping the feet on
+        /// the ground - stays here, on the parent transform, so the two never
+        /// write to the same thing.
+        /// </summary>
+        private void DriveAnimator(bool grounded, bool dead)
+        {
+            if (animator == null) return;
+
+            animator.SetBool(GroundedParameter, grounded);
+            animator.SetBool(SlidingParameter, controller.IsSliding);
+
+            // Cycle speed from how fast the character is really travelling, so
+            // a spec that doubles moveSpeed does not leave the legs ambling
+            // under a sprinting body. Dead or standing on the title screen,
+            // the legs stop rather than running on the spot.
+            float speed = dead ? 0f
+                : Mathf.Abs(controller.HorizontalVelocity) / Mathf.Max(0.01f, referenceRunSpeed);
+            animator.SetFloat(RunSpeedParameter, Mathf.Clamp(speed, 0f, 2.5f));
         }
 
         private void CreateLimbs(SpriteRenderer bodyRenderer)

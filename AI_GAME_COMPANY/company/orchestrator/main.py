@@ -11,6 +11,7 @@ runnable and inspectable without Claude present.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -205,6 +206,63 @@ def cmd_codex(args: argparse.Namespace) -> int:
         return 1
     print(result.stdout or result.stderr or "  (no output)")
     return 0 if result.ok else 1
+
+
+def cmd_character(args: argparse.Namespace) -> int:
+    """Cut the character drawing into the pieces a Unity rig can move.
+
+    Rule 2: image work goes to Gemini's free tier. This command is the whole
+    of that path - it asks, it writes the files, and it stops. Whether the
+    pieces are any good is a human's call, which is why --status exists and
+    why nothing here overwrites without being told to.
+    """
+    from company.orchestrator import character_assets as ca
+    from company.orchestrator.gemini_client import GeminiClient
+
+    policy = _load_policy()
+    client = GeminiClient(policy=policy)
+
+    print("=== CHARACTER RIG (Gemini) ===")
+    print(f"  {client.status_summary()}")
+
+    folder = REPO_ROOT / ca.RIG_FOLDER
+    manifest = folder / ca.MANIFEST_NAME
+    if manifest.is_file():
+        try:
+            existing = json.loads(manifest.read_text(encoding="utf-8"))
+            names = [p.get("name") for p in existing.get("parts", [])]
+            print(f"  on disk: {len(names)} parts, drawn by "
+                  f"{existing.get('source', 'unknown')} at "
+                  f"{existing.get('generated', 'unknown')}")
+        except (json.JSONDecodeError, OSError):
+            print(f"  on disk: {manifest} is unreadable")
+    else:
+        print("  on disk: no rig yet")
+
+    if args.status:
+        return 0
+
+    if manifest.is_file() and not args.force:
+        print("\n  REFUSED: a rig already exists. Re-run with --force to replace it.")
+        print("  (The fallback rig is committed art; replacing it is a decision.)")
+        return 2
+
+    reference = REPO_ROOT / args.reference
+    print(f"\n  reference: {reference}")
+    print(f"  model: {ca.IMAGE_MODEL}   parts: {len(ca.PARTS)}")
+
+    try:
+        written = ca.generate(client, REPO_ROOT, reference)
+    except ca.CharacterAssetError as exc:
+        print(f"\n  FAILED: {exc}")
+        return 1
+
+    print(f"\n  wrote {len(written)} parts to {folder}")
+    for name in written:
+        print(f"    {name}.png")
+    print("\n  Next: Unity regenerates the rig from these on the next build.")
+    print("  Look at them first - a wrong paw is cheaper to spot here than in an APK.")
+    return 0
 
 
 def cmd_dashboard(args: argparse.Namespace) -> int:
@@ -617,6 +675,16 @@ def main(argv: list[str] | None = None) -> int:
     codex.add_argument("--doctor", action="store_true",
                        help="also run 'codex doctor' and print its raw output")
     codex.set_defaults(func=cmd_codex)
+
+    character = sub.add_parser(
+        "character", help="ask Gemini to cut the character into rig parts")
+    character.add_argument("--status", action="store_true",
+                           help="report the key gate and what is on disk, then stop")
+    character.add_argument("--force", action="store_true",
+                           help="replace an existing rig (the committed fallback included)")
+    character.add_argument("--reference", default="Assets/Common/Art/Runner/player.png",
+                           help="the character drawing to take apart")
+    character.set_defaults(func=cmd_character)
 
     serve_cmd = sub.add_parser("serve", help="open the control panel in a browser (this PC only)")
     serve_cmd.add_argument("--port", type=int, default=8765)

@@ -91,6 +91,9 @@ namespace GameFactory.Gameplay.Runner
         /// <summary>Vertical speed, for squash and stretch. Zero before Awake.</summary>
         public float VerticalVelocity => body != null ? body.linearVelocity.y : 0f;
 
+        /// <summary>Forward speed, for pacing the run cycle. Zero before Awake, and on the title screen.</summary>
+        public float HorizontalVelocity => body != null ? body.linearVelocity.x : 0f;
+
         /// <summary>Applies GameSpec-driven tuning. Called at runtime by RunnerGameInitializer.</summary>
         public void Configure(float speed, float jump, bool useGravitySwitch,
                               float gravity = 3.5f, bool useDoubleJump = false,
