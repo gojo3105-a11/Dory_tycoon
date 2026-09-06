@@ -262,6 +262,31 @@ try {
         }
     }
 
+    # Unity writes these, and they BELONG in the repository. A .meta file
+    # carries an asset's GUID, so a missing one breaks references in every
+    # other checkout; the art under Art/Runner/rig is what the character is
+    # made of, cut from player.png on each generate. Neither is a person's
+    # edit. Left uncommitted they are dirt in the working tree - which is
+    # exactly what froze this sync for a day on 2026-09-06 - and the opt-in
+    # stash that unfroze it would have thrown them away instead.
+    $generatedPaths = @("Assets/Common/Art/Runner/rig")
+    $toAdd = @()
+    foreach ($generated in $generatedPaths) {
+        $state = @((Invoke-Git @("status", "--porcelain", "--untracked-files=all", "--", $generated)) -split "\r?\n" | Where-Object { $_ })
+        if ($state.Count -gt 0) { $toAdd += $generated }
+    }
+    $toAdd += @((Invoke-Git @("ls-files", "--others", "--exclude-standard", "--", "*.meta")) -split "\r?\n" | Where-Object { $_ })
+
+    if ($toAdd.Count -gt 0) {
+        Write-Log ("Unity-generated files to commit: " + ($toAdd -join ", "))
+        Invoke-Git (@("add", "--") + $toAdd) | Out-Null
+        $staged = Invoke-Git @("diff", "--cached", "--name-only")
+        if ($staged) {
+            Invoke-Git @("commit", "-m", "chore: Unity-generated rig art and .meta files") | Out-Null
+            Write-Log "Committed as housekeeping."
+        }
+    }
+
     # The shared task board is rewritten by every `team run` (status todo ->
     # in_progress -> review/blocked, plus the run's notes). Those edits are
     # the handoff itself - exactly what Claude needs to see - yet as a dirty
