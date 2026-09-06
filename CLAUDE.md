@@ -186,7 +186,8 @@ Claude가 PC에서 명령을 돌리는 **유일한 경로**. (2026-09-03 지시)
 |---|---|
 | 러너 | `C:\actions-runner-control`, 라벨 `pc-control`, **사용자 계정으로 실행** (`-WindowsLogonAccount`) |
 | 이유 | NETWORK SERVICE는 `C:\Dory_tycoon` · 포크 git 자격증명 · Codex 로그인 중 아무것도 없다 |
-| 동작 | `status` / `sync` / `dashboard` / `team-run` / `codex-doctor` 5개 고정. 입력이 명령이 되는 경로 없음 |
+| 동작 | `status` / `sync` / `dashboard` / `team-run` / `codex-doctor` / `test` / `build` 7개 고정. 입력이 명령이 되는 경로 없음 |
+| Unity | `test` / `build`가 **PC의 Unity를 실제로 돌린다.** 결과(APK 유무·컴파일 에러)는 job 로그에 그대로 찍힌다 |
 | 기본값 | `status` — 아무것도 건드리지 않음. `stash_dirty`는 opt-in, `status` 확인 후에만. 삭제는 없음 (stash는 복구 가능) |
 | 결과 | `mcp__github__get_job_logs`로 직접 읽는다. 사용자가 붙여넣을 필요 없음 |
 
