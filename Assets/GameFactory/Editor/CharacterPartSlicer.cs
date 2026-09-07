@@ -159,6 +159,16 @@ namespace GameFactory.Editor
             return Slice(force: false);
         }
 
+        /// <summary>
+        /// The size each table was measured against, once the drawing has been
+        /// prepared. A different size means a different drawing, and the
+        /// fractions above no longer point at the same paws and feet - see
+        /// WarnIfNotWhatWasMeasured.
+        /// </summary>
+        private const int FrontMeasuredWidth = 136;
+        private const int SideMeasuredWidth = 137;
+        private const int MeasuredHeight = 192;
+
         /// <summary>The drawing to cut, and what view it is. Profile wins when it exists.</summary>
         private static bool ResolveSource(out string assetPath, out string view, out PartCut[] cuts)
         {
@@ -173,6 +183,30 @@ namespace GameFactory.Editor
             view = "front";
             cuts = FrontCuts;
             return File.Exists(EditorPaths.ToAbsolutePath(assetPath));
+        }
+
+        /// <summary>
+        /// Says so, loudly, when the drawing is not the one the cut table was
+        /// measured against.
+        ///
+        /// WHY THIS IS WORTH A WARNING. Replacing the art while keeping the
+        /// filename is the obvious thing to do, and the tables are fractions -
+        /// so a new drawing of a different shape gets cut at the old
+        /// proportions and produces a body with a bite out of its face and a
+        /// paw made of belly. Nothing errors. The build passes. It is only
+        /// visible on a phone, which is the slowest possible place to find out.
+        /// </summary>
+        private static void WarnIfNotWhatWasMeasured(string sourcePath, string view, int width, int height)
+        {
+            int expectedWidth = view == "side" ? SideMeasuredWidth : FrontMeasuredWidth;
+            if (width == expectedWidth && height == MeasuredHeight) return;
+
+            Debug.LogWarning(
+                $"[CharacterPartSlicer] {sourcePath} prepares to {width}x{height}, but the {view} "
+                + $"cut table was measured against {expectedWidth}x{MeasuredHeight}. The parts will "
+                + "be cut at the old proportions. Re-measure the rectangles and joints in "
+                + "CharacterPartSlicer.cs against the new drawing, and update the sizes next to "
+                + "them - a wrong cut here is only visible on a device.");
         }
 
         public static bool Slice(bool force)
@@ -207,6 +241,7 @@ namespace GameFactory.Editor
             // scaled before anything is measured against it, or every fraction
             // in the tables above refers to the paper as well as the animal.
             image = Prepare(image, ref width, ref height);
+            WarnIfNotWhatWasMeasured(sourcePath, view, width, height);
 
             float[] combined = new float[width * height];
             float[] rebuildMask = new float[width * height];
