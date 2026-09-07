@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from company.orchestrator import orders
 from company.orchestrator import progress as progress_mod
 from company.orchestrator.hardware import HardwareProfile
 from company.orchestrator.ollama_client import OllamaClient, OllamaUnavailable
@@ -549,15 +550,27 @@ def _data_uri(path: Path) -> tuple[str, str]:
 
     try:
         with Image.open(io.BytesIO(raw)) as image:
-            image = image.convert("RGB")
+            # A cut-out with transparency must stay PNG. JPEG has no alpha, so
+            # thumbnailing one flattens it onto black - and the biggest images
+            # in this gallery are exactly the character drawings, which is how
+            # player.png came to render as a hedgehog in a black box. Scaled
+            # down to 240px a PNG is a few KB anyway, so nothing is saved by
+            # the flatten.
+            transparent = (image.mode in ("RGBA", "LA")
+                           or (image.mode == "P" and "transparency" in image.info))
+            image = image.convert("RGBA" if transparent else "RGB")
             image.thumbnail((THUMB_EDGE, THUMB_EDGE), Image.LANCZOS)
             buffer = io.BytesIO()
-            image.save(buffer, format="JPEG", quality=74, optimize=True)
+            if transparent:
+                image.save(buffer, format="PNG", optimize=True)
+            else:
+                image.save(buffer, format="JPEG", quality=74, optimize=True)
     except OSError as exc:
         return "", f"읽을 수 없음 ({exc})"
 
     encoded = base64.b64encode(buffer.getvalue()).decode()
-    return f"data:image/jpeg;base64,{encoded}", "축소본"
+    mime = "image/png" if transparent else "image/jpeg"
+    return f"data:{mime};base64,{encoded}", "축소본"
 
 
 def _short_name(name: str, keep: int = 17) -> str:
@@ -1097,6 +1110,25 @@ section{margin-top:44px;}
   border-right:0; border-radius:2px 0 0 2px; max-width:230px;}
 .combo .btn{border-radius:0 2px 2px 0;}
 @media(max-width:620px){.control-row{grid-template-columns:1fr; gap:7px;}}
+
+/* ---- order box ---- */
+.order{display:grid; gap:11px;}
+.order-row{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+.order-row .btn{margin-left:auto;}
+.order select{font-family:'Archivo','Noto Sans KR',sans-serif; font-size:13px;
+  padding:9px 11px; background:var(--surface-2); color:var(--ink);
+  border:1px solid var(--line); border-radius:2px; max-width:100%;}
+.order textarea{font-family:'Noto Sans KR',sans-serif; font-size:14px; line-height:1.7;
+  padding:12px 14px; background:var(--surface-2); color:var(--ink);
+  border:1px solid var(--line); border-radius:2px; resize:vertical; min-height:96px;
+  width:100%; box-sizing:border-box;}
+.order textarea:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+.order-scope{font-size:11.5px; color:var(--muted); min-width:0; word-break:break-word;}
+.order-check{display:flex; gap:7px; align-items:center; font-size:12.5px; color:var(--ink-2);}
+.order-how{font-size:12px; line-height:1.75; color:var(--muted);
+  padding:10px 12px; background:var(--sunk); border-radius:2px;}
+.order-how b{color:var(--ink);}
+.order-closed{font-size:11.5px; color:var(--gate);}
 .term{margin-top:14px; background:var(--sunk); border:1px solid var(--line); border-radius:2px;
       padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:12px;
       line-height:1.65; white-space:pre-wrap; word-break:break-word;
@@ -1664,6 +1696,111 @@ def _art_plan_html(plan: dict[str, Any]) -> str:
     return f'<div class="panel"><div class="plan">{"".join(rows)}</div></div>'
 
 
+# Three rows of this panel used to draw a button for an action server.ACTIONS
+# does not contain, so pressing it answered "알 수 없는 동작입니다." and nothing
+# else. Section 10 is explicit that a control with nothing behind it should not
+# be drawn, so the state is reported and the control is not. Wiring the three
+# actions for real is queued separately - this only stops the page lying about
+# what it can do.
+_UNWIRED = ('<span class="control-note" style="color:var(--unknown)">'
+            '실행 버튼 미연결 — 이 동작은 아직 서버에 없습니다</span>')
+
+
+def _scope_label(pattern: str) -> str:
+    """A team's allowlist entry, short enough for one line and still readable.
+
+    _short_path takes the last segment, which is right for the board's
+    directory entries and useless for a glob: every one of these patterns ends
+    in '**', so three of them rendered as '** · ** · **'. What distinguishes
+    them is the segment BEFORE the glob.
+    """
+    cleaned = pattern.replace("\\", "/")
+    if cleaned.endswith("/**"):
+        return cleaned[:-3].rsplit("/", 1)[-1] + "/"
+    head, _, tail = cleaned.rpartition("/")
+    if "*" in tail and head:
+        # A filename glob keeps its directory: 'GameSpecs/*.json' says more
+        # than '*.json', which could be anywhere.
+        return f"{head.rsplit('/', 1)[-1]}/{tail}"
+    return _short_path(pattern)
+
+
+def _order_html(snapshot: Snapshot) -> str:
+    """The command window: one sentence in, real work out.
+
+    Rendered only behind a server, like the rest of the control panel - a
+    static copy has nothing to POST to, and a box that swallowed an
+    instruction and did nothing with it would be the worst control on the page.
+
+    What it does NOT do is as important as what it does, and is said on the
+    page rather than only in the code: the text becomes a task on the board,
+    Codex reads it, and Codex cannot compile. So the order runs the Unity
+    tests afterwards, and the page says that is why.
+    """
+    teams = []
+    for dept in orders.DEPARTMENTS.values():
+        if dept.unavailable:
+            teams.append(
+                f'<option value="{e(dept.id)}" disabled>'
+                f'{e(dept.label)} · 지금은 맡길 수 없음</option>')
+            continue
+        teams.append(
+            f'<option value="{e(dept.id)}" '
+            f'data-summary="{e(dept.summary)}" '
+            f'data-files="{e(" · ".join(_scope_label(f) for f in dept.files))}" '
+            f'data-seat="{e(dept.seat)}">{e(dept.label)} · {e(dept.summary)}</option>')
+
+    closed = [d for d in orders.DEPARTMENTS.values() if d.unavailable]
+    closed_note = "".join(
+        f'<div class="order-closed">{e(d.label)} — {e(d.unavailable)}</div>'
+        for d in closed)
+
+    games = [g for g in snapshot.games if g["spec"]]
+    game_options = "".join(
+        f'<option value="{e(g["id"])}">{e(g["id"])}</option>' for g in games)
+    if games:
+        verify_row = (
+            '<label class="order-check"><input type="checkbox" id="order-verify" checked> '
+            '끝나면 Unity 테스트까지 돌린다</label>'
+            f'<select id="order-game" aria-label="테스트할 게임">{game_options}</select>')
+    else:
+        # No GameSpec means nothing to test against. Said, not silently
+        # dropped: an order will still run, it just cannot be checked.
+        verify_row = ('<span class="control-note">GameSpec 이 없어서 테스트 단계는 '
+                      '건너뜁니다. Codex 결과는 컴파일 확인 없이 남습니다.</span>')
+
+    return f"""  <section>
+    <div class="head">
+      <h2>명령창</h2>
+      <span class="note">한 줄로 지시하면 담당 팀이 일합니다 · 최대 {orders.MAX_ORDER_CHARS}자</span>
+    </div>
+    <div class="ctl">
+      <div class="order">
+        <div class="order-row">
+          <select id="order-dept" aria-label="지시를 맡길 팀">{"".join(teams)}</select>
+          <span class="order-scope mono" id="order-scope"></span>
+        </div>
+        <textarea id="order-text" rows="4" maxlength="{orders.MAX_ORDER_CHARS}"
+          aria-label="지시 내용"
+          placeholder="예) 점프를 더 무겁게. 올라갈 때보다 내려올 때가 빠르게 느껴지도록."></textarea>
+        <div class="order-row">
+          {verify_row}
+          <button class="btn" id="order-send">지시 보내기</button>
+        </div>
+        <div class="order-how">
+          지시는 작업판에 <span class="mono">ORDER-날짜-번호</span> 로 접수되고, Codex가
+          그 글을 그대로 읽고 작업합니다. <b>Codex는 컴파일을 못 합니다</b> — 그래서
+          끝나면 Unity 테스트를 이어서 돌립니다. 커밋과 푸시는 하지 않으니
+          결과는 검토한 뒤 직접 커밋하세요.
+        </div>
+        {closed_note}
+      </div>
+    </div>
+  </section>
+
+"""
+
+
 def _control_html(snapshot: Snapshot, token: str,
                   live_job: dict[str, Any] | None = None) -> str:
     """The action panel. Rendered ONLY when a local server is behind it.
@@ -1706,12 +1843,15 @@ def _control_html(snapshot: Snapshot, token: str,
             if model.get("reason"):
                 reasons.append(
                     f'<span>{e(model["name"])} — {e(model["reason"])}</span>')
-        button_disabled = "" if enabled_models else ' disabled data-blocked="true"'
+        # No button: server.ACTIONS has no 'ollama-use', so one drawn here
+        # would POST an action the server answers "알 수 없는 동작" to. Section
+        # 10 - a control with nothing behind it is worse than none - and this
+        # panel had three of them. The list itself is still real information,
+        # so it stays; only the dead control goes.
         ollama_control = (
-            '<div class="combo"><select id="ollama-model" '
-            f'aria-label="설치된 Ollama 모델">{"".join(options)}</select>'
-            '<button class="btn" data-act="ollama-use" data-arg="ollama-model"'
-            f'{button_disabled}>모델 사용</button></div>'
+            f'<select id="ollama-model" aria-label="설치된 Ollama 모델" disabled>'
+            f'{"".join(options)}</select>'
+            f'{_UNWIRED}'
             f'<div class="control-reasons">{"".join(reasons)}</div>')
 
     image_allowed = (
@@ -1720,13 +1860,11 @@ def _control_html(snapshot: Snapshot, token: str,
         and snapshot.licences.get("stable-diffusion-v1-5") == "APPROVED"
     )
     if image_allowed:
+        # Allowed by policy and licence, but see _UNWIRED: there is no
+        # 'image-generate' action on the server, so the button is not drawn.
         image_control = (
-            '<div class="combo"><select id="image-preset" aria-label="이미지 프리셋">'
-            '<option value="runner-idle">러너 · 대기</option>'
-            '<option value="runner-run">러너 · 달리기</option>'
-            '<option value="runner-jump">러너 · 점프</option></select>'
-            '<button class="btn" data-act="image-generate" data-arg="image-preset">'
-            '이미지 생성</button></div>')
+            '<span class="control-note">정책·라이선스 통과 (stable-diffusion-v1-5)</span>'
+            f'{_UNWIRED}')
     elif not snapshot.image_adapter:
         image_control = '<span class="control-note">generate-sprite.py 없음</span>'
     else:
@@ -1735,17 +1873,12 @@ def _control_html(snapshot: Snapshot, token: str,
     if snapshot.gemini_adapter:
         gemini_agent = next(
             (agent for agent in snapshot.agents if agent.name == "Gemini"), None)
-        blocked = gemini_agent is None or gemini_agent.state != READY
-        blocked_attr = ' disabled data-blocked="true"' if blocked else ""
-        blocked_note = (
-            f'<span class="control-note">{e(gemini_agent.detail)}</span>'
-            if blocked and gemini_agent else "")
-        gemini_control = (
-            '<div class="combo"><select id="gemini-preset" aria-label="Gemini 조언 프리셋">'
-            '<option value="mobile-ui">모바일 UI 방향</option>'
-            '<option value="sprite-review">스프라이트 검토 기준</option></select>'
-            '<button class="btn" data-act="gemini-design" data-arg="gemini-preset"'
-            f'{blocked_attr}>Gemini 실행</button></div>{blocked_note}')
+        # Reported from the agent row's own evidence (the key gate), then the
+        # same _UNWIRED note: there is no 'gemini-design' action, and unlike
+        # the other two there is no CLI subcommand behind one either.
+        state_note = (f'<span class="control-note">{e(gemini_agent.detail)}</span>'
+                      if gemini_agent else "")
+        gemini_control = f"{state_note}{_UNWIRED}"
     else:
         gemini_control = '<span class="control-note">gemini_client.py 없음</span>'
 
@@ -1806,10 +1939,14 @@ def _control_html(snapshot: Snapshot, token: str,
     const busy = document.getElementById('busy');
     const live = document.getElementById('live');
     const buttons = [...document.querySelectorAll('.btn[data-act]')];
+    const send = document.getElementById('order-send');
     let poll = null;
 
     function lock(on, label) {{
       buttons.forEach(b => {{ b.disabled = on || b.dataset.blocked === 'true'; }});
+      // The order button is not a data-act button - it posts to /order, not
+      // /run - but one job at a time is one job at a time, so it locks too.
+      if (send) send.disabled = on;
       busy.className = on ? 'running' : '';
       // The label is the button's own text, which already reads '...실행';
       // appending '실행 중' to it produced 'Codex 실행 실행 중'.
@@ -1826,7 +1963,12 @@ def _control_html(snapshot: Snapshot, token: str,
       if (!p || !p.phase) {{ live.innerHTML = ''; return; }}
       const tone = p.done ? (p.exit_code === 0 ? ' live--done' : ' live--failed') : '';
       const dots = p.done ? '' : ' <span class="live-dots" aria-hidden="true"></span>';
-      const what = [p.action_label, data.arg].filter(Boolean).join(' · ');
+      // An order runs two steps, so say which one this is - otherwise the
+      // page reads as if the whole order finished when only Codex did.
+      const stage = (data.steps > 1)
+        ? '[' + data.step + '/' + data.steps + '] ' : '';
+      const what = stage + [data.title, p.action_label, data.arg]
+        .filter(Boolean).join(' · ');
       const note = (p.slow && !p.done)
         ? '<div class="live-note">이 단계는 외부 프로그램이 끝날 때까지 출력이 나오지 않습니다. 멈춘 것이 아닙니다.</div>'
         : '';
@@ -1884,7 +2026,8 @@ def _control_html(snapshot: Snapshot, token: str,
               (data.exit_code === 0 ? '' : ' - 실패했습니다. 위 출력을 그대로 Claude에게 주세요.');
             // The board and the reports move as a result of these commands, so
             // a finished run makes the page above it stale.
-            if (data.exit_code === 0 && ['team-run','build','dashboard'].includes(data.action)) {{
+            if (data.exit_code === 0 &&
+                ['team-run','build','test','dashboard'].includes(data.action)) {{
               term.textContent += '\\n페이지를 새로 읽어옵니다...';
               setTimeout(() => location.reload(), 1400);
             }}
@@ -1897,6 +2040,77 @@ def _control_html(snapshot: Snapshot, token: str,
     }}
 
     buttons.forEach(b => b.addEventListener('click', () => start(b)));
+
+    // ---- the order box ----
+    const dept = document.getElementById('order-dept');
+    const scope = document.getElementById('order-scope');
+    const text = document.getElementById('order-text');
+
+    // Which files that team may touch, shown as the team is chosen. This is
+    // the allowlist the run is checked against, so the user should see the
+    // boundary BEFORE typing an instruction that falls outside it.
+    function showScope() {{
+      if (!dept || !scope) return;
+      const picked = dept.options[dept.selectedIndex];
+      const files = picked ? picked.dataset.files : '';
+      const seat = picked ? picked.dataset.seat : '';
+      scope.textContent = files ? (seat + ' · ' + files) : '';
+    }}
+    if (dept) {{ dept.addEventListener('change', showScope); showScope(); }}
+
+    async function order() {{
+      const body = {{
+        token: TOKEN,
+        department: dept ? dept.value : '',
+        text: text ? text.value : '',
+      }};
+      const verifyBox = document.getElementById('order-verify');
+      const gameBox = document.getElementById('order-game');
+      // No checkbox on the page means there was no GameSpec to test, which
+      // the section already says. Sending verify:false keeps the server from
+      // having to guess what a missing field meant.
+      body.verify = verifyBox ? verifyBox.checked : false;
+      body.game = (body.verify && gameBox) ? gameBox.value : '';
+
+      term.textContent = '';
+      live.innerHTML = '';
+      lock(true, '지시 처리');
+      try {{
+        const res = await fetch('/order', {{
+          method: 'POST',
+          headers: {{ 'Content-Type': 'application/json' }},
+          body: JSON.stringify(body)
+        }});
+        const data = await res.json();
+        if (!res.ok) {{
+          term.textContent = '거부됨: ' + (data.error || res.status) +
+            (data.note ? '\\n' + data.note : '');
+          lock(false);
+          return;
+        }}
+        let head = '접수: ' + data.order + ' → ' + data.department_label +
+                   '\\n단계: ' + (data.steps || []).join(' → ');
+        if (data.duplicate_of) {{
+          head += '\\n같은 지시가 이미 ' + data.duplicate_of + ' 로 대기 중입니다.';
+        }}
+        term.textContent = head + '\\n\\n';
+        // Cleared only once the order is accepted: a rejected order should
+        // leave the text where the user can fix it instead of retyping it.
+        if (text) text.value = '';
+        showLive(data);
+        watch(data.job, '지시 처리');
+      }} catch (err) {{
+        term.textContent = '서버에 연결할 수 없습니다: ' + err;
+        lock(false);
+      }}
+    }}
+
+    if (send) send.addEventListener('click', order);
+    // Ctrl+Enter sends, because Enter has to stay a newline in a textarea -
+    // an order is often two or three sentences.
+    if (text) text.addEventListener('keydown', ev => {{
+      if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter' && !send.disabled) order();
+    }});
   }});
   </script>
 """
@@ -2010,7 +2224,11 @@ def render(snapshot: Snapshot, control_token: str | None = None,
     hardware = snapshot.profile.get("hardware", {})
     unity = snapshot.profile.get("unity", {})
 
-    control = (_control_html(snapshot, control_token, live_job)
+    # Order box first, then the fixed-button panel. Both only exist behind a
+    # server: the static copy has nothing to POST to, and section 10's rule
+    # that a control which cannot act should not be drawn covers a text box
+    # every bit as much as a button.
+    control = (_order_html(snapshot) + _control_html(snapshot, control_token, live_job)
                if control_token else "")
     shot_count = sum(len(g["items"]) for g in snapshot.gallery)
 
@@ -2049,7 +2267,6 @@ def render(snapshot: Snapshot, control_token: str | None = None,
     <span>설치된 것과 실제로 돌아가는 것은 다릅니다. 아래 각 줄은 그 판단의 근거 파일을 함께 표시합니다.</span>
   </div>
   {missing_block}
-{control}
   <section>
     <div class="head">
       <h2>부서 사무실</h2>
@@ -2057,6 +2274,7 @@ def render(snapshot: Snapshot, control_token: str | None = None,
     </div>
     {office}
   </section>
+{control}
 
   <section>
     <div class="head">
