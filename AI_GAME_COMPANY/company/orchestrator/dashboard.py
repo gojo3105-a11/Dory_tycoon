@@ -883,50 +883,81 @@ section{margin-top:44px;}
 .office-agent--working{--st:var(--accent); border-style:solid;}
 .office-character{display:block; width:100%; max-width:112px; height:auto; margin:0 auto;
   overflow:visible;}
-.office-desk{fill:var(--sunk); stroke:var(--line);}
-.office-chair{fill:var(--surface); stroke:var(--ink-2);}
-.office-person{fill:var(--ink-2); stroke:var(--ink);}
-.office-face{fill:var(--surface); stroke:var(--ink);}
-.office-limb{fill:none; stroke:var(--ink-2); stroke-width:7; stroke-linecap:round;}
-.office-agent--dev .office-person{fill:var(--accent);}
-.office-agent--dev .office-limb{stroke:var(--accent);}
-.office-agent--design .office-person{fill:var(--gate);}
-.office-agent--design .office-limb{stroke:var(--gate);}
-.office-agent--lab .office-person{fill:var(--ok);}
-.office-agent--lab .office-limb{stroke:var(--ok);}
-.office-agent--modeling .office-person{fill:var(--blocked);}
-.office-agent--modeling .office-limb{stroke:var(--blocked);}
-.office-agent--outsource .office-person{fill:var(--unknown);}
-.office-agent--outsource .office-limb{stroke:var(--unknown);}
-.office-screen{fill:var(--surface); stroke:var(--ink-2);}
+/* --st is the state colour the seat already sets; --skin is the department's,
+   so a room reads as one team before any label is read. */
+.office-desk{fill:var(--sunk); stroke:var(--line); stroke-width:1.5;}
+.office-desk-leg{fill:none; stroke:var(--line); stroke-width:3; stroke-linecap:round;}
+.office-person{fill:var(--skin,var(--ink-2)); stroke:var(--ink); stroke-width:1.5;}
+.office-face{fill:var(--surface); stroke:var(--ink); stroke-width:1.5;}
+.office-hair{fill:var(--skin,var(--ink-2)); stroke:var(--ink); stroke-width:1.5;
+  stroke-linejoin:round;}
+.office-eye{fill:var(--ink);}
+.office-eye-line{fill:none; stroke:var(--ink); stroke-width:2.4; stroke-linecap:round;}
+.office-mouth{fill:none; stroke:var(--ink); stroke-width:2; stroke-linecap:round;}
+.office-cheek{fill:var(--skin,var(--ink-2)); opacity:.32;}
+.office-limb{fill:none; stroke:var(--skin,var(--ink-2)); stroke-width:6;
+  stroke-linecap:round;}
+.office-fist{fill:var(--face-fill,var(--surface)); stroke:var(--ink); stroke-width:1.5;}
+.office-agent--dev{--skin:var(--accent);}
+.office-agent--design{--skin:var(--gate);}
+.office-agent--lab{--skin:var(--ok);}
+.office-agent--modeling{--skin:var(--blocked);}
+.office-agent--outsource{--skin:var(--unknown);}
+.office-agent--etc{--skin:var(--ink-2);}
+.office-screen{fill:var(--surface); stroke:var(--ink-2); stroke-width:1.5;}
 .office-screen--on{fill:var(--ok-soft); stroke:var(--ok);}
 .office-screen--wait{fill:var(--gate-soft); stroke:var(--gate);}
+.office-stand{fill:none; stroke:var(--ink-2); stroke-width:2.5; stroke-linecap:round;}
+.office-code{fill:none; stroke:var(--ok); stroke-width:2; stroke-linecap:round;
+  opacity:.55;}
 .office-cursor{fill:var(--ok); animation:office-cursor 1s steps(1,end) infinite;}
-.office-agent--ready .office-body{transform-origin:56px 57px;
-  animation:office-work 1.1s ease-in-out infinite;}
-.office-agent--ready .office-arm-left{transform-origin:45px 59px;
-  animation:office-type-left .55s ease-in-out infinite alternate;}
-.office-agent--ready .office-arm-right{transform-origin:67px 59px;
-  animation:office-type-right .55s ease-in-out infinite alternate;}
-.office-alert{transform-origin:83px 19px; animation:office-alert 1.8s ease-in-out infinite;}
-.office-alert-bubble{fill:var(--gate-soft); stroke:var(--gate);}
+
+/* Working. The amplitudes are deliberately large: at 112px wide a 2px arm
+   swing is invisible, and an office that never appears to move is the same
+   picture as an office that is idle. */
+.office-agent--ready .office-body{transform-origin:42px 48px;
+  animation:office-breathe 2.6s ease-in-out infinite;}
+.office-agent--ready .office-eyes{transform-origin:42px 31px;
+  animation:office-blink 4.4s ease-in-out infinite;}
+.office-agent--ready .office-hand--l{transform-origin:17px 61px;
+  animation:office-type .6s ease-in-out infinite alternate;}
+.office-agent--ready .office-hand--r{transform-origin:67px 61px;
+  animation:office-type .6s ease-in-out .3s infinite alternate;}
+/* A live job is the one thing on this page that is certainly happening right
+   now, so its character types visibly faster than the merely-available ones. */
+.office-agent--working .office-hand--l,
+.office-agent--working .office-hand--r{animation-duration:.3s;}
+.office-agent--working .office-body{animation-duration:1.3s;}
+
+.office-body--waiting{transform-origin:42px 48px;
+  animation:office-waiting 3s ease-in-out infinite;}
+.office-alert{transform-origin:66px 16px; animation:office-alert 1.8s ease-in-out infinite;}
+.office-alert-bubble{fill:var(--gate-soft); stroke:var(--gate); stroke-width:1.5;}
 .office-alert-mark{fill:var(--gate);}
-.office-agent--blocked .office-person,.office-agent--blocked .office-limb{
-  fill:var(--unknown); stroke:var(--unknown);}
-.office-agent--blocked .office-limb{fill:none;}
-.office-chair--pushed{transform:translate(25px,8px);}
+
+/* Blocked: no motion at all, and the colour goes out of the character too -
+   a greyed-out desk should not still be wearing the team's colour. */
+.office-agent--blocked{--skin:var(--unknown);}
+.office-agent--blocked .office-face,.office-agent--blocked .office-fist{
+  fill:var(--surface-2);}
+.office-agent--blocked .office-eye-line,.office-agent--blocked .office-mouth{
+  stroke:var(--unknown);}
+.office-body--slumped{transform:translate(3px,5px) rotate(4deg);
+  transform-origin:42px 48px;}
+
 .office-agent--unknown .office-silhouette{fill:none; stroke:var(--unknown);
-  stroke-width:3; stroke-dasharray:4 4; opacity:.55;
+  stroke-width:2.5; stroke-dasharray:4 4; opacity:.55;
   animation:office-unknown 4s ease-in-out infinite;}
 .office-agent-name{display:block; overflow-wrap:anywhere; font-size:11.5px;
   font-weight:600; line-height:1.35;}
 .office-agent-state{display:block; margin-top:3px; color:var(--st);
   font-size:11px; line-height:1.3;}
-@keyframes office-work{50%{transform:translateY(-1px);}}
-@keyframes office-type-left{to{transform:rotate(9deg) translateY(2px);}}
-@keyframes office-type-right{to{transform:rotate(-9deg) translateY(-2px);}}
+@keyframes office-breathe{50%{transform:translateY(-2px) scale(1.015);}}
+@keyframes office-type{to{transform:translateY(-5px) rotate(-6deg);}}
+@keyframes office-blink{0%,92%,100%{transform:scaleY(1);}96%{transform:scaleY(.1);}}
 @keyframes office-cursor{50%{opacity:0;}}
-@keyframes office-alert{50%{transform:scale(1.12);}}
+@keyframes office-alert{50%{transform:scale(1.14) translateY(-2px);}}
+@keyframes office-waiting{50%{transform:translateY(-3px);}}
 @keyframes office-unknown{50%{opacity:.25;}}
 
 /* ---- queue ----
@@ -1203,35 +1234,107 @@ def _department_for_agent(name: str) -> str:
 
 
 def _character_svg(department: str, state: str) -> str:
-    """Procedural v1 character art, kept in one place for later replacement."""
-    desk = ('<rect class="office-desk" x="12" y="27" width="88" height="16" rx="2"/>'
-            '<path class="office-desk" d="M20 43v38M92 43v38"/>')
-    chair = '<path class="office-chair" d="M36 66h40v12H36zM43 78v7M69 78v7"/>'
-    head = '<circle class="office-face" cx="56" cy="52" r="10"/>'
-    torso = '<path class="office-person" d="M42 66q14-10 28 0v15H42z"/>'
+    """The desk characters, in one place so real art can replace them later.
+
+    COMPOSITION. Front view: the character sits BEHIND the desk, so the desk
+    band crosses its middle and only head, shoulders and hands show - which is
+    what a desk looks like and also what lets the face be big. Draw order is
+    character, then desk, then monitor, so the desk really does occlude.
+
+    WHY THE PROPORTIONS ARE LIKE THIS. A big head on a small body is what
+    reads as friendly at 112 pixels wide; a correctly proportioned figure at
+    this size is a grey smudge. The face is the only part with detail, because
+    it is the part a person looks at.
+
+    THE MOVEMENT HAS TO BE BIG ENOUGH TO SEE. The first version moved arms by
+    one or two pixels, which is invisible at this size - the office looked
+    frozen even while everything was working. Hands now travel about a sixth
+    of the head's width, which reads as typing across the room.
+
+    Motion is never the ONLY signal, per the spec: colour, posture, the
+    screen and the eyes each carry the state on their own, so the office is
+    still readable with prefers-reduced-motion on.
+    """
+    # Drawn first, so the desk covers the character's waist.
+    desk = ('<rect class="office-desk" x="3" y="60" width="106" height="8" rx="2.5"/>'
+            '<path class="office-desk-leg" d="M13 68v22M99 68v22"/>')
+
+    def face(eyes: str, mouth: str) -> str:
+        return (f'<circle class="office-face" cx="42" cy="31" r="16.5"/>'
+                f'<path class="office-hair" d="M27 25q3-16 15-16t15 16q-6-8-15-8t-15 8z"/>'
+                f'<g class="office-eyes">{eyes}</g>{mouth}')
+
+    # Named rather than inlined into the f-strings below: an f-string
+    # expression may not contain a backslash before Python 3.12, and these
+    # all carry escaped quotes.
+    smile = '<path class="office-mouth" d="M38 38.5q4 4.5 8 0"/>'
+    straight = '<path class="office-mouth" d="M38 39h8"/>'
+    frown = '<path class="office-mouth" d="M38 40q4-3.5 8 0"/>'
+    blink = ('<circle class="office-eye" cx="36" cy="31" r="2.4"/>'
+             '<circle class="office-eye" cx="48" cy="31" r="2.4"/>')
+    flat_eyes = '<path class="office-eye-line" d="M33 31h6M45 31h6"/>'
+    cheeks = ('<circle class="office-cheek" cx="30" cy="36" r="3"/>'
+              '<circle class="office-cheek" cx="54" cy="36" r="3"/>')
+    # Shoulders only: everything below y=60 is behind the desk anyway.
+    torso = '<path class="office-person" d="M22 64V56q0-12 20-12t20 12v8z"/>'
 
     if state == READY:
-        return (f'<svg class="office-character" viewBox="0 0 112 90" aria-hidden="true">'
-                f'{desk}<rect class="office-screen office-screen--on" x="39" y="9" width="34" height="22" rx="2"/>'
-                '<rect class="office-cursor" x="55" y="16" width="2" height="8"/>'
-                f'{chair}<g class="office-body">{head}{torso}'
-                '<path class="office-limb office-arm-left" d="M45 66l-9 9"/>'
-                '<path class="office-limb office-arm-right" d="M67 66l9 9"/></g></svg>')
+        return (
+            '<svg class="office-character" viewBox="0 0 112 96" aria-hidden="true">'
+            f'<g class="office-body">{torso}{face(blink, smile)}{cheeks}</g>'
+            # Hands sit on the desk surface and alternate - the typing.
+            '<g class="office-hand office-hand--l">'
+            '<path class="office-limb" d="M25 55l-7 6"/>'
+            '<circle class="office-fist" cx="17" cy="61" r="4"/></g>'
+            '<g class="office-hand office-hand--r">'
+            '<path class="office-limb" d="M59 55l7 6"/>'
+            '<circle class="office-fist" cx="67" cy="61" r="4"/></g>'
+            f'{desk}'
+            '<g class="office-monitor"><rect class="office-screen office-screen--on"'
+            ' x="72" y="30" width="33" height="24" rx="2.5"/>'
+            '<rect class="office-cursor" x="77" y="36" width="2.5" height="9"/>'
+            '<path class="office-code" d="M83 39h14M83 43h9M83 47h12"/>'
+            '<path class="office-stand" d="M88.5 54v6M81 60h15"/></g></svg>')
+
     if state == GATED:
-        return (f'<svg class="office-character" viewBox="0 0 112 90" aria-hidden="true">'
-                f'{desk}<rect class="office-screen office-screen--wait" x="39" y="9" width="34" height="22" rx="2"/>'
-                '<g class="office-alert"><circle class="office-alert-bubble" cx="86" cy="17" r="10"/>'
-                '<path class="office-alert-mark" d="M84 11h4l-1 8h-2zm0 10h4v4h-4z"/></g>'
-                f'<g transform="translate(-23 5)">{head}{torso}'
-                '<path class="office-limb" d="M45 65l-5 14M67 65l5 14"/></g></svg>')
+        # Standing, waiting to be let in: no hands on the desk, and the '!'
+        # is what the eye lands on.
+        return (
+            '<svg class="office-character" viewBox="0 0 112 96" aria-hidden="true">'
+            f'<g class="office-body office-body--waiting">{torso}'
+            f'{face(blink, straight)}{cheeks}</g>'
+            '<path class="office-limb" d="M25 55l-4 8M59 55l4 8"/>'
+            f'{desk}'
+            '<g class="office-monitor"><rect class="office-screen office-screen--wait"'
+            ' x="72" y="30" width="33" height="24" rx="2.5"/>'
+            '<path class="office-stand" d="M88.5 54v6M81 60h15"/></g>'
+            '<g class="office-alert"><circle class="office-alert-bubble" cx="66" cy="14" r="11"/>'
+            '<path class="office-alert-mark" d="M64 7h4l-1 9h-2zm0 11h4v4h-4z"/></g></svg>')
+
     if state == BLOCKED:
-        return (f'<svg class="office-character" viewBox="0 0 112 90" aria-hidden="true">'
-                f'{desk}<rect class="office-screen" x="39" y="9" width="34" height="22" rx="2"/>'
-                f'<g class="office-chair--pushed">{chair}{head}{torso}'
-                '<path class="office-limb" d="M45 67l-7 12M67 67l7 12"/></g></svg>')
-    return (f'<svg class="office-character" viewBox="0 0 112 90" aria-hidden="true">'
-            f'{desk}<g class="office-silhouette"><circle cx="56" cy="52" r="10"/>'
-            '<path d="M42 81V66q14-10 28 0v15M45 66l-7 12M67 66l7 12"/></g></svg>')
+        # Not a sad face for its own sake: the spec forbids drawing a blocked
+        # agent smiling, because the picture would be saying the opposite of
+        # the label under it. Flat eyes, flat mouth, dark screen, chair away.
+        return (
+            '<svg class="office-character" viewBox="0 0 112 96" aria-hidden="true">'
+            '<g class="office-body office-body--slumped">'
+            f'{torso}{face(flat_eyes, frown)}</g>'
+            '<path class="office-limb" d="M25 56l-5 7M59 56l5 7"/>'
+            f'{desk}'
+            '<g class="office-monitor"><rect class="office-screen" x="72" y="30"'
+            ' width="33" height="24" rx="2.5"/>'
+            '<path class="office-stand" d="M88.5 54v6M81 60h15"/></g></svg>')
+
+    # UNKNOWN: an outline where somebody might be. No face - inventing an
+    # expression would be claiming to know a state the files do not report.
+    return (
+        '<svg class="office-character" viewBox="0 0 112 96" aria-hidden="true">'
+        '<g class="office-silhouette"><circle cx="42" cy="31" r="16.5"/>'
+        '<path d="M22 64V56q0-12 20-12t20 12v8M25 55l-5 7M59 55l5 7"/></g>'
+        f'{desk}'
+        '<g class="office-monitor"><rect class="office-screen" x="72" y="30"'
+        ' width="33" height="24" rx="2.5" stroke-dasharray="4 4"/>'
+        '<path class="office-stand" d="M88.5 54v6M81 60h15"/></g></svg>')
 
 
 def _office_caption(agent: Agent, working: bool) -> str:
