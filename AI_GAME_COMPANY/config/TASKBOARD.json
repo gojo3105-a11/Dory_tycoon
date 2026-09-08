@@ -810,6 +810,37 @@
       "changed_files": [],
       "last_run": "",
       "title_ko": "UI를 새 팩으로 교체 (버튼·팝업창·코인 카운터)"
+    },
+    {
+      "id": "CODEX-IDLE1",
+      "title": "Game02 groundwork: the Idle genre and its two modules",
+      "owner": "codex",
+      "status": "todo",
+      "goal": "Game02 (Idle Factory Tycoon) is the next game and is blocked on code that does not exist: Assets/GameFactory/Gameplay/Idle/ is an empty folder, and so are Modules/Producer and Modules/UpgradeTree (which have no folder yet).\n\nBuild the genre, not the game. Three pieces:\n  Gameplay/Idle/IdleGameInitializer.cs - the genre entry point, matching the shape RunnerGameInitializer already has.\n  Modules/Producer/ - one production line: a rate, an accumulator, and OFFLINE catch-up. Offline is the whole genre: on resume, compute what accumulated from the saved timestamp rather than ticking in Update. Cap it (the GameSpec says how long), and never trust the device clock going backwards - a clock moved back must produce zero, not negative.\n  Modules/UpgradeTree/ - levels with a cost curve, read from the GameSpec.\n\nEvery number belongs in the GameSpec: base rate, cost curve, offline cap, tap bonus. Add the fields to GameSpecData.cs and GameSpecValidator.cs and document them in docs/GAME_SPEC.md, together, per CLAUDE.md section 5.\n\nReference reading: Particle Clicker (MIT, github.com/particle-clicker/particle-clicker) shows the upgrade curve and offline handling. READ it, do not port it - it is JavaScript, and docs/REFERENCE_GAMES.md explains why porting is the wrong move here.\n\nNo scene or prefab generator yet - that is a separate task once the genre compiles and its EditMode tests pass.",
+      "files": [
+        "Assets/GameFactory/Gameplay/Idle/**",
+        "Assets/GameFactory/Modules/Producer/**",
+        "Assets/GameFactory/Modules/UpgradeTree/**",
+        "Assets/GameFactory/Core/GameSpec/GameSpecData.cs",
+        "Assets/GameFactory/Core/GameSpec/GameSpecValidator.cs",
+        "Assets/GameFactory/Tests/**",
+        "GameSpecs/game02.json",
+        "docs/GAME_SPEC.md"
+      ],
+      "acceptance": [
+        "Offline accumulation is computed from a saved timestamp, not from Update ticks.",
+        "A clock moved backwards yields zero accumulation, never negative.",
+        "The offline cap, base rate, cost curve and tap bonus all come from the GameSpec.",
+        "EditMode tests cover the offline maths, including the backwards-clock case.",
+        "Runtime scripts reference no UnityEditor type."
+      ],
+      "depends_on": [],
+      "notes": [
+        "Genre first, game second: Game02 is the first test of whether the factory actually generates rather than hand-builds. docs/REFERENCE_GAMES.md has the module map for Game02-10 and the licence findings behind it."
+      ],
+      "changed_files": [],
+      "last_run": "",
+      "title_ko": "Game02 기반: Idle 장르 + Producer/UpgradeTree 모듈"
     }
   ]
 }
